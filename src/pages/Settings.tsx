@@ -24,6 +24,7 @@ const SettingsPage = () => {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [settingWebhook, setSettingWebhook] = useState(false);
 
   useEffect(() => {
     if (!user) return;
