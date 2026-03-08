@@ -32,6 +32,11 @@ const SettingsPage = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [restoringCloud, setRestoringCloud] = useState<string | null>(null);
+  const [creatingCloud, setCreatingCloud] = useState(false);
+  const { runBackupNow } = useAutoBackup();
 
   useEffect(() => {
     if (!user) return;
