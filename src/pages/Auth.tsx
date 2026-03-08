@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { TrendingUp, Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -53,9 +54,7 @@ const Auth = () => {
         className="glass-card w-full max-w-sm p-8"
       >
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="h-10 w-10 rounded-xl gradient-bg-primary flex items-center justify-center">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={logo} alt="T2-FinAI" className="h-10 w-10 rounded-xl object-contain" />
           <div>
             <h1 className="text-lg font-bold text-foreground">T2-FinAI</h1>
             <p className="text-[10px] text-muted-foreground">Controle Financeiro Inteligente</p>
