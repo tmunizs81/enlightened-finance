@@ -190,6 +190,72 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_ocr_transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          chat_id: string
+          confidence: string | null
+          created_at: string
+          date: string
+          description: string
+          edit_field: string | null
+          id: string
+          receipt_path: string | null
+          receipt_url: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category_id?: string | null
+          chat_id: string
+          confidence?: string | null
+          created_at?: string
+          date?: string
+          description: string
+          edit_field?: string | null
+          id?: string
+          receipt_path?: string | null
+          receipt_url?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          chat_id?: string
+          confidence?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          edit_field?: string | null
+          id?: string
+          receipt_path?: string | null
+          receipt_url?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_ocr_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_ocr_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
