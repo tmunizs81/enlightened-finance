@@ -7,6 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { Plus } from "lucide-react";
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  institution: string | null;
+}
+
 interface Category {
   id: string;
   name: string;
@@ -29,10 +36,12 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [status, setStatus] = useState(initialData?.status || "pending");
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split("T")[0]);
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "none");
+  const [accountId, setAccountId] = useState(initialData?.account_id || "none");
   const [newCatName, setNewCatName] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
+  const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertCategory = useSupabaseInsert("categories");
 
   const filteredCats = categories.filter((c) => c.type === type);
@@ -61,9 +70,10 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       status,
       date,
       category_id: categoryId === "none" ? null : categoryId,
+      account_id: accountId === "none" ? null : accountId,
     });
     if (!initialData) {
-      setDescription(""); setAmount(""); setType("expense"); setStatus("pending"); setCategoryId("none");
+      setDescription(""); setAmount(""); setType("expense"); setStatus("pending"); setCategoryId("none"); setAccountId("none");
     }
   };
 
@@ -150,6 +160,22 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Account */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Conta</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem conta</SelectItem>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.institution ? ` (${a.institution})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter>
