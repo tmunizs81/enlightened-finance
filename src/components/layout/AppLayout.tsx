@@ -1,7 +1,9 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
+import { useAutoBackup } from "@/hooks/use-auto-backup";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  useAutoBackup();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
