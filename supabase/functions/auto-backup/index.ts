@@ -54,7 +54,8 @@ serve(async (req) => {
     // Use service role to read all user data and write to storage
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { action } = await req.json().catch(() => ({ action: "create" }));
+    const body = await req.json().catch(() => ({}));
+    const action = body.action || "create";
 
     // === LIST BACKUPS ===
     if (action === "list") {
@@ -72,7 +73,7 @@ serve(async (req) => {
 
     // === RESTORE BACKUP ===
     if (action === "restore") {
-      const { filename } = await req.json().catch(() => ({ filename: null }));
+      const filename = body.filename;
       if (!filename) {
         return new Response(JSON.stringify({ error: "filename is required" }), {
           status: 400,
