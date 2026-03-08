@@ -38,6 +38,7 @@ function ProtectedRoutes() {
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/goals" element={<Goals />} />
         <Route path="/accounts" element={<Accounts />} />
+        <Route path="/budgets" element={<Budgets />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
