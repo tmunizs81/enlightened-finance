@@ -24,28 +24,20 @@ const SettingsPage = () => {
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O T2-FinAI utiliza a API do <strong className="text-foreground">ChatGPT (OpenAI)</strong> para o assistente financeiro.
-          A chave está armazenada de forma segura no Lovable Cloud.
+          O T2-FinAI utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro.
+          Nenhuma chave externa necessária.
         </p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-2">
           <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Modelo:</strong> gpt-4o-mini
+            <strong className="text-foreground">Modelo:</strong> Gemini 3 Flash Preview
           </p>
           <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Chave:</strong> sk-••••••••••••••••
+            <strong className="text-foreground">Provedor:</strong> Lovable AI Gateway
           </p>
           <p className="text-[11px] text-muted-foreground">
-            Para alterar a chave, acesse as configurações de Secrets no Lovable Cloud.
+            Integrado automaticamente — uso incluso no plano Lovable.
           </p>
         </div>
-        <a
-          href="https://platform.openai.com/api-keys"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          Gerenciar chaves na OpenAI <ExternalLink className="h-3 w-3" />
-        </a>
       </div>
 
       {/* Telegram */}

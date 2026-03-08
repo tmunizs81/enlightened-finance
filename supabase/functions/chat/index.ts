@@ -10,13 +10,8 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY não configurada. Adicione sua chave nas configurações." }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `Você é o assistente financeiro inteligente do T2-FinAI. Responda sempre em português brasileiro.
 Você ajuda o usuário a:
@@ -29,14 +24,14 @@ Você ajuda o usuário a:
 Seja conciso, direto e use formatação markdown quando útil. Use emojis com moderação para tornar as respostas mais amigáveis.
 Quando não tiver dados específicos, dê dicas gerais de finanças pessoais.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
@@ -46,29 +41,21 @@ Quando não tiver dados específicos, dê dicas gerais de finanças pessoais.`;
     });
 
     if (!response.ok) {
-      const t = await response.text();
-      console.error("OpenAI API error:", response.status, t);
-
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições da OpenAI excedido. Tente novamente em instantes." }), {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 401) {
-        return new Response(JSON.stringify({ error: "Chave da API OpenAI inválida. Verifique nas configurações." }), {
-          status: 401,
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+          status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402 || response.status === 403) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes na OpenAI ou acesso negado." }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(JSON.stringify({ error: `Erro na OpenAI: ${response.status}` }), {
+      const t = await response.text();
+      console.error("AI gateway error:", response.status, t);
+      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
