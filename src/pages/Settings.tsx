@@ -70,6 +70,23 @@ const SettingsPage = () => {
     finally { setTesting(false); }
   };
 
+  const handleSetWebhook = async () => {
+    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    setSettingWebhook(true);
+    try {
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: webhookUrl }),
+      });
+      const data = await resp.json();
+      if (data.ok) toast.success("Webhook configurado! Agora envie fotos de comprovantes para o bot.");
+      else toast.error(`Erro: ${data.description || "Falha ao configurar webhook"}`);
+    } catch { toast.error("Falha ao configurar webhook."); }
+    finally { setSettingWebhook(false); }
+  };
+
   // === BACKUP: Export ===
   const handleExport = async () => {
     if (!user) return;
