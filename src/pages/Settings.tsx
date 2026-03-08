@@ -88,7 +88,7 @@ const SettingsPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Brain className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Inteligência Artificial — OpenAI</h2>
+            <h2 className="text-sm font-semibold text-foreground">Inteligência Artificial — Google Gemini</h2>
           </div>
           <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
             <CheckCircle className="h-3 w-3 mr-1" /> Gemini Ativo
