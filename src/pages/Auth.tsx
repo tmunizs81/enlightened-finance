@@ -57,7 +57,7 @@ const Auth = () => {
             <TrendingUp className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">FinanceAI</h1>
+            <h1 className="text-lg font-bold text-foreground">T2-FinAI</h1>
             <p className="text-[10px] text-muted-foreground">Controle Financeiro Inteligente</p>
           </div>
         </div>

@@ -145,7 +145,7 @@ export function AIChatPanel() {
                   <Bot className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">FinanceAI Chat</p>
+                  <p className="text-sm font-semibold text-foreground">T2-FinAI Chat</p>
                   <p className="text-[10px] text-muted-foreground">Assistente financeiro</p>
                 </div>
               </div>

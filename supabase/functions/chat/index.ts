@@ -13,7 +13,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Você é o assistente financeiro inteligente do FinanceAI. Responda sempre em português brasileiro.
+    const systemPrompt = `Você é o assistente financeiro inteligente do T2-FinAI. Responda sempre em português brasileiro.
 Você ajuda o usuário a:
 - Analisar gastos e receitas
 - Identificar padrões de consumo
