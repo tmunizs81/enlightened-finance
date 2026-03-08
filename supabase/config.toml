@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-insights]
 verify_jwt = false
+
+[functions.monthly-summary]
+verify_jwt = false
