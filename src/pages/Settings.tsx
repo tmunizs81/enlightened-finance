@@ -24,6 +24,7 @@ const SettingsPage = () => {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [settingWebhook, setSettingWebhook] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -67,6 +68,23 @@ const SettingsPage = () => {
       else toast.error(`Erro: ${data.description || "Verifique token e Chat ID"}`);
     } catch { toast.error("Falha ao conectar com a API do Telegram."); }
     finally { setTesting(false); }
+  };
+
+  const handleSetWebhook = async () => {
+    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    setSettingWebhook(true);
+    try {
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: webhookUrl }),
+      });
+      const data = await resp.json();
+      if (data.ok) toast.success("Webhook configurado! Agora envie fotos de comprovantes para o bot.");
+      else toast.error(`Erro: ${data.description || "Falha ao configurar webhook"}`);
+    } catch { toast.error("Falha ao configurar webhook."); }
+    finally { setSettingWebhook(false); }
   };
 
   // === BACKUP: Export ===
@@ -201,7 +219,7 @@ const SettingsPage = () => {
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Receba alertas graves diretamente no Telegram quando a IA detectar problemas financeiros críticos.</p>
+        <p className="text-xs text-muted-foreground">Receba alertas e envie fotos de comprovantes para lançar despesas automaticamente via OCR com IA.</p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
           <p className="text-[11px] font-semibold text-foreground">Como configurar:</p>
           <p className="text-[11px] text-muted-foreground">1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong></p>
@@ -226,6 +244,17 @@ const SettingsPage = () => {
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Testar Envio
           </Button>
+          <Button variant="outline" onClick={handleSetWebhook} disabled={settingWebhook || !botToken} className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5">
+            {settingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
+            Ativar OCR via Telegram
+          </Button>
+        </div>
+        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+          <p className="text-[11px] font-semibold text-foreground">📸 OCR de Comprovantes via Telegram</p>
+          <p className="text-[11px] text-muted-foreground">Após ativar, envie uma foto de comprovante para o bot. A IA irá:</p>
+          <p className="text-[11px] text-muted-foreground">• Ler o valor, descrição e data automaticamente</p>
+          <p className="text-[11px] text-muted-foreground">• Classificar na categoria e conta corretas</p>
+          <p className="text-[11px] text-muted-foreground">• Salvar o comprovante como anexo da transação</p>
         </div>
       </div>
 
