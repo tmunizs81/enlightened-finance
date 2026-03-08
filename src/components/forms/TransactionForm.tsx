@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
-import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { Plus, Paperclip, X, FileImage, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Account {
   id: string;
@@ -30,6 +33,8 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loading }: TransactionFormProps) {
+  const { user } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(initialData?.description || "");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
   const [type, setType] = useState(initialData?.type || "expense");
@@ -39,6 +44,9 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [accountId, setAccountId] = useState(initialData?.account_id || "none");
   const [newCatName, setNewCatName] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(initialData?.receipt_url || null);
+  const [uploading, setUploading] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -60,8 +68,75 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error("Arquivo muito grande. Máximo: 10MB");
+      return;
+    }
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Formato não suportado. Use JPG, PNG, WebP ou PDF.");
+      return;
+    }
+
+    setReceiptFile(file);
+    if (file.type.startsWith("image/")) {
+      setReceiptPreview(URL.createObjectURL(file));
+    } else {
+      setReceiptPreview(null);
+    }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const uploadReceipt = async (): Promise<string | null> => {
+    if (!receiptFile || !user) return initialData?.receipt_url || null;
+
+    setUploading(true);
+    try {
+      const ext = receiptFile.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("receipts")
+        .upload(path, receiptFile, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (err: any) {
+      toast.error("Erro ao enviar comprovante: " + err.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let receiptUrl = initialData?.receipt_url || null;
+
+    // If user removed receipt
+    if (!receiptFile && !receiptPreview) {
+      receiptUrl = null;
+    }
+
+    // If user added new file
+    if (receiptFile) {
+      receiptUrl = await uploadReceipt();
+    }
+
     onSubmit({
       ...(initialData?.id ? { id: initialData.id } : {}),
       description,
@@ -71,15 +146,18 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       date,
       category_id: categoryId === "none" ? null : categoryId,
       account_id: accountId === "none" ? null : accountId,
+      receipt_url: receiptUrl,
     });
     if (!initialData) {
-      setDescription(""); setAmount(""); setType("expense"); setStatus("pending"); setCategoryId("none"); setAccountId("none");
+      setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
+      setCategoryId("none"); setAccountId("none");
+      removeReceipt();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-card border-border sm:max-w-md">
+      <DialogContent className="glass-card border-border sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">{initialData ? "Editar" : "Nova"} Transação</DialogTitle>
         </DialogHeader>
@@ -178,10 +256,56 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             </Select>
           </div>
 
+          {/* Receipt Upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Comprovante</Label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            {!receiptFile && !receiptPreview ? (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
+                <Paperclip className="h-4 w-4" />
+                <span className="text-xs">Anexar comprovante (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button
+                  type="button"
+                  onClick={removeReceipt}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+
+                {receiptPreview && receiptPreview.startsWith("blob:") ? (
+                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : receiptPreview ? (
+                  <div className="flex items-center gap-2">
+                    <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md object-contain" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileImage className="h-5 w-5" />
+                    <span className="text-xs">{receiptFile?.name || "Comprovante anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
-            <Button type="submit" disabled={loading} className="gradient-bg-primary text-primary-foreground">
-              {loading ? "Salvando..." : "Salvar"}
+            <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
+              {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Enviando...</> : loading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>
