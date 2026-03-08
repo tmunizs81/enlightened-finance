@@ -32,6 +32,12 @@ interface Transaction {
   notes: string | null;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 const Transactions = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
@@ -39,9 +45,12 @@ const Transactions = () => {
   const [editing, setEditing] = useState<Transaction | null>(null);
 
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
+  const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
   const updateMutation = useSupabaseUpdate("transactions");
   const deleteMutation = useSupabaseDelete("transactions");
+
+  const catMap = new Map(categories.map((c) => [c.id, c]));
 
   const filtered = transactions.filter((t) => {
     const matchSearch = t.description.toLowerCase().includes(search.toLowerCase());
