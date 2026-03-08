@@ -118,6 +118,13 @@ const Transactions = () => {
                 {t.type === "income" ? "+" : "-"} R$ {Number(t.amount).toLocaleString("pt-BR")}
               </p>
               <div className="flex gap-1">
+                {t.receipt_url && (
+                  <a href={t.receipt_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button">
+                      <Paperclip className="h-3 w-3" />
+                    </Button>
+                  </a>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
