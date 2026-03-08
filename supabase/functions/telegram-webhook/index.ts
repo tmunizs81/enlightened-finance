@@ -540,3 +540,213 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
   await sendTg(previewMsg, { reply_markup: inlineKeyboard });
   return new Response("ok");
 }
+
+// ===== COMMAND HANDLERS =====
+
+async function handleSaldo(supabase: any, userId: string, sendTg: Function) {
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("name, type, balance")
+    .eq("user_id", userId)
+    .order("name");
+
+  if (!accounts || accounts.length === 0) {
+    await sendTg("💳 Nenhuma conta cadastrada.");
+    return new Response("ok");
+  }
+
+  let total = 0;
+  const lines = accounts.map((a: any) => {
+    total += Number(a.balance);
+    const emoji = Number(a.balance) >= 0 ? "🟢" : "🔴";
+    return `${emoji} *${a.name}* (${a.type})\n    R$ ${Number(a.balance).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  });
+
+  const totalEmoji = total >= 0 ? "🟢" : "🔴";
+  await sendTg(`💰 *Saldo das Contas:*\n\n${lines.join("\n\n")}\n\n━━━━━━━━━━━━━━━\n${totalEmoji} *Total:* R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
+  return new Response("ok");
+}
+
+async function handleExtrato(supabase: any, userId: string, sendTg: Function) {
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("description, amount, type, date, status")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(10);
+
+  if (!txs || txs.length === 0) {
+    await sendTg("📊 Nenhuma transação encontrada.");
+    return new Response("ok");
+  }
+
+  const lines = txs.map((t: any) => {
+    const icon = t.type === "income" ? "📈" : "📉";
+    const sign = t.type === "income" ? "+" : "-";
+    const dateStr = new Date(t.date + "T00:00:00").toLocaleDateString("pt-BR");
+    return `${icon} ${dateStr} — ${sign}R$ ${Number(t.amount).toFixed(2)}\n    _${t.description}_`;
+  });
+
+  await sendTg(`📊 *Últimas 10 Transações:*\n\n${lines.join("\n\n")}`);
+  return new Response("ok");
+}
+
+async function handleResumoMes(supabase: any, userId: string, type: string, sendTg: Function) {
+  const now = new Date();
+  const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const lastDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("description, amount, date, category_id")
+    .eq("user_id", userId)
+    .eq("type", type)
+    .gte("date", firstDay)
+    .lte("date", lastDay)
+    .order("date", { ascending: false });
+
+  if (!txs || txs.length === 0) {
+    const label = type === "expense" ? "despesas" : "receitas";
+    await sendTg(`📊 Nenhuma ${label} este mês.`);
+    return new Response("ok");
+  }
+
+  const total = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const label = type === "expense" ? "Despesas" : "Receitas";
+  const icon = type === "expense" ? "📉" : "📈";
+  const monthName = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  // Group by category
+  const catIds = [...new Set(txs.filter((t: any) => t.category_id).map((t: any) => t.category_id))];
+  let catMap: Record<string, string> = {};
+  if (catIds.length > 0) {
+    const { data: cats } = await supabase.from("categories").select("id, name").in("id", catIds);
+    if (cats) catMap = Object.fromEntries(cats.map((c: any) => [c.id, c.name]));
+  }
+
+  const byCategory: Record<string, number> = {};
+  for (const t of txs) {
+    const catName = t.category_id ? (catMap[t.category_id] || "Outros") : "Sem categoria";
+    byCategory[catName] = (byCategory[catName] || 0) + Number(t.amount);
+  }
+
+  const catLines = Object.entries(byCategory)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, val]) => `  🏷️ ${name}: R$ ${val.toFixed(2)}`)
+    .join("\n");
+
+  await sendTg(`${icon} *${label} — ${monthName}*\n\n${catLines}\n\n━━━━━━━━━━━━━━━\n💰 *Total:* R$ ${total.toFixed(2)} (${txs.length} lançamentos)`);
+  return new Response("ok");
+}
+
+async function handleLancamentoRapido(supabase: any, userId: string, type: string, args: string, sendTg: Function) {
+  const label = type === "expense" ? "despesa" : "receita";
+  if (!args) {
+    await sendTg(`❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço restaurante_`);
+    return new Response("ok");
+  }
+
+  const match = args.match(/^([\d.,]+)\s+(.+)/);
+  if (!match) {
+    await sendTg(`❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço_`);
+    return new Response("ok");
+  }
+
+  const amount = Number(match[1].replace(",", "."));
+  const description = match[2].trim().slice(0, 50);
+
+  if (!amount || isNaN(amount)) {
+    await sendTg("❌ Valor inválido.");
+    return new Response("ok");
+  }
+
+  const { error } = await supabase.from("transactions").insert({
+    user_id: userId,
+    type,
+    amount,
+    description,
+    date: new Date().toISOString().split("T")[0],
+    status: "completed",
+    notes: `Lançamento rápido via Telegram`,
+  });
+
+  if (error) {
+    console.error("Quick insert error:", error);
+    await sendTg("❌ Erro ao salvar. Tente novamente.");
+    return new Response("ok");
+  }
+
+  const icon = type === "income" ? "📈" : "📉";
+  await sendTg(`${icon} *${label.charAt(0).toUpperCase() + label.slice(1)} salva!*\n\n💰 R$ ${amount.toFixed(2)}\n📝 ${description}\n📅 ${new Date().toLocaleDateString("pt-BR")}`);
+  return new Response("ok");
+}
+
+async function handleMetas(supabase: any, userId: string, sendTg: Function) {
+  const { data: goals } = await supabase
+    .from("goals")
+    .select("name, target_amount, current_amount, deadline")
+    .eq("user_id", userId)
+    .order("name");
+
+  if (!goals || goals.length === 0) {
+    await sendTg("🎯 Nenhuma meta cadastrada.");
+    return new Response("ok");
+  }
+
+  const lines = goals.map((g: any) => {
+    const pct = g.target_amount > 0 ? Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100) : 0;
+    const bar = "█".repeat(Math.floor(pct / 10)) + "░".repeat(10 - Math.floor(pct / 10));
+    const deadlineStr = g.deadline ? ` (até ${new Date(g.deadline + "T00:00:00").toLocaleDateString("pt-BR")})` : "";
+    return `🎯 *${g.name}*${deadlineStr}\n  ${bar} ${pct}%\n  R$ ${Number(g.current_amount).toFixed(2)} / R$ ${Number(g.target_amount).toFixed(2)}`;
+  });
+
+  await sendTg(`🎯 *Progresso das Metas:*\n\n${lines.join("\n\n")}`);
+  return new Response("ok");
+}
+
+async function handleContas(supabase: any, userId: string, sendTg: Function) {
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("name, type, balance, institution")
+    .eq("user_id", userId)
+    .order("name");
+
+  if (!accounts || accounts.length === 0) {
+    await sendTg("💳 Nenhuma conta cadastrada.");
+    return new Response("ok");
+  }
+
+  const lines = accounts.map((a: any) => {
+    const inst = a.institution ? ` — ${a.institution}` : "";
+    return `💳 *${a.name}* (${a.type}${inst})\n  R$ ${Number(a.balance).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  });
+
+  await sendTg(`💳 *Suas Contas:*\n\n${lines.join("\n\n")}`);
+  return new Response("ok");
+}
+
+async function handleCategorias(supabase: any, userId: string, sendTg: Function) {
+  const { data: cats } = await supabase
+    .from("categories")
+    .select("name, type, icon")
+    .eq("user_id", userId)
+    .order("type")
+    .order("name");
+
+  if (!cats || cats.length === 0) {
+    await sendTg("🏷️ Nenhuma categoria cadastrada.");
+    return new Response("ok");
+  }
+
+  const expenses = cats.filter((c: any) => c.type === "expense");
+  const incomes = cats.filter((c: any) => c.type === "income");
+
+  const fmtList = (list: any[]) => list.map((c: any) => `  ${c.icon || "•"} ${c.name}`).join("\n");
+
+  let msg = "🏷️ *Suas Categorias:*\n\n";
+  if (expenses.length > 0) msg += `📉 *Despesas:*\n${fmtList(expenses)}\n\n`;
+  if (incomes.length > 0) msg += `📈 *Receitas:*\n${fmtList(incomes)}`;
+
+  await sendTg(msg);
+  return new Response("ok");
+}
