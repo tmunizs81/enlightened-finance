@@ -244,6 +244,17 @@ const SettingsPage = () => {
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Testar Envio
           </Button>
+          <Button variant="outline" onClick={handleSetWebhook} disabled={settingWebhook || !botToken} className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5">
+            {settingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
+            Ativar OCR via Telegram
+          </Button>
+        </div>
+        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+          <p className="text-[11px] font-semibold text-foreground">📸 OCR de Comprovantes via Telegram</p>
+          <p className="text-[11px] text-muted-foreground">Após ativar, envie uma foto de comprovante para o bot. A IA irá:</p>
+          <p className="text-[11px] text-muted-foreground">• Ler o valor, descrição e data automaticamente</p>
+          <p className="text-[11px] text-muted-foreground">• Classificar na categoria e conta corretas</p>
+          <p className="text-[11px] text-muted-foreground">• Salvar o comprovante como anexo da transação</p>
         </div>
       </div>
 
