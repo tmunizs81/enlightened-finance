@@ -17,6 +17,17 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    // Cleanup expired pending OCR transactions (>24h)
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from("pending_ocr_transactions")
+      .delete()
+      .lt("created_at", cutoff)
+      .in("status", ["pending", "editing"])
+      .then(({ data, error }) => {
+        if (error) console.error("Cleanup error:", error.message);
+      });
+
     const update = await req.json();
     console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
 
