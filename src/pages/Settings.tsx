@@ -20,7 +20,7 @@ const SettingsPage = () => {
             <h2 className="text-sm font-semibold text-foreground">Inteligência Artificial — OpenAI</h2>
           </div>
           <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-            <CheckCircle className="h-3 w-3 mr-1" /> Configurada
+            <CheckCircle className="h-3 w-3 mr-1" /> Gemini Ativo
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
