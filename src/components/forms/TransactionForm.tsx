@@ -162,6 +162,22 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             )}
           </div>
 
+          {/* Account */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Conta</Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem conta</SelectItem>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.institution ? ` (${a.institution})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading} className="gradient-bg-primary text-primary-foreground">
