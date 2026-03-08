@@ -293,6 +293,7 @@ export type Database = {
           description: string
           id: string
           notes: string | null
+          receipt_url: string | null
           status: string
           type: string
           updated_at: string
@@ -307,6 +308,7 @@ export type Database = {
           description: string
           id?: string
           notes?: string | null
+          receipt_url?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -321,6 +323,7 @@ export type Database = {
           description?: string
           id?: string
           notes?: string | null
+          receipt_url?: string | null
           status?: string
           type?: string
           updated_at?: string
