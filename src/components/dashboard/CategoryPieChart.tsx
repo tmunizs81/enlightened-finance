@@ -5,7 +5,12 @@ interface Transaction {
   id: string;
   amount: number;
   type: string;
-  description: string;
+  category_id: string | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 const COLORS = [
@@ -15,30 +20,24 @@ const COLORS = [
   "hsl(38, 92%, 55%)",
   "hsl(340, 70%, 58%)",
   "hsl(200, 70%, 50%)",
+  "hsl(30, 80%, 55%)",
+  "hsl(280, 60%, 55%)",
 ];
-
-// Simple category extraction from description keywords
-function guessCategory(desc: string): string {
-  const lower = desc.toLowerCase();
-  if (["aluguel", "luz", "água", "internet", "condomínio", "iptu"].some((k) => lower.includes(k))) return "Moradia";
-  if (["ifood", "mercado", "supermercado", "restaurante", "padaria"].some((k) => lower.includes(k))) return "Alimentação";
-  if (["uber", "99", "gasolina", "estacionamento", "ônibus"].some((k) => lower.includes(k))) return "Transporte";
-  if (["netflix", "spotify", "cinema", "lazer", "bar"].some((k) => lower.includes(k))) return "Lazer";
-  if (["farmácia", "médico", "academia", "plano de saúde"].some((k) => lower.includes(k))) return "Saúde";
-  return "Outros";
-}
 
 export function CategoryPieChart() {
   const { data: transactions = [] } = useSupabaseQuery<Transaction>("transactions");
+  const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
+
+  const catMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const expenses = transactions.filter((t) => t.type === "expense");
-  const categoryMap = new Map<string, number>();
+  const categoryTotals = new Map<string, number>();
   expenses.forEach((t) => {
-    const cat = guessCategory(t.description);
-    categoryMap.set(cat, (categoryMap.get(cat) || 0) + Number(t.amount));
+    const name = t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)! : "Sem categoria";
+    categoryTotals.set(name, (categoryTotals.get(name) || 0) + Number(t.amount));
   });
 
-  const data = Array.from(categoryMap.entries()).map(([name, value], i) => ({
+  const data = Array.from(categoryTotals.entries()).map(([name, value], i) => ({
     name,
     value,
     fill: COLORS[i % COLORS.length],
@@ -73,7 +72,7 @@ export function CategoryPieChart() {
           {data.map((cat) => (
             <div key={cat.name} className="flex items-center gap-2 text-xs">
               <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: cat.fill }} />
-              <span className="text-muted-foreground flex-1">{cat.name}</span>
+              <span className="text-muted-foreground flex-1 truncate">{cat.name}</span>
               <span className="font-medium text-foreground">R$ {cat.value.toLocaleString("pt-BR")}</span>
             </div>
           ))}
