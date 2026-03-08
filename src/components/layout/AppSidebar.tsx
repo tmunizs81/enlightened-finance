@@ -42,6 +42,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { data: accounts = [] } = useSupabaseQuery<{ id: string; balance: number }>("accounts");
+  const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
