@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { TransactionForm } from "@/components/forms/TransactionForm";
 
@@ -44,7 +45,7 @@ const Transactions = () => {
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
@@ -119,11 +120,9 @@ const Transactions = () => {
               </p>
               <div className="flex gap-1">
                 {t.receipt_url && (
-                  <a href={t.receipt_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button">
-                      <Paperclip className="h-3 w-3" />
-                    </Button>
-                  </a>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" onClick={() => setReceiptUrl(t.receipt_url)}>
+                    <Paperclip className="h-3 w-3" />
+                  </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
@@ -144,6 +143,29 @@ const Transactions = () => {
         initialData={editing}
         loading={insertMutation.isPending || updateMutation.isPending}
       />
+
+      <Dialog open={!!receiptUrl} onOpenChange={(v) => { if (!v) setReceiptUrl(null); }}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+          <DialogTitle className="sr-only">Comprovante</DialogTitle>
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <p className="text-sm font-medium text-foreground">Comprovante</p>
+            <div className="flex gap-1">
+              <a href={receiptUrl || ""} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </a>
+            </div>
+          </div>
+          {receiptUrl && (
+            receiptUrl.endsWith(".pdf") ? (
+              <iframe src={receiptUrl} className="w-full h-[70vh]" />
+            ) : (
+              <img src={receiptUrl} alt="Comprovante" className="w-full max-h-[70vh] object-contain p-4" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
