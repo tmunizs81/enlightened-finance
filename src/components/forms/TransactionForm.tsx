@@ -70,9 +70,10 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       status,
       date,
       category_id: categoryId === "none" ? null : categoryId,
+      account_id: accountId === "none" ? null : accountId,
     });
     if (!initialData) {
-      setDescription(""); setAmount(""); setType("expense"); setStatus("pending"); setCategoryId("none");
+      setDescription(""); setAmount(""); setType("expense"); setStatus("pending"); setCategoryId("none"); setAccountId("none");
     }
   };
 
