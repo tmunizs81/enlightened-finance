@@ -6,9 +6,12 @@ import {
   Settings,
   Brain,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar,
   SidebarContent,
