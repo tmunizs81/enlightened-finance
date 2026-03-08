@@ -219,7 +219,7 @@ const SettingsPage = () => {
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Receba alertas graves diretamente no Telegram quando a IA detectar problemas financeiros críticos.</p>
+        <p className="text-xs text-muted-foreground">Receba alertas e envie fotos de comprovantes para lançar despesas automaticamente via OCR com IA.</p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
           <p className="text-[11px] font-semibold text-foreground">Como configurar:</p>
           <p className="text-[11px] text-muted-foreground">1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong></p>
