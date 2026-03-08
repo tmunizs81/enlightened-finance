@@ -54,6 +54,42 @@ const SettingsPage = () => {
       });
   }, [user]);
 
+  const loadCloudBackups = useCallback(async () => {
+    setLoadingBackups(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "list" } });
+      if (error) throw error;
+      setCloudBackups(data.backups || []);
+    } catch (e: any) { console.error("Error loading backups:", e); }
+    finally { setLoadingBackups(false); }
+  }, []);
+
+  useEffect(() => { if (user) loadCloudBackups(); }, [user, loadCloudBackups]);
+
+  const handleCloudBackupNow = async () => {
+    if (!user) return;
+    setCreatingCloud(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "create" } });
+      if (error) throw error;
+      toast.success(`Backup na nuvem criado! ${data.totalRows} registros salvos.`);
+      loadCloudBackups();
+    } catch (e: any) { toast.error(e.message || "Erro ao criar backup"); }
+    finally { setCreatingCloud(false); }
+  };
+
+  const handleCloudRestore = async (filename: string) => {
+    if (!user) return;
+    setRestoringCloud(filename);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "restore", filename } });
+      if (error) throw error;
+      qc.invalidateQueries();
+      toast.success(`Backup restaurado! ${data.totalRows} registros importados.`);
+    } catch (e: any) { toast.error(e.message || "Erro ao restaurar backup"); }
+    finally { setRestoringCloud(null); }
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
