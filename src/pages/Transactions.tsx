@@ -30,6 +30,7 @@ interface Transaction {
   account_id: string | null;
   category_id: string | null;
   notes: string | null;
+  receipt_url: string | null;
 }
 
 interface Category {
