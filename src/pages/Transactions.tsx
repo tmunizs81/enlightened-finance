@@ -32,6 +32,12 @@ interface Transaction {
   notes: string | null;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 const Transactions = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
@@ -39,9 +45,12 @@ const Transactions = () => {
   const [editing, setEditing] = useState<Transaction | null>(null);
 
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
+  const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
   const updateMutation = useSupabaseUpdate("transactions");
   const deleteMutation = useSupabaseDelete("transactions");
+
+  const catMap = new Map(categories.map((c) => [c.id, c]));
 
   const filtered = transactions.filter((t) => {
     const matchSearch = t.description.toLowerCase().includes(search.toLowerCase());
@@ -99,7 +108,9 @@ const Transactions = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{t.description}</p>
-                <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString("pt-BR")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t.category_id && catMap.has(t.category_id) ? `${catMap.get(t.category_id)!.icon || ""}${catMap.get(t.category_id)!.name} · ` : ""}{new Date(t.date).toLocaleDateString("pt-BR")}
+                </p>
               </div>
               <Badge variant="outline" className={`text-[10px] hidden sm:flex ${statusStyles[t.status]}`}>{statusLabels[t.status]}</Badge>
               <p className={`text-sm font-bold tabular-nums ${t.type === "income" ? "text-success" : "text-foreground"}`}>
