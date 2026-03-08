@@ -12,6 +12,7 @@ import Goals from "./pages/Goals";
 import Accounts from "./pages/Accounts";
 import Insights from "./pages/Insights";
 import Budgets from "./pages/Budgets";
+import Recurring from "./pages/Recurring";
 import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
