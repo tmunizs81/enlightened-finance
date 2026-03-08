@@ -63,16 +63,81 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    if (pendingEdit && message.text) {
+    if (pendingEdit && message.text && !message.text.startsWith("/")) {
       return await handleEditResponse(pendingEdit, message.text, supabase, botToken, chatId);
+    }
+
+    // --- HANDLE TEXT COMMANDS ---
+    if (message.text) {
+      const cmd = message.text.trim().toLowerCase().split(" ")[0];
+      const args = message.text.trim().slice(cmd.length).trim();
+
+      if (cmd === "/start" || cmd === "/help" || cmd === "/ajuda") {
+        await sendTg(
+`🤖 *T2-FinAI Bot — Comandos disponíveis:*
+
+💰 /saldo — Saldo atual de todas as contas
+📊 /extrato — Últimas 10 transações
+📉 /despesas — Resumo de despesas do mês
+📈 /receitas — Resumo de receitas do mês
+➕ /despesa \`valor descrição\` — Lançar despesa rápida
+➕ /receita \`valor descrição\` — Lançar receita rápida
+🎯 /metas — Progresso das metas
+💳 /contas — Lista de contas
+🏷️ /categorias — Lista de categorias
+📸 *Envie uma foto* — OCR de comprovante
+
+_Exemplo: /despesa 45.90 Almoço restaurante_`
+        );
+        return new Response("ok");
+      }
+
+      if (cmd === "/cancelar") {
+        if (pendingEdit) {
+          await supabase.from("pending_ocr_transactions").update({ status: "pending", edit_field: null }).eq("id", pendingEdit.id);
+          await sendTg("↩️ Edição cancelada.");
+        } else {
+          await sendTg("Nenhuma edição em andamento.");
+        }
+        return new Response("ok");
+      }
+
+      if (cmd === "/saldo") {
+        return await handleSaldo(supabase, userId, sendTg);
+      }
+      if (cmd === "/extrato") {
+        return await handleExtrato(supabase, userId, sendTg);
+      }
+      if (cmd === "/despesas") {
+        return await handleResumoMes(supabase, userId, "expense", sendTg);
+      }
+      if (cmd === "/receitas") {
+        return await handleResumoMes(supabase, userId, "income", sendTg);
+      }
+      if (cmd === "/despesa") {
+        return await handleLancamentoRapido(supabase, userId, "expense", args, sendTg);
+      }
+      if (cmd === "/receita") {
+        return await handleLancamentoRapido(supabase, userId, "income", args, sendTg);
+      }
+      if (cmd === "/metas") {
+        return await handleMetas(supabase, userId, sendTg);
+      }
+      if (cmd === "/contas") {
+        return await handleContas(supabase, userId, sendTg);
+      }
+      if (cmd === "/categorias") {
+        return await handleCategorias(supabase, userId, sendTg);
+      }
+
+      // Unknown text — show help hint
+      await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
+      return new Response("ok");
     }
 
     // --- HANDLE PHOTO ---
     const photo = message.photo;
     if (!photo || photo.length === 0) {
-      if (message.text) {
-        await sendTg("📸 Para lançar uma despesa, envie a *foto do comprovante*.\n\nOu use:\n/cancelar — cancela a edição em andamento");
-      }
       return new Response("ok");
     }
 
