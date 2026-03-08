@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle, Cloud, RotateCcw, Trash2, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const BACKUP_TABLES = ["accounts", "categories", "transactions", "goals", "budgets", "recurring_transactions", "ai_insights"] as const;
+
+interface CloudBackup {
+  name: string;
+  created_at: string;
+  size: number;
+}
 
 const SettingsPage = () => {
   const { user } = useAuth();
