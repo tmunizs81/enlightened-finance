@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle, Cloud, RotateCcw, Trash2, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const BACKUP_TABLES = ["accounts", "categories", "transactions", "goals", "budgets", "recurring_transactions", "ai_insights"] as const;
+
+interface CloudBackup {
+  name: string;
+  created_at: string;
+  size: number;
+}
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -25,6 +32,11 @@ const SettingsPage = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [restoringCloud, setRestoringCloud] = useState<string | null>(null);
+  const [creatingCloud, setCreatingCloud] = useState(false);
+  const { runBackupNow } = useAutoBackup();
 
   useEffect(() => {
     if (!user) return;
@@ -41,6 +53,42 @@ const SettingsPage = () => {
         setLoaded(true);
       });
   }, [user]);
+
+  const loadCloudBackups = useCallback(async () => {
+    setLoadingBackups(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "list" } });
+      if (error) throw error;
+      setCloudBackups(data.backups || []);
+    } catch (e: any) { console.error("Error loading backups:", e); }
+    finally { setLoadingBackups(false); }
+  }, []);
+
+  useEffect(() => { if (user) loadCloudBackups(); }, [user, loadCloudBackups]);
+
+  const handleCloudBackupNow = async () => {
+    if (!user) return;
+    setCreatingCloud(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "create" } });
+      if (error) throw error;
+      toast.success(`Backup na nuvem criado! ${data.totalRows} registros salvos.`);
+      loadCloudBackups();
+    } catch (e: any) { toast.error(e.message || "Erro ao criar backup"); }
+    finally { setCreatingCloud(false); }
+  };
+
+  const handleCloudRestore = async (filename: string) => {
+    if (!user) return;
+    setRestoringCloud(filename);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "restore", filename } });
+      if (error) throw error;
+      qc.invalidateQueries();
+      toast.success(`Backup restaurado! ${data.totalRows} registros importados.`);
+    } catch (e: any) { toast.error(e.message || "Erro ao restaurar backup"); }
+    finally { setRestoringCloud(null); }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -258,27 +306,15 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* Backup */}
+      {/* Backup Local */}
       <div className="glass-card p-5 space-y-4">
         <div className="flex items-center gap-3">
           <DatabaseBackup className="h-5 w-5 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">Backup Completo</h2>
+          <h2 className="text-sm font-semibold text-foreground">Backup Local (JSON)</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Exporte todos os seus dados financeiros em um arquivo JSON ou restaure a partir de um backup anterior.
+          Exporte para arquivo JSON no seu computador ou restaure a partir de um arquivo.
         </p>
-
-        <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
-          <p className="text-[11px] font-semibold text-foreground">Dados incluídos no backup:</p>
-          <div className="grid grid-cols-2 gap-1">
-            {[
-              "Contas bancárias", "Categorias", "Transações", "Metas",
-              "Orçamentos", "Recorrentes", "Insights da IA",
-            ].map((item) => (
-              <p key={item} className="text-[11px] text-muted-foreground">✓ {item}</p>
-            ))}
-          </div>
-        </div>
 
         <div className="flex gap-3">
           <Button onClick={handleExport} disabled={exporting} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 flex-1">
@@ -292,7 +328,7 @@ const SettingsPage = () => {
             className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5 flex-1"
           >
             {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {importing ? "Importando..." : "Restaurar Backup"}
+            {importing ? "Importando..." : "Restaurar de Arquivo"}
           </Button>
           <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
         </div>
@@ -303,6 +339,75 @@ const SettingsPage = () => {
             <p className="text-[10px] text-muted-foreground text-center">{importProgress}% concluído</p>
           </div>
         )}
+      </div>
+
+      {/* Backup Automático na Nuvem */}
+      <div className="glass-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Cloud className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Backup Automático na Nuvem</h2>
+          </div>
+          <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
+            <Clock className="h-3 w-3 mr-1" /> Diário às 23:30
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          O sistema cria backups automaticamente todos os dias às 23:30 (quando o app estiver aberto). São mantidos os últimos 7 backups.
+        </p>
+
+        <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
+          <p className="text-[11px] font-semibold text-foreground">Dados incluídos:</p>
+          <div className="grid grid-cols-2 gap-1">
+            {["Contas bancárias", "Categorias", "Transações", "Metas", "Orçamentos", "Recorrentes", "Insights da IA"].map((item) => (
+              <p key={item} className="text-[11px] text-muted-foreground">✓ {item}</p>
+            ))}
+          </div>
+        </div>
+
+        <Button onClick={handleCloudBackupNow} disabled={creatingCloud} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 w-full">
+          {creatingCloud ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5" />}
+          {creatingCloud ? "Criando backup..." : "Criar Backup Agora"}
+        </Button>
+
+        {/* Cloud backups list */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-foreground">Backups disponíveis na nuvem:</p>
+            <Button variant="ghost" size="sm" onClick={loadCloudBackups} disabled={loadingBackups} className="h-6 text-[10px] text-muted-foreground">
+              {loadingBackups ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            </Button>
+          </div>
+
+          {cloudBackups.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground text-center py-3">
+              {loadingBackups ? "Carregando..." : "Nenhum backup na nuvem ainda."}
+            </p>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-auto scrollbar-thin">
+              {cloudBackups.map((b) => (
+                <div key={b.name} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/50 border border-border/50">
+                  <div>
+                    <p className="text-[11px] font-medium text-foreground">{b.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {b.created_at ? new Date(b.created_at).toLocaleString("pt-BR") : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCloudRestore(b.name)}
+                    disabled={restoringCloud === b.name}
+                    className="h-7 text-[10px] border-border text-muted-foreground hover:text-primary gap-1"
+                  >
+                    {restoringCloud === b.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                    Restaurar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
           <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
