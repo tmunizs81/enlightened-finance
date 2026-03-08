@@ -56,9 +56,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg gradient-bg-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={logo} alt="T2-FinAI" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <div>
               <h1 className="text-sm font-bold text-foreground">T2-FinAI</h1>
