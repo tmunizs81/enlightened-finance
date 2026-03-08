@@ -36,10 +36,12 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [status, setStatus] = useState(initialData?.status || "pending");
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split("T")[0]);
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "none");
+  const [accountId, setAccountId] = useState(initialData?.account_id || "none");
   const [newCatName, setNewCatName] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
+  const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertCategory = useSupabaseInsert("categories");
 
   const filteredCats = categories.filter((c) => c.type === type);
