@@ -7,6 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { Plus } from "lucide-react";
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  institution: string | null;
+}
+
 interface Category {
   id: string;
   name: string;
