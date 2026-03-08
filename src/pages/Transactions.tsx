@@ -45,7 +45,7 @@ const Transactions = () => {
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
