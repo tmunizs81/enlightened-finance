@@ -11,6 +11,7 @@ import Transactions from "./pages/Transactions";
 import Goals from "./pages/Goals";
 import Accounts from "./pages/Accounts";
 import Insights from "./pages/Insights";
+import Budgets from "./pages/Budgets";
 import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ function ProtectedRoutes() {
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/goals" element={<Goals />} />
         <Route path="/accounts" element={<Accounts />} />
+        <Route path="/budgets" element={<Budgets />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />

@@ -7,6 +7,7 @@ import {
   Brain,
   TrendingUp,
   LogOut,
+  PiggyBank,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -29,6 +30,7 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Transações", url: "/transactions", icon: ArrowLeftRight },
+  { title: "Orçamentos", url: "/budgets", icon: PiggyBank },
   { title: "Metas", url: "/goals", icon: Target },
   { title: "Contas", url: "/accounts", icon: Wallet },
 ];
