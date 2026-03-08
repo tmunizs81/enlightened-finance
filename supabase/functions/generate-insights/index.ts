@@ -157,6 +157,42 @@ Regras:
         read: false,
       }));
       await supabase.from("ai_insights").insert(rows);
+
+      // Send destructive insights via Telegram
+      const destructiveInsights = insights.filter((ins: any) => ins.type === "destructive");
+      if (destructiveInsights.length > 0) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("telegram_bot_token, telegram_chat_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile?.telegram_bot_token && profile?.telegram_chat_id) {
+          const alertText = destructiveInsights
+            .map((ins: any) => `🚨 *${ins.title}*\n${ins.description}`)
+            .join("\n\n");
+
+          const telegramMsg = `⚠️ *T2-FinAI — Alertas Graves*\n\n${alertText}\n\n_Acesse o app para mais detalhes._`;
+
+          try {
+            await fetch(
+              `https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: profile.telegram_chat_id,
+                  text: telegramMsg,
+                  parse_mode: "Markdown",
+                }),
+              }
+            );
+            console.log("Telegram notification sent");
+          } catch (tgErr) {
+            console.error("Telegram send error:", tgErr);
+          }
+        }
+      }
     }
 
     return new Response(JSON.stringify({ insights }), {
