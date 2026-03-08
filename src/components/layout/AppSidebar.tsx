@@ -51,7 +51,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h1 className="text-sm font-bold text-foreground">FinanceAI</h1>
+              <h1 className="text-sm font-bold text-foreground">T2-FinAI</h1>
               <p className="text-[10px] text-muted-foreground">Controle Inteligente</p>
             </div>
           )}
