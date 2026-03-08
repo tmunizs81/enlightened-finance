@@ -6,9 +6,12 @@ import {
   Settings,
   Brain,
   TrendingUp,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar,
   SidebarContent,
@@ -39,6 +42,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { data: accounts = [] } = useSupabaseQuery<{ id: string; balance: number }>("accounts");
+  const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
@@ -109,15 +115,19 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-4 space-y-2">
         {!collapsed && (
           <div className="glass-card p-3 text-center">
             <p className="text-[10px] text-muted-foreground">Saldo Total</p>
             <p className="text-lg font-bold gradient-text-primary">
-              R$ 123.810,30
+              R$ {totalBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </div>
         )}
+        <button onClick={signOut} className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-secondary">
+          <LogOut className="h-3.5 w-3.5" />
+          {!collapsed && <span>Sair</span>}
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
