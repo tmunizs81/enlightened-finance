@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { toast } from "sonner";
 
-type Tables = "transactions" | "accounts" | "goals" | "categories" | "budgets";
+type Tables = "transactions" | "accounts" | "goals" | "categories" | "budgets" | "ai_insights";
 
 export function useSupabaseQuery<T>(table: Tables, orderBy = "created_at", ascending = false) {
   const { user } = useAuth();
