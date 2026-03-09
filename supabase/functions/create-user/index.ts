@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     }
 
     // Get request body
-    const { email, password, displayName, role = 'user' } = await req.json()
+    const { email, password, displayName, role = 'user', telegramChatId, telegramBotToken } = await req.json()
 
     if (!email || !password) {
       return new Response(
