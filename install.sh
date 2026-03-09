@@ -24,13 +24,17 @@ echo -e "${CYAN}║     Ubuntu 24.04 LTS                 ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
+# Repository configuration
+REPO_URL="https://github.com/tmunizs81/enlightened-finance.git"
+INSTALL_DIR="/opt/financeai"
+
 # Check root
 if [ "$EUID" -ne 0 ]; then
   err "Execute como root: sudo bash install.sh"
 fi
 
 # ============================================
-# 1. System Update
+# 1. System Update & Dependencies
 # ============================================
 info "Atualizando sistema..."
 apt-get update -qq && apt-get upgrade -y -qq
@@ -56,33 +60,37 @@ else
 fi
 
 # ============================================
-# 3. Configure Environment
+# 3. Clone Repository
 # ============================================
-ENV_FILE=".env"
-if [ ! -f "$ENV_FILE" ]; then
-  info "Configurando variáveis de ambiente..."
-  cat > "$ENV_FILE" <<EOF
-# FinanceAI Environment Variables
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
-APP_PORT=80
-EOF
-  warn "Edite o arquivo .env com suas credenciais do Supabase antes de continuar!"
-  warn "Execute: nano .env"
-  read -p "Pressione ENTER após configurar o .env..."
+if [ -d "$INSTALL_DIR" ]; then
+  warn "Diretório $INSTALL_DIR já existe. Atualizando..."
+  cd "$INSTALL_DIR"
+  git pull
 else
-  log "Arquivo .env encontrado"
+  info "Clonando repositório..."
+  git clone "$REPO_URL" "$INSTALL_DIR"
+  cd "$INSTALL_DIR"
+fi
+log "Código baixado"
+
+# ============================================
+# 4. Configure Environment
+# ============================================
+if [ -f ".env" ]; then
+  log "Arquivo .env encontrado e configurado"
+else
+  err "Arquivo .env não encontrado! Verifique o repositório."
 fi
 
 # ============================================
-# 4. Build & Start Containers
+# 5. Build & Start Containers
 # ============================================
 info "Construindo e iniciando containers..."
 docker compose up -d --build
 log "Containers iniciados"
 
 # ============================================
-# 5. Health Check
+# 6. Health Check
 # ============================================
 info "Verificando saúde dos serviços..."
 sleep 5
@@ -114,6 +122,7 @@ echo ""
 echo -e "  🌐 Acesse: ${CYAN}http://$(hostname -I | awk '{print $1}'):${APP_PORT:-80}${NC}"
 echo ""
 echo -e "  Comandos úteis:"
+echo -e "    cd $INSTALL_DIR"
 echo -e "    docker compose logs -f     # Ver logs"
 echo -e "    docker compose restart     # Reiniciar"
 echo -e "    docker compose down        # Parar"
