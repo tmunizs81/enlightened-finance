@@ -47,15 +47,6 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Nome</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="pl-9 bg-secondary border-border" />
-              </div>
-            </div>
-          )}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Email</Label>
             <div className="relative">
@@ -71,16 +62,9 @@ const Auth = () => {
             </div>
           </div>
           <Button type="submit" disabled={loading} className="w-full gradient-bg-primary text-primary-foreground">
-            {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar Conta"}
+            {loading ? "Carregando..." : "Entrar"}
           </Button>
         </form>
-
-        <p className="text-xs text-center mt-4 text-muted-foreground">
-          {isLogin ? "Não tem conta?" : "Já tem conta?"}{" "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline">
-            {isLogin ? "Criar conta" : "Fazer login"}
-          </button>
-        </p>
       </motion.div>
     </div>
   );
