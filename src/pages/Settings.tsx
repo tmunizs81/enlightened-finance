@@ -22,6 +22,7 @@ interface CloudBackup {
 
 const SettingsPage = () => {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [botToken, setBotToken] = useState("");
