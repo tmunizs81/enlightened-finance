@@ -15,14 +15,43 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { user_id } = await req.json();
-    if (!user_id) throw new Error("user_id required");
+    const body = await req.json().catch(() => ({}));
+    const requestedUserId = body.user_id;
 
-    // Get user profile for Telegram
+    // If no user_id, broadcast mode: process all users with Telegram configured
+    if (!requestedUserId) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token, telegram_chat_id")
+        .not("telegram_bot_token", "is", null)
+        .not("telegram_chat_id", "is", null);
+
+      if (!profiles || profiles.length === 0) {
+        return new Response(JSON.stringify({ message: "No users with Telegram configured" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let totalAlerts = 0;
+      for (const p of profiles) {
+        try {
+          const result = await processUser(supabase, p.user_id, p.telegram_bot_token, p.telegram_chat_id);
+          totalAlerts += result;
+        } catch (e) {
+          console.error(`Error processing user ${p.user_id}:`, e);
+        }
+      }
+
+      return new Response(JSON.stringify({ users_processed: profiles.length, total_alerts: totalAlerts }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Single user mode
     const { data: profile } = await supabase
       .from("profiles")
       .select("telegram_bot_token, telegram_chat_id")
-      .eq("user_id", user_id)
+      .eq("user_id", requestedUserId)
       .single();
 
     if (!profile?.telegram_bot_token || !profile?.telegram_chat_id) {
@@ -31,12 +60,27 @@ serve(async (req) => {
       });
     }
 
-    const sendTg = async (text: string) => {
-      await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
+    const alertCount = await processUser(supabase, requestedUserId, profile.telegram_bot_token, profile.telegram_chat_id);
+
+    return new Response(JSON.stringify({ alerts_sent: alertCount }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("spending-monitor error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function processUser(supabase: any, user_id: string, botToken: string, chatId: string): Promise<number> {
+  const sendTg = async (text: string) => {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: profile.telegram_chat_id,
+          chat_id: chatId,
           text,
           parse_mode: "Markdown",
         }),
@@ -50,7 +94,6 @@ serve(async (req) => {
     const lastDay = new Date(currentYear, currentMonth, 0);
     const lastDayStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
 
-    // Fetch budgets, transactions, goals, categories in parallel
     const [budgetRes, txRes, goalRes, catRes] = await Promise.all([
       supabase.from("budgets").select("*").eq("user_id", user_id).eq("month", currentMonth).eq("year", currentYear),
       supabase.from("transactions").select("*").eq("user_id", user_id).eq("type", "expense").gte("date", firstDay).lte("date", lastDayStr),
@@ -66,7 +109,6 @@ serve(async (req) => {
 
     const alerts: string[] = [];
 
-    // --- Check budgets ---
     const spendingByCategory: Record<string, number> = {};
     const totalSpending = transactions.reduce((sum: number, t: any) => {
       const catId = t.category_id || "sem_categoria";
@@ -79,7 +121,6 @@ serve(async (req) => {
       const catId = budget.category_id;
 
       if (catId) {
-        // Category-specific budget
         const spent = spendingByCategory[catId] || 0;
         const catName = catMap.get(catId) || "Categoria";
         const pct = (spent / budgetAmount) * 100;
@@ -90,7 +131,6 @@ serve(async (req) => {
           alerts.push(`⚠️ *Orçamento quase no limite!*\n📂 ${catName}: R$ ${spent.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
         }
       } else {
-        // General budget
         const pct = (totalSpending / budgetAmount) * 100;
         if (totalSpending > budgetAmount) {
           alerts.push(`🚨 *Orçamento geral estourado!*\nGasto total: R$ ${totalSpending.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
@@ -100,7 +140,6 @@ serve(async (req) => {
       }
     }
 
-    // --- Check goals ---
     for (const goal of goals) {
       const target = Number(goal.target_amount);
       const current = Number(goal.current_amount);
@@ -113,7 +152,6 @@ serve(async (req) => {
         alerts.push(`✨ *Meta quase lá!*\n🎯 ${goal.name}: R$ ${current.toFixed(2)} / R$ ${target.toFixed(2)} (${pct.toFixed(0)}%)`);
       }
 
-      // Check deadline proximity
       if (goal.deadline) {
         const deadline = new Date(goal.deadline);
         const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -123,13 +161,11 @@ serve(async (req) => {
       }
     }
 
-    // --- AI analysis for excessive spending patterns ---
     if (transactions.length >= 5) {
       const dayOfMonth = now.getDate();
       const daysInMonth = lastDay.getDate();
       const expectedPct = (dayOfMonth / daysInMonth) * 100;
 
-      // Check if spending pace is too high
       for (const budget of budgets) {
         const budgetAmount = Number(budget.amount);
         const catId = budget.category_id;
@@ -143,20 +179,10 @@ serve(async (req) => {
       }
     }
 
-    // Send alerts via Telegram
     if (alerts.length > 0) {
-      const message = `🤖 *T2-FinAI — Monitor de Gastos*\n\n${alerts.join("\n\n")}\n\n_Acesse o app para mais detalhes._`;
+      const message = `☀️ *T2-FinAI — Relatório Diário (8h)*\n\n${alerts.join("\n\n")}\n\n_Acesse o app para mais detalhes._`;
       await sendTg(message);
     }
 
-    return new Response(JSON.stringify({ alerts_sent: alerts.length, alerts }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("spending-monitor error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+    return alerts.length;
+}
