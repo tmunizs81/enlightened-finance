@@ -34,16 +34,14 @@ export default function AdminLicenses() {
   const [expirationMonths, setExpirationMonths] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Buscar todos os perfis
+  // Buscar todos os perfis via RPC (bypassa RLS)
   const { data: profiles = [] } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .order("display_name");
+        .rpc("admin_list_profiles");
       if (error) throw error;
-      return data as Profile[];
+      return (data || []) as Profile[];
     },
     enabled: isAdmin,
   });

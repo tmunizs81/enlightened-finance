@@ -11,6 +11,16 @@ export function useAuth() {
   useEffect(() => {
     const checkLicense = async (userId: string) => {
       try {
+        // Verificar se o usuário é admin — admins não precisam de licença
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (roleData) return true; // Admin, pula verificação de licença
+
         const { data, error } = await supabase
           .from("licenses")
           .select("*")
