@@ -172,7 +172,7 @@ Regras:
             .map((ins: any) => `🚨 *${ins.title}*\n${ins.description}`)
             .join("\n\n");
 
-          const telegramMsg = `⚠️ *T2-FinAI — Alertas Graves*\n\n${alertText}\n\n_Acesse o app para mais detalhes._`;
+          const telegramMsg = `⚠️ *T2-SimplyFin — Alertas Graves*\n\n${alertText}\n\n_Acesse o app para mais detalhes._`;
 
           try {
             await fetch(

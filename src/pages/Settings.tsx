@@ -311,7 +311,7 @@ const SettingsPage = () => {
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O T2-FinAI utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro. Nenhuma chave externa necessária.
+          O T2-SimplyFin utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro. Nenhuma chave externa necessária.
         </p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-2">
           <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Modelo:</strong> Gemini 3 Flash Preview</p>

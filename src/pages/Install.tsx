@@ -65,9 +65,9 @@ export default function InstallPage() {
               <Smartphone className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-bold text-foreground">Instale o T2-FinAI</h2>
+              <h2 className="text-lg font-bold text-foreground">Instale o T2-SimplyFin</h2>
               <p className="text-sm text-muted-foreground">
-                Use o T2-FinAI como um app nativo no seu celular. Acesso rápido, offline e sem precisar de loja de apps.
+                Use o T2-SimplyFin como um app nativo no seu celular. Acesso rápido, offline e sem precisar de loja de apps.
               </p>
             </div>
 

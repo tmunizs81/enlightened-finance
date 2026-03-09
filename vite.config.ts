@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
-        name: "T2-FinAI - Controle Financeiro Inteligente",
-        short_name: "T2-FinAI",
+        name: "T2-SimplyFin - Controle Financeiro Inteligente",
+        short_name: "T2-SimplyFin",
         description: "Sistema de controle financeiro pessoal com inteligência artificial",
         theme_color: "#0d1117",
         background_color: "#0d1117",

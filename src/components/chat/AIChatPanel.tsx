@@ -192,7 +192,7 @@ export function AIChatPanel() {
                   <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">T2-FinAI Chat</p>
+                  <p className="text-sm font-semibold text-foreground">T2-SimplyFin Chat</p>
                   <p className="text-[10px] text-primary">● Conectado · {MODE_LABELS[mode].desc}</p>
                 </div>
               </div>

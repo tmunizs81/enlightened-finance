@@ -85,7 +85,7 @@ serve(async (req) => {
 
       if (cmd === "/start" || cmd === "/help" || cmd === "/ajuda") {
         await sendTg(
-`🤖 *T2-FinAI Bot — Comandos disponíveis:*
+`🤖 *T2-SimplyFin Bot — Comandos disponíveis:*
 
 💰 /saldo — Saldo atual de todas as contas
 📊 /extrato — Últimas 10 transações
