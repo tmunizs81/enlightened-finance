@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, UserPlus, Ban, CheckCircle, Key } from "lucide-react";
+import { Shield, UserPlus, Ban, CheckCircle, Key, Trash2, Pencil, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
 
@@ -34,12 +34,18 @@ export default function AdminLicenses() {
   const [expirationMonths, setExpirationMonths] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [editStatus, setEditStatus] = useState<"active" | "blocked">("active");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editUserId, setEditUserId] = useState("");
+
   // Buscar todos os perfis via RPC (bypassa RLS)
   const { data: profiles = [] } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc("admin_list_profiles");
+      const { data, error } = await supabase.rpc("admin_list_profiles");
       if (error) throw error;
       return (data || []) as Profile[];
     },
@@ -63,7 +69,6 @@ export default function AdminLicenses() {
   // Criar licença
   const createLicenseMutation = useMutation({
     mutationFn: async ({ userId, months }: { userId: string; months: number }) => {
-      // Gerar license key
       const { data: keyData, error: keyError } = await supabase.rpc("generate_license_key");
       if (keyError) throw keyError;
 
@@ -97,20 +102,54 @@ export default function AdminLicenses() {
   // Atualizar status da licença
   const updateLicenseStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "active" | "blocked" }) => {
-      const { error } = await supabase
-        .from("licenses")
-        .update({ status })
-        .eq("id", id);
+      const { error } = await supabase.from("licenses").update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-licenses"] });
-      toast.success(
-        variables.status === "active" ? "Licença ativada!" : "Licença bloqueada!"
-      );
+      toast.success(variables.status === "active" ? "Licença ativada!" : "Licença bloqueada!");
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  // Editar licença
+  const editLicenseMutation = useMutation({
+    mutationFn: async ({ id, status, expires_at, user_id }: { id: string; status: string; expires_at: string; user_id: string }) => {
+      const { error } = await supabase
+        .from("licenses")
+        .update({ status, expires_at, user_id })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-licenses"] });
+      toast.success("Licença atualizada com sucesso!");
+      setEditDialogOpen(false);
+      setEditingLicense(null);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Deletar licença
+  const deleteLicenseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("licenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-licenses"] });
+      toast.success("Licença excluída com sucesso!");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const openEditDialog = (license: License) => {
+    setEditingLicense(license);
+    setEditStatus(license.status);
+    setEditExpiresAt(license.expires_at.split("T")[0]);
+    setEditUserId(license.user_id);
+    setEditDialogOpen(true);
+  };
 
   if (roleLoading) {
     return (
@@ -138,18 +177,13 @@ export default function AdminLicenses() {
     );
   }
 
-  // Usuários sem licença
   const usersWithoutLicense = profiles.filter(
     (profile) => !licenses.some((license) => license.user_id === profile.user_id)
   );
 
-  // Combinar licenses com profiles
   const licensesWithProfiles = licenses.map((license) => {
     const profile = profiles.find((p) => p.user_id === license.user_id);
-    return {
-      ...license,
-      display_name: profile?.display_name || "Usuário sem nome",
-    };
+    return { ...license, display_name: profile?.display_name || "Usuário sem nome" };
   });
 
   return (
@@ -211,10 +245,7 @@ export default function AdminLicenses() {
 
               <Button
                 onClick={() =>
-                  createLicenseMutation.mutate({
-                    userId: selectedUserId,
-                    months: expirationMonths,
-                  })
+                  createLicenseMutation.mutate({ userId: selectedUserId, months: expirationMonths })
                 }
                 disabled={!selectedUserId || createLicenseMutation.isPending}
                 className="w-full"
@@ -225,6 +256,81 @@ export default function AdminLicenses() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Licença</DialogTitle>
+            <DialogDescription>
+              Altere os dados da licença selecionada.
+            </DialogDescription>
+          </DialogHeader>
+          {editingLicense && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Chave</Label>
+                <code className="block text-xs bg-muted px-3 py-2 rounded">{editingLicense.license_key}</code>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-user">Usuário</Label>
+                <select
+                  id="edit-user"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={editUserId}
+                  onChange={(e) => setEditUserId(e.target.value)}
+                >
+                  {profiles.map((profile) => (
+                    <option key={profile.user_id} value={profile.user_id}>
+                      {profile.display_name || "Sem nome"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <select
+                  id="edit-status"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as "active" | "blocked")}
+                >
+                  <option value="active">Ativa</option>
+                  <option value="blocked">Bloqueada</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-expires">Data de Expiração</Label>
+                <Input
+                  id="edit-expires"
+                  type="date"
+                  value={editExpiresAt}
+                  onChange={(e) => setEditExpiresAt(e.target.value)}
+                />
+              </div>
+
+              <Button
+                onClick={() =>
+                  editLicenseMutation.mutate({
+                    id: editingLicense.id,
+                    status: editStatus,
+                    expires_at: new Date(editExpiresAt + "T23:59:59").toISOString(),
+                    user_id: editUserId,
+                  })
+                }
+                disabled={editLicenseMutation.isPending}
+                className="w-full"
+              >
+                {editLicenseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {editLicenseMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -252,13 +358,9 @@ export default function AdminLicenses() {
 
                 return (
                   <TableRow key={license.id}>
-                    <TableCell className="font-medium">
-                      {license.display_name}
-                    </TableCell>
+                    <TableCell className="font-medium">{license.display_name}</TableCell>
                     <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {license.license_key}
-                      </code>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{license.license_key}</code>
                     </TableCell>
                     <TableCell>
                       {isExpired ? (
@@ -269,44 +371,54 @@ export default function AdminLicenses() {
                         <Badge variant="secondary">Bloqueada</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {format(new Date(license.expires_at), "dd/MM/yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(license.created_at), "dd/MM/yyyy")}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      {license.status === "active" ? (
+                    <TableCell>{format(new Date(license.expires_at), "dd/MM/yyyy")}</TableCell>
+                    <TableCell>{format(new Date(license.created_at), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {license.status === "active" ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => updateLicenseStatusMutation.mutate({ id: license.id, status: "blocked" })}
+                            disabled={updateLicenseStatusMutation.isPending}
+                          >
+                            <Ban className="h-3 w-3 mr-1" />
+                            Bloquear
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => updateLicenseStatusMutation.mutate({ id: license.id, status: "active" })}
+                            disabled={updateLicenseStatusMutation.isPending}
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Ativar
+                          </Button>
+                        )}
                         <Button
-                          variant="destructive"
+                          variant="outline"
                           size="sm"
-                          onClick={() =>
-                            updateLicenseStatusMutation.mutate({
-                              id: license.id,
-                              status: "blocked",
-                            })
-                          }
-                          disabled={updateLicenseStatusMutation.isPending}
+                          onClick={() => openEditDialog(license)}
+                          className="text-muted-foreground hover:text-primary"
                         >
-                          <Ban className="h-3 w-3 mr-1" />
-                          Bloquear
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Editar
                         </Button>
-                      ) : (
                         <Button
-                          variant="default"
+                          variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            updateLicenseStatusMutation.mutate({
-                              id: license.id,
-                              status: "active",
-                            })
-                          }
-                          disabled={updateLicenseStatusMutation.isPending}
+                          onClick={() => {
+                            if (confirm("Tem certeza que deseja excluir esta licença?")) {
+                              deleteLicenseMutation.mutate(license.id);
+                            }
+                          }}
+                          disabled={deleteLicenseMutation.isPending}
+                          className="text-muted-foreground hover:text-destructive"
                         >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Ativar
+                          <Trash2 className="h-3 w-3" />
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
