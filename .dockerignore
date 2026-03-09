@@ -6,4 +6,6 @@ dist
 LICENSE
 .env.local
 .env.*.local
-supabase/migrations
+supabase
+install.sh
+DEPLOY.md
