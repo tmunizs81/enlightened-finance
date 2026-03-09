@@ -175,6 +175,62 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_rules: {
+        Row: {
+          action_message: string | null
+          action_type: string
+          active: boolean
+          condition_amount: number | null
+          condition_category_id: string | null
+          condition_period: string | null
+          condition_type: string
+          created_at: string
+          id: string
+          last_triggered_at: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_message?: string | null
+          action_type: string
+          active?: boolean
+          condition_amount?: number | null
+          condition_category_id?: string | null
+          condition_period?: string | null
+          condition_type: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_message?: string | null
+          action_type?: string
+          active?: boolean
+          condition_amount?: number | null
+          condition_category_id?: string | null
+          condition_period?: string | null
+          condition_type?: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_rules_condition_category_id_fkey"
+            columns: ["condition_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           color: string | null
