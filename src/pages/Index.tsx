@@ -15,6 +15,7 @@ import { GoalProjection } from "@/components/dashboard/GoalProjection";
 import { WeeklyChallenges } from "@/components/dashboard/WeeklyChallenges";
 import { SubscriptionsDashboard } from "@/components/dashboard/SubscriptionsDashboard";
 import { YearlyComparison } from "@/components/dashboard/YearlyComparison";
+import { AIBudgetSuggestions } from "@/components/dashboard/AIBudgetSuggestions";
 
 const Index = () => {
   return (
@@ -53,6 +54,8 @@ const Index = () => {
         <BalanceForecastML />
         <GoalProjection />
       </div>
+
+      <AIBudgetSuggestions />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SpendingHeatmap />

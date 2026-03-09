@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Target, PiggyBank, Shield, Lightbulb } from "lucide-react";
+import { TrendingUp, Target, PiggyBank, Shield, Lightbulb, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ScoreData {
@@ -13,15 +13,27 @@ interface ScoreData {
     health: { score: number; max: number };
   };
   tips: string[];
+  monthIncome?: number;
+  monthExpense?: number;
 }
 
 export function FinancialScore() {
   const [data, setData] = useState<ScoreData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiExplanation, setAiExplanation] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     supabase.functions.invoke("financial-score").then(({ data: d, error }) => {
-      if (!error && d) setData(d);
+      if (!error && d) {
+        setData(d);
+        // Fetch AI explanation
+        setAiLoading(true);
+        supabase.functions.invoke("ai-score-explain", { body: { scoreData: d } }).then(({ data: aiD }) => {
+          if (aiD?.explanation) setAiExplanation(aiD.explanation);
+          setAiLoading(false);
+        }).catch(() => setAiLoading(false));
+      }
       setLoading(false);
     });
   }, []);
@@ -100,6 +112,24 @@ export function FinancialScore() {
           ))}
         </div>
       </div>
+
+      {/* AI Explanation */}
+      {(aiExplanation || aiLoading) && (
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[11px] font-medium text-foreground">Análise da IA</span>
+          </div>
+          {aiLoading ? (
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span className="text-[10px] text-muted-foreground">Analisando seu score...</span>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{aiExplanation}</p>
+          )}
+        </div>
+      )}
 
       {/* Tips */}
       {data.tips.length > 0 && (
