@@ -50,6 +50,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [installments, setInstallments] = useState("1");
+  const [isInstallment, setIsInstallment] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -168,20 +170,33 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       receiptUrl = await uploadReceipt();
     }
 
-    onSubmit({
-      ...(initialData?.id ? { id: initialData.id } : {}),
-      description,
-      amount: parseFloat(amount),
-      type,
-      status,
-      date,
-      category_id: categoryId === "none" ? null : categoryId,
-      account_id: accountId === "none" ? null : accountId,
-      receipt_url: receiptUrl,
-    });
+    const numInstallments = isInstallment ? parseInt(installments) : 1;
+    const installmentAmount = parseFloat(amount) / numInstallments;
+
+    for (let i = 0; i < numInstallments; i++) {
+      const installmentDate = new Date(date);
+      installmentDate.setMonth(installmentDate.getMonth() + i);
+      const dateStr = installmentDate.toISOString().split("T")[0];
+      const desc = numInstallments > 1
+        ? `${description} (${i + 1}/${numInstallments})`
+        : description;
+
+      onSubmit({
+        ...(i === 0 && initialData?.id ? { id: initialData.id } : {}),
+        description: desc,
+        amount: installmentAmount,
+        type,
+        status: i === 0 ? status : "pending",
+        date: dateStr,
+        category_id: categoryId === "none" ? null : categoryId,
+        account_id: accountId === "none" ? null : accountId,
+        receipt_url: i === 0 ? receiptUrl : null,
+      });
+    }
+
     if (!initialData) {
       setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
-      setCategoryId("none"); setAccountId("none");
+      setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
       removeReceipt();
     }
   };
@@ -283,6 +298,39 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
               </div>
             )}
           </div>
+
+          {/* Installments */}
+          {type === "expense" && !initialData && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="installment-check"
+                  checked={isInstallment}
+                  onChange={(e) => { setIsInstallment(e.target.checked); if (!e.target.checked) setInstallments("1"); }}
+                  className="rounded border-border"
+                />
+                <Label htmlFor="installment-check" className="text-xs text-muted-foreground cursor-pointer">Parcelar</Label>
+              </div>
+              {isInstallment && (
+                <div className="flex items-center gap-2">
+                  <Select value={installments} onValueChange={setInstallments}>
+                    <SelectTrigger className="bg-secondary border-border w-24"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                        <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {amount && parseFloat(amount) > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {parseInt(installments)}x de R$ {(parseFloat(amount) / parseInt(installments)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Account */}
           <div className="space-y-1.5">

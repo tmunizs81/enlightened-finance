@@ -14,6 +14,8 @@ const QUICK_QUESTIONS = [
   "Como está meu orçamento?",
   "Quais minhas metas?",
   "Dicas para economizar",
+  "Posso comprar algo de R$500?",
+  "Analise minhas assinaturas",
 ];
 
 async function streamChat({

@@ -573,6 +573,68 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_challenges: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_progress: number
+          description: string
+          id: string
+          status: string
+          target_amount: number | null
+          target_category_id: string | null
+          target_percent: number | null
+          target_type: string
+          title: string
+          user_id: string
+          week_end: string
+          week_start: string
+          xp_reward: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          description: string
+          id?: string
+          status?: string
+          target_amount?: number | null
+          target_category_id?: string | null
+          target_percent?: number | null
+          target_type?: string
+          title: string
+          user_id: string
+          week_end?: string
+          week_start?: string
+          xp_reward?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          description?: string
+          id?: string
+          status?: string
+          target_amount?: number | null
+          target_category_id?: string | null
+          target_percent?: number | null
+          target_type?: string
+          title?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_challenges_target_category_id_fkey"
+            columns: ["target_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
