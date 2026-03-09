@@ -26,6 +26,7 @@ interface Goal {
 }
 
 const Goals = () => {
+  const { fireCanon } = useConfetti();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
 
