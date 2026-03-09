@@ -24,13 +24,8 @@ echo -e "${CYAN}║     Ubuntu 24.04 LTS                 ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
-# Check root
-if [ "$EUID" -ne 0 ]; then
-  err "Execute como root: sudo bash install.sh"
-fi
-
 # ============================================
-# 1. System Update
+# 1. System Update & Dependencies
 # ============================================
 info "Atualizando sistema..."
 apt-get update -qq && apt-get upgrade -y -qq
