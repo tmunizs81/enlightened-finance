@@ -453,6 +453,7 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       description: "descrição (ex: Almoço restaurante)",
       date: "data (formato: YYYY-MM-DD)",
       category: "nome da categoria",
+      account: "nome da conta",
     };
 
     await supabase.from("pending_ocr_transactions")
