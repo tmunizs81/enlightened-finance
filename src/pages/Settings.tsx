@@ -40,6 +40,13 @@ const SettingsPage = () => {
   const [creatingCloud, setCreatingCloud] = useState(false);
   const { runBackupNow } = useAutoBackup();
 
+  // User management state
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
+  const [creatingUser, setCreatingUser] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     supabase
