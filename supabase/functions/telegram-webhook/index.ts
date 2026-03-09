@@ -708,6 +708,20 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
 
   const icon = type === "income" ? "📈" : "📉";
   await sendTg(`${icon} *${label.charAt(0).toUpperCase() + label.slice(1)} salva!*\n\n💰 R$ ${amount.toFixed(2)}\n📝 ${description}\n📅 ${new Date().toLocaleDateString("pt-BR")}`);
+
+  // Trigger spending monitor after expense
+  if (type === "expense") {
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({ user_id: userId }),
+      });
+    } catch (e) { console.error("Monitor trigger error:", e); }
+  }
+
   return new Response("ok");
 }
 
