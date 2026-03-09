@@ -29,31 +29,7 @@ sudo bash install.sh
 - ✅ Instalar Docker
 - ✅ Construir e iniciar a aplicação
 
-### 3. Configure as variáveis de ambiente
-O arquivo `.env` já está configurado com suas credenciais Supabase:
-```bash
-cat .env
-```
-
-Verifique se as variáveis estão corretas:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
-
-### 4. Execute o script de instalação
-```bash
-chmod +x install.sh
-sudo bash install.sh
-```
-
-**O script irá:**
-- ✅ Atualizar o sistema
-- ✅ Instalar Docker e Docker Compose
-- ✅ Construir a imagem da aplicação
-- ✅ Iniciar os containers
-- ✅ Verificar a saúde da aplicação
-
-### 5. Aguarde a conclusão
+### 3. Aguarde a conclusão
 O processo leva cerca de 5-10 minutos. Você verá:
 ```
 ╔══════════════════════════════════════╗
