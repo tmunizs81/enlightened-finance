@@ -24,6 +24,15 @@ echo -e "${CYAN}║     Ubuntu 24.04 LTS                 ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
+# Repository configuration
+REPO_URL="https://github.com/tmunizs81/enlightened-finance.git"
+INSTALL_DIR="/opt/financeai"
+
+# Check root
+if [ "$EUID" -ne 0 ]; then
+  err "Execute como root: sudo bash install.sh"
+fi
+
 # ============================================
 # 1. System Update & Dependencies
 # ============================================
@@ -47,7 +56,7 @@ if ! command -v docker &> /dev/null; then
   systemctl start docker
   log "Docker instalado"
 else
-log "Docker já instalado"
+  log "Docker já instalado"
 fi
 
 # ============================================
@@ -113,6 +122,7 @@ echo ""
 echo -e "  🌐 Acesse: ${CYAN}http://$(hostname -I | awk '{print $1}'):${APP_PORT:-80}${NC}"
 echo ""
 echo -e "  Comandos úteis:"
+echo -e "    cd $INSTALL_DIR"
 echo -e "    docker compose logs -f     # Ver logs"
 echo -e "    docker compose restart     # Reiniciar"
 echo -e "    docker compose down        # Parar"
