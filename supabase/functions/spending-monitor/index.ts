@@ -180,7 +180,7 @@ async function processUser(supabase: any, user_id: string, botToken: string, cha
     }
 
     if (alerts.length > 0) {
-      const message = `☀️ *T2-FinAI — Relatório Diário (8h)*\n\n${alerts.join("\n\n")}\n\n_Acesse o app para mais detalhes._`;
+      const message = `☀️ *T2-SimplyFin — Relatório Diário (8h)*\n\n${alerts.join("\n\n")}\n\n_Acesse o app para mais detalhes._`;
       await sendTg(message);
     }
 

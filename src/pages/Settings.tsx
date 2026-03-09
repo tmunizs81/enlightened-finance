@@ -141,7 +141,7 @@ const SettingsPage = () => {
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: "✅ *T2-FinAI* — Conexão testada com sucesso!", parse_mode: "Markdown" }),
+        body: JSON.stringify({ chat_id: chatId, text: "✅ *T2-SimplyFin* — Conexão testada com sucesso!", parse_mode: "Markdown" }),
       });
       const data = await resp.json();
       if (data.ok) toast.success("Mensagem de teste enviada!");
@@ -311,7 +311,7 @@ const SettingsPage = () => {
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O T2-FinAI utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro. Nenhuma chave externa necessária.
+          O T2-SimplyFin utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro. Nenhuma chave externa necessária.
         </p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-2">
           <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Modelo:</strong> Gemini 3 Flash Preview</p>

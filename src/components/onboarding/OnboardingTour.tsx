@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 const steps = [
   {
     icon: Sparkles,
-    title: "Bem-vindo ao T2-FinAI! 🚀",
+    title: "Bem-vindo ao T2-SimplyFin! 🚀",
     description: "Seu assistente financeiro inteligente com IA. Vamos fazer um tour rápido pelas principais funcionalidades.",
     color: "text-primary",
   },

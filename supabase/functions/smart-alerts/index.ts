@@ -160,7 +160,7 @@ serve(async (req) => {
       if (dangerAndWarning.length > 0) {
         const lines = dangerAndWarning.map(a => `${a.icon} *${a.title}*\n${a.message}`);
         const budgetLine = dailyBudget > 0 ? `\n💰 Orçamento diário: R$ ${dailyBudget.toFixed(2)} (${daysLeft} dias restantes)` : "";
-        const text = `🔔 *T2-FinAI — Alertas*\n\n${lines.join("\n\n")}${budgetLine}\n\n_Acesse o app para mais detalhes._`;
+        const text = `🔔 *T2-SimplyFin — Alertas*\n\n${lines.join("\n\n")}${budgetLine}\n\n_Acesse o app para mais detalhes._`;
 
         try {
           await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {

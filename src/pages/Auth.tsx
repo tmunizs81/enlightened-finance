@@ -39,9 +39,9 @@ const Auth = () => {
         className="glass-card w-full max-w-sm p-8"
       >
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <img src={logo} alt="T2-FinAI" className="h-32 w-32 rounded-2xl object-contain" />
+          <img src={logo} alt="T2-SimplyFin" className="h-32 w-32 rounded-2xl object-contain" />
           <div>
-            <h1 className="text-lg font-bold text-foreground">T2-FinAI</h1>
+            <h1 className="text-lg font-bold text-foreground">T2-SimplyFin</h1>
             <p className="text-[10px] text-muted-foreground">Controle Financeiro Inteligente</p>
           </div>
         </div>

@@ -158,7 +158,7 @@ ${recentTx || "Nenhuma transação"}
       }
     }
 
-    const systemPrompt = `Você é o assistente financeiro inteligente do T2-FinAI. Responda sempre em português brasileiro.
+    const systemPrompt = `Você é o assistente financeiro inteligente do T2-SimplyFin. Responda sempre em português brasileiro.
 
 Você tem acesso aos DADOS FINANCEIROS REAIS do usuário abaixo. Use esses dados para responder perguntas específicas sobre as finanças dele.
 

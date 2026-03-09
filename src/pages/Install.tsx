@@ -43,7 +43,7 @@ export default function InstallPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Instalar App</h1>
-        <p className="text-sm text-muted-foreground">Instale o T2-FinAI no seu celular</p>
+        <p className="text-sm text-muted-foreground">Instale o T2-SimplyFin no seu celular</p>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 max-w-lg mx-auto text-center space-y-6">
@@ -55,7 +55,7 @@ export default function InstallPage() {
             <div className="space-y-2">
               <h2 className="text-lg font-bold text-foreground">App Instalado! ✅</h2>
               <p className="text-sm text-muted-foreground">
-                O T2-FinAI já está instalado no seu dispositivo. Abra pela tela inicial.
+                O T2-SimplyFin já está instalado no seu dispositivo. Abra pela tela inicial.
               </p>
             </div>
           </>
@@ -65,9 +65,9 @@ export default function InstallPage() {
               <Smartphone className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-lg font-bold text-foreground">Instale o T2-FinAI</h2>
+              <h2 className="text-lg font-bold text-foreground">Instale o T2-SimplyFin</h2>
               <p className="text-sm text-muted-foreground">
-                Use o T2-FinAI como um app nativo no seu celular. Acesso rápido, offline e sem precisar de loja de apps.
+                Use o T2-SimplyFin como um app nativo no seu celular. Acesso rápido, offline e sem precisar de loja de apps.
               </p>
             </div>
 
