@@ -18,6 +18,7 @@ import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AdminLicenses from "./pages/AdminLicenses";
+import LicenseStatus from "./pages/LicenseStatus";
 
 const queryClient = new QueryClient();
 
