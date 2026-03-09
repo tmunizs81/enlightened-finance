@@ -170,20 +170,33 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       receiptUrl = await uploadReceipt();
     }
 
-    onSubmit({
-      ...(initialData?.id ? { id: initialData.id } : {}),
-      description,
-      amount: parseFloat(amount),
-      type,
-      status,
-      date,
-      category_id: categoryId === "none" ? null : categoryId,
-      account_id: accountId === "none" ? null : accountId,
-      receipt_url: receiptUrl,
-    });
+    const numInstallments = isInstallment ? parseInt(installments) : 1;
+    const installmentAmount = parseFloat(amount) / numInstallments;
+
+    for (let i = 0; i < numInstallments; i++) {
+      const installmentDate = new Date(date);
+      installmentDate.setMonth(installmentDate.getMonth() + i);
+      const dateStr = installmentDate.toISOString().split("T")[0];
+      const desc = numInstallments > 1
+        ? `${description} (${i + 1}/${numInstallments})`
+        : description;
+
+      onSubmit({
+        ...(i === 0 && initialData?.id ? { id: initialData.id } : {}),
+        description: desc,
+        amount: installmentAmount,
+        type,
+        status: i === 0 ? status : "pending",
+        date: dateStr,
+        category_id: categoryId === "none" ? null : categoryId,
+        account_id: accountId === "none" ? null : accountId,
+        receipt_url: i === 0 ? receiptUrl : null,
+      });
+    }
+
     if (!initialData) {
       setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
-      setCategoryId("none"); setAccountId("none");
+      setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
       removeReceipt();
     }
   };
