@@ -343,8 +343,13 @@ const SettingsPage = () => {
           <Input id="telegram-token" value={botToken} onChange={(e) => setBotToken(e.target.value)} placeholder="123456789:ABCDEF..." className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">Chat ID</Label>
-          <Input id="telegram-chat" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Seu Chat ID" className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">Chat ID</Label>
+            <Button variant="ghost" size="sm" onClick={handleDetectChatId} disabled={testing || !botToken} className="text-[10px] h-6 px-2 text-primary">
+              {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "🔍 Detectar Chat ID"}
+            </Button>
+          </div>
+          <Input id="telegram-chat" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Envie /start no bot e clique em 'Detectar Chat ID'" className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSave} disabled={saving || !loaded} className="gradient-bg-primary text-primary-foreground text-xs">
