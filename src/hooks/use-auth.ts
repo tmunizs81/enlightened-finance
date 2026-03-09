@@ -78,6 +78,11 @@ export function useAuth() {
         setLicenseValid(true);
       }
         setLoading(false);
+      console.log("getSession done, loading:", false);
+    }).catch(error => {
+      console.error("getSession error:", error);
+      if (!mounted) return;
+      setLoading(false);
     });
 
     // Escutar mudanças de autenticação (login/logout)
