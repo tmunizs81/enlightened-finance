@@ -8,6 +8,7 @@ import {
   LogOut,
   PiggyBank,
   Repeat,
+  FileText,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
