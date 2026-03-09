@@ -156,7 +156,7 @@ export default function LicenseStatus() {
 
           {isExpiringSoon && !isExpired && (
             <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-center">
-              <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
                 Sua licença expira em {daysRemaining} {daysRemaining === 1 ? "dia" : "dias"}.
                 Contate o administrador para renovação.
               </p>
