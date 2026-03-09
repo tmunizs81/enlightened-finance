@@ -166,7 +166,14 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
     const imageUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
     const imageResp = await fetch(imageUrl);
     const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
-    const base64Image = btoa(String.fromCharCode(...imageBytes));
+    // Convert to base64 in chunks to avoid stack overflow with large images
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < imageBytes.length; i += chunkSize) {
+      const chunk = imageBytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64Image = btoa(binary);
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
 
     // Get categories & accounts
