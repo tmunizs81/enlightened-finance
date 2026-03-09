@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
