@@ -43,7 +43,7 @@ export default function InstallPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Instalar App</h1>
-        <p className="text-sm text-muted-foreground">Instale o T2-FinAI no seu celular</p>
+        <p className="text-sm text-muted-foreground">Instale o T2-SimplyFin no seu celular</p>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 max-w-lg mx-auto text-center space-y-6">
