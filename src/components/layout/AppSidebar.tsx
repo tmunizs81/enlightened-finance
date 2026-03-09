@@ -8,6 +8,7 @@ import {
   LogOut,
   PiggyBank,
   Repeat,
+  FileText,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -38,6 +39,7 @@ const mainItems = [
 ];
 
 const toolItems = [
+  { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Insights IA", url: "/insights", icon: Brain },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];

@@ -13,6 +13,7 @@ import Accounts from "./pages/Accounts";
 import Insights from "./pages/Insights";
 import Budgets from "./pages/Budgets";
 import Recurring from "./pages/Recurring";
+import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -41,6 +42,7 @@ function ProtectedRoutes() {
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/recurring" element={<Recurring />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
