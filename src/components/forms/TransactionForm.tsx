@@ -50,6 +50,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [installments, setInstallments] = useState("1");
+  const [isInstallment, setIsInstallment] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
