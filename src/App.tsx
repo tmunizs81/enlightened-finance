@@ -46,6 +46,7 @@ function ProtectedRoutes() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin/licenses" element={<AdminLicenses />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <AIChatPanel />
