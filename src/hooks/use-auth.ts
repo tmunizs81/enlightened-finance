@@ -77,7 +77,7 @@ export function useAuth() {
         setSession(null);
         setLicenseValid(true);
       }
-      setLoading(false);
+        setLoading(false);
     });
 
     // Escutar mudanças de autenticação (login/logout)
