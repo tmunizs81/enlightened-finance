@@ -21,6 +21,7 @@ import AdminLicenses from "./pages/AdminLicenses";
 import LicenseStatus from "./pages/LicenseStatus";
 import Install from "./pages/Install";
 import Achievements from "./pages/Achievements";
+import FinancialRules from "./pages/FinancialRules";
 
 const queryClient = new QueryClient();
 
