@@ -141,9 +141,8 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
         return await handleCategorias(supabase, userId, sendTg);
       }
 
-      // Unknown text — show help hint
-      await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
-      return new Response("ok");
+      // Natural language processing with AI
+      return await handleNaturalLanguage(supabase, userId, message.text.trim(), chatId, botToken, sendTg);
     }
 
     // --- HANDLE PHOTO ---

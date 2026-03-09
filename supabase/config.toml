@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.weekly-summary]
 verify_jwt = false
+
+[functions.auto-categorize]
+verify_jwt = false
