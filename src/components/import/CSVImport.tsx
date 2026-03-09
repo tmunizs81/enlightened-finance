@@ -34,12 +34,10 @@ export function CSVImport() {
       const cols = lines[i].split(separator).map((c) => c.replace(/^"|"$/g, "").trim());
       if (cols.length < 3) continue;
 
-      // Try to detect: date, description, amount
       let date = cols[0];
       const description = cols[1];
       let amountStr = cols[cols.length - 1] || cols[2];
 
-      // Handle BR format: dd/mm/yyyy
       if (date.includes("/")) {
         const parts = date.split("/");
         if (parts.length === 3 && parts[0].length <= 2) {
@@ -47,7 +45,6 @@ export function CSVImport() {
         }
       }
 
-      // Parse amount (handle comma as decimal)
       amountStr = amountStr.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
       const amount = parseFloat(amountStr);
       if (isNaN(amount) || !description) continue;
@@ -60,7 +57,45 @@ export function CSVImport() {
       });
     }
 
-    if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada no CSV."); return; }
+    if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada."); return; }
+    setRows(parsed);
+    setOpen(true);
+  };
+
+  const parseOFX = (text: string) => {
+    const parsed: ParsedRow[] = [];
+    const stmtTrnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+    let match;
+
+    while ((match = stmtTrnRegex.exec(text)) !== null) {
+      const block = match[1];
+      const getValue = (tag: string) => {
+        const m = block.match(new RegExp(`<${tag}>([^<\\n]+)`, "i"));
+        return m ? m[1].trim() : "";
+      };
+
+      const trnType = getValue("TRNTYPE");
+      const dtPosted = getValue("DTPOSTED");
+      const trnAmt = getValue("TRNAMT");
+      const memo = getValue("MEMO") || getValue("NAME") || "Transação OFX";
+
+      const amount = parseFloat(trnAmt.replace(",", "."));
+      if (isNaN(amount)) continue;
+
+      let date = new Date().toISOString().split("T")[0];
+      if (dtPosted.length >= 8) {
+        date = `${dtPosted.slice(0, 4)}-${dtPosted.slice(4, 6)}-${dtPosted.slice(6, 8)}`;
+      }
+
+      parsed.push({
+        date,
+        description: memo.slice(0, 100),
+        amount: Math.abs(amount),
+        type: amount < 0 ? "expense" : "income",
+      });
+    }
+
+    if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada no OFX."); return; }
     setRows(parsed);
     setOpen(true);
   };
