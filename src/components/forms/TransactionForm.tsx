@@ -57,6 +57,34 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
 
   const filteredCats = categories.filter((c) => c.type === type);
 
+  // Auto-categorize with AI
+  const autoCategorize = useCallback(async (desc: string, txType: string) => {
+    if (desc.length < 3 || categoryId !== "none") return;
+    setAiSuggesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-categorize", {
+        body: { description: desc, type: txType },
+      });
+      if (!error && data?.category_id) {
+        setAiSuggested(data.category_name);
+        setCategoryId(data.category_id);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setAiSuggesting(false);
+    }
+  }, [categoryId]);
+
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    setAiSuggested(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.length >= 4 && categoryId === "none") {
+      debounceRef.current = setTimeout(() => autoCategorize(value, type), 800);
+    }
+  };
+
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
     insertCategory.mutate(
