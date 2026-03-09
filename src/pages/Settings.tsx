@@ -235,6 +235,37 @@ const SettingsPage = () => {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserPassword) {
+      toast.error("Email e senha são obrigatórios.");
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: newUserEmail,
+          password: newUserPassword,
+          displayName: newUserName || newUserEmail.split("@")[0],
+          role: newUserRole,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Usuário ${newUserEmail} criado com sucesso!`);
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserName("");
+      setNewUserRole("user");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao criar usuário");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
