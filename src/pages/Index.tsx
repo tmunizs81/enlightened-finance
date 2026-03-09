@@ -4,6 +4,10 @@ import { CategoryPieChart } from "@/components/dashboard/CategoryPieChart";
 import { GoalsBarChart } from "@/components/dashboard/GoalsBarChart";
 import { BalanceForecast } from "@/components/dashboard/BalanceForecast";
 import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
+import { FinancialScore } from "@/components/dashboard/FinancialScore";
+import { SpendingHeatmap } from "@/components/dashboard/SpendingHeatmap";
+import { MonthlyComparison } from "@/components/dashboard/MonthlyComparison";
+import { AnomalyDetection } from "@/components/dashboard/AnomalyDetection";
 
 const Index = () => {
   return (
@@ -15,9 +19,21 @@ const Index = () => {
 
       <SummaryCards />
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <CashFlowChart />
+        </div>
+        <FinancialScore />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CashFlowChart />
+        <MonthlyComparison />
         <CategoryPieChart />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SpendingHeatmap />
+        <AnomalyDetection />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
