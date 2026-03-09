@@ -36,7 +36,7 @@ export function useLicense() {
 
         if (error) throw error;
 
-        setLicense(data);
+        setLicense(data as License | null);
 
         if (!data) {
           setIsValid(false);
