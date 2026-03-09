@@ -76,10 +76,16 @@ log "Código baixado"
 # ============================================
 # 4. Configure Environment
 # ============================================
-if [ -f ".env" ]; then
-  log "Arquivo .env encontrado e configurado"
+if [ ! -f ".env" ]; then
+  info "Criando arquivo .env com configurações padrão..."
+  cat > .env << 'ENVEOF'
+VITE_SUPABASE_PROJECT_ID="difwlzancpnvwkiyhmll"
+VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpZndsemFuY3BudndraXlobWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDExNzQsImV4cCI6MjA4ODU3NzE3NH0.dvVOViHFILd5fGOuDifbnW47aQQGpUoQ8ZOz-SaiLTY"
+VITE_SUPABASE_URL="https://difwlzancpnvwkiyhmll.supabase.co"
+ENVEOF
+  log "Arquivo .env criado"
 else
-  err "Arquivo .env não encontrado! Verifique o repositório."
+  log "Arquivo .env já existe"
 fi
 
 # ============================================
