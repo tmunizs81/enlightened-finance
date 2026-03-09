@@ -394,7 +394,7 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       amount: pending.amount,
       description: pending.description,
       date: pending.date,
-      status: "completed",
+      status: "paid",
       notes: `Lançado via Telegram OCR (confiança: ${pending.confidence})`,
       receipt_url: pending.receipt_url,
     };
@@ -684,7 +684,7 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
     amount,
     description,
     date: new Date().toISOString().split("T")[0],
-    status: "completed",
+    status: "paid",
     notes: `Lançamento rápido via Telegram`,
   });
 
