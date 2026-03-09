@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================
-# FinanceAI - Installation Script
+# T2-SimplyFin - Installation Script
 # Ubuntu 24.04 LTS
 # ============================================
 
@@ -19,8 +19,8 @@ info() { echo -e "${CYAN}[i]${NC} $1"; }
 
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║     FinanceAI - Instalação           ║${NC}"
-echo -e "${CYAN}║     Ubuntu 24.04 LTS                 ║${NC}"
+echo -e "${CYAN}║   T2-SimplyFin - Instalação          ║${NC}"
+echo -e "${CYAN}║   Ubuntu 24.04 LTS                   ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 

@@ -1,4 +1,4 @@
-version: '3.8'
+# T2-SimplyFin Docker Compose
 
 services:
   financeai:
