@@ -386,16 +386,19 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
     return new Response("ok");
   }
 
-  // --- CONFIRM ---
-  if (action === "ocr_confirm") {
+  // --- CONFIRM (OCR or command) ---
+  if (action === "ocr_confirm" || action === "cmd_confirm") {
+    const txType = action === "cmd_confirm" && parts[2] ? parts[2] : "expense";
     const txData: any = {
       user_id: pending.user_id,
-      type: "expense",
+      type: txType,
       amount: pending.amount,
       description: pending.description,
       date: pending.date,
       status: "paid",
-      notes: `Lançado via Telegram OCR (confiança: ${pending.confidence})`,
+      notes: action === "ocr_confirm"
+        ? `Lançado via Telegram OCR (confiança: ${pending.confidence})`
+        : `Lançamento rápido via Telegram`,
       receipt_url: pending.receipt_url,
     };
     if (pending.category_id) txData.category_id = pending.category_id;
@@ -408,20 +411,24 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       return new Response("ok");
     }
 
+    const label = txType === "income" ? "Receita" : "Despesa";
+    const icon = txType === "income" ? "📈" : "📉";
     await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", pendingId);
-    await editMsg(`✅ *Despesa salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
-    await answerCbq("Despesa salva com sucesso!");
+    await editMsg(`${icon} *${label} salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
+    await answerCbq(`${label} salva com sucesso!`);
 
     // Trigger spending monitor
-    try {
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify({ user_id: pending.user_id }),
-      });
-    } catch (e) { console.error("Monitor trigger error:", e); }
+    if (txType === "expense") {
+      try {
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify({ user_id: pending.user_id }),
+        });
+      } catch (e) { console.error("Monitor trigger error:", e); }
+    }
 
     return new Response("ok");
   }
@@ -446,6 +453,7 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       description: "descrição (ex: Almoço restaurante)",
       date: "data (formato: YYYY-MM-DD)",
       category: "nome da categoria",
+      account: "nome da conta",
     };
 
     await supabase.from("pending_ocr_transactions")
@@ -497,12 +505,11 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
     }
     updateData.date = text.trim();
   } else if (field === "category") {
-    // Find category by name (fuzzy)
+    // Find category by name (fuzzy) - search both types
     const { data: cats } = await supabase
       .from("categories")
-      .select("id, name")
-      .eq("user_id", pending.user_id)
-      .eq("type", "expense");
+      .select("id, name, type")
+      .eq("user_id", pending.user_id);
 
     const match = (cats || []).find((c: any) =>
       c.name.toLowerCase().includes(text.trim().toLowerCase())
@@ -510,8 +517,24 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
     if (match) {
       updateData.category_id = match.id;
     } else {
-      const catNames = (cats || []).map((c: any) => `• ${c.name}`).join("\n");
+      const catNames = (cats || []).map((c: any) => `• ${c.name} (${c.type})`).join("\n");
       await sendTg(`❌ Categoria não encontrada. Opções:\n${catNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
+      return new Response("ok");
+    }
+  } else if (field === "account") {
+    const { data: accs } = await supabase
+      .from("accounts")
+      .select("id, name")
+      .eq("user_id", pending.user_id);
+
+    const match = (accs || []).find((a: any) =>
+      a.name.toLowerCase().includes(text.trim().toLowerCase())
+    );
+    if (match) {
+      updateData.account_id = match.id;
+    } else {
+      const accNames = (accs || []).map((a: any) => `• ${a.name}`).join("\n");
+      await sendTg(`❌ Conta não encontrada. Opções:\n${accNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
       return new Response("ok");
     }
   }
@@ -690,38 +713,123 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
     return new Response("ok");
   }
 
-  const { error } = await supabase.from("transactions").insert({
-    user_id: userId,
-    type,
-    amount,
-    description,
-    date: new Date().toISOString().split("T")[0],
-    status: "paid",
-    notes: `Lançamento rápido via Telegram`,
-  });
+  // Fetch categories and accounts for AI classification
+  const [catRes, accRes] = await Promise.all([
+    supabase.from("categories").select("id, name, type").eq("user_id", userId).eq("type", type),
+    supabase.from("accounts").select("id, name, type").eq("user_id", userId),
+  ]);
 
-  if (error) {
-    console.error("Quick insert error:", error);
-    await sendTg("❌ Erro ao salvar. Tente novamente.");
+  const categories = catRes.data || [];
+  const accounts = accRes.data || [];
+
+  let categoryId: string | null = null;
+  let accountId: string | null = null;
+  let catName = "Sem categoria";
+  let accName = "Sem conta";
+
+  // Use AI to classify category and account
+  if (categories.length > 0 || accounts.length > 0) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (LOVABLE_API_KEY) {
+      try {
+        const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
+        const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
+
+        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [{
+              role: "user",
+              content: `Classifique esta ${label}: "${description}" (R$ ${amount.toFixed(2)})
+
+Categorias disponíveis (tipo: ${type}):
+${catList || "Nenhuma"}
+
+Contas disponíveis:
+${accList || "Nenhuma"}
+
+Responda APENAS JSON: {"category_id":"uuid-ou-null","account_id":"uuid-ou-null"}
+Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
+            }],
+          }),
+        });
+
+        if (aiResp.ok) {
+          const aiData = await aiResp.json();
+          const raw = aiData.choices?.[0]?.message?.content || "";
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.category_id) {
+              categoryId = parsed.category_id;
+              catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
+            }
+            if (parsed.account_id) {
+              accountId = parsed.account_id;
+              accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
+            }
+          }
+        }
+      } catch (e) {
+        console.error("AI classification error:", e);
+      }
+    }
+  }
+
+  // Save as PENDING transaction for confirmation
+  const chatId = (await supabase.from("profiles").select("telegram_chat_id").eq("user_id", userId).single()).data?.telegram_chat_id;
+
+  const { data: pending, error: pendingErr } = await supabase
+    .from("pending_ocr_transactions")
+    .insert({
+      user_id: userId,
+      chat_id: chatId || "",
+      amount,
+      description,
+      date: new Date().toISOString().split("T")[0],
+      category_id: categoryId,
+      account_id: accountId,
+      confidence: "high",
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (pendingErr || !pending) {
+    console.error("Pending insert error:", pendingErr);
+    await sendTg("❌ Erro interno. Tente novamente.");
     return new Response("ok");
   }
 
   const icon = type === "income" ? "📈" : "📉";
-  await sendTg(`${icon} *${label.charAt(0).toUpperCase() + label.slice(1)} salva!*\n\n💰 R$ ${amount.toFixed(2)}\n📝 ${description}\n📅 ${new Date().toLocaleDateString("pt-BR")}`);
+  const previewMsg = `${icon} *${label.charAt(0).toUpperCase() + label.slice(1)} detectada — Confirme:*
 
-  // Trigger spending monitor after expense
-  if (type === "expense") {
-    try {
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify({ user_id: userId }),
-      });
-    } catch (e) { console.error("Monitor trigger error:", e); }
-  }
+💰 *Valor:* R$ ${amount.toFixed(2)}
+📝 *Descrição:* ${description}
+📅 *Data:* ${new Date().toLocaleDateString("pt-BR")}
+🏷️ *Categoria:* ${catName}
+🏦 *Conta:* ${accName}`;
 
+  const inlineKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "✅ Confirmar", callback_data: `cmd_confirm:${pending.id}:${type}` },
+        { text: "❌ Cancelar", callback_data: `ocr_cancel:${pending.id}` },
+      ],
+      [
+        { text: "✏️ Categoria", callback_data: `ocr_edit:${pending.id}:category` },
+        { text: "✏️ Conta", callback_data: `ocr_edit:${pending.id}:account` },
+      ],
+      [
+        { text: "✏️ Valor", callback_data: `ocr_edit:${pending.id}:amount` },
+        { text: "✏️ Descrição", callback_data: `ocr_edit:${pending.id}:description` },
+      ],
+    ],
+  };
+
+  await sendTg(previewMsg, { reply_markup: inlineKeyboard });
   return new Response("ok");
 }
 
