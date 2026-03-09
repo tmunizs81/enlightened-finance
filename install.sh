@@ -74,7 +74,7 @@ else
 fi
 
 # ============================================
-# 4. Build & Start Containers
+# 5. Build & Start Containers
 # ============================================
 info "Construindo e iniciando containers..."
 docker compose up -d --build
