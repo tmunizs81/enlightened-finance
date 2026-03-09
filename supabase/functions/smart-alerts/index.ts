@@ -143,11 +143,39 @@ serve(async (req) => {
     const remainingBudget = monthIncome - monthExpense;
     const dailyBudget = daysLeft > 0 ? remainingBudget / daysLeft : 0;
 
+    const sortedAlerts = alerts.sort((a, b) => {
+      const order: Record<string, number> = { danger: 0, warning: 1, info: 2, success: 3 };
+      return order[a.severity] - order[b.severity];
+    });
+
+    // Send alerts to Telegram if configured
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("telegram_bot_token, telegram_chat_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (profile?.telegram_bot_token && profile?.telegram_chat_id && sortedAlerts.length > 0) {
+      const dangerAndWarning = sortedAlerts.filter(a => a.severity === "danger" || a.severity === "warning");
+      if (dangerAndWarning.length > 0) {
+        const lines = dangerAndWarning.map(a => `${a.icon} *${a.title}*\n${a.message}`);
+        const budgetLine = dailyBudget > 0 ? `\n💰 Orçamento diário: R$ ${dailyBudget.toFixed(2)} (${daysLeft} dias restantes)` : "";
+        const text = `🔔 *T2-FinAI — Alertas*\n\n${lines.join("\n\n")}${budgetLine}\n\n_Acesse o app para mais detalhes._`;
+
+        try {
+          await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: profile.telegram_chat_id, text, parse_mode: "Markdown" }),
+          });
+        } catch (tgErr) {
+          console.error("Telegram send error:", tgErr);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
-      alerts: alerts.sort((a, b) => {
-        const order = { danger: 0, warning: 1, info: 2, success: 3 };
-        return order[a.severity] - order[b.severity];
-      }),
+      alerts: sortedAlerts,
       dailyBudget: Math.max(0, dailyBudget),
       daysLeft,
       monthIncome,
