@@ -68,10 +68,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="T2-FinAI" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+          <img src={logo} alt="T2-SimplyFin" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <div>
-              <h1 className="text-sm font-bold text-foreground">T2-FinAI</h1>
+              <h1 className="text-sm font-bold text-foreground">T2-SimplyFin</h1>
               <p className="text-[10px] text-muted-foreground">Controle Inteligente</p>
             </div>
           )}
