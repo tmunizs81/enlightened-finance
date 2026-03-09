@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { GoalForm } from "@/components/forms/GoalForm";
+import { useConfetti } from "@/hooks/use-confetti";
 
 const colorMap: Record<string, string> = {
   primary: "text-primary",
@@ -25,6 +26,7 @@ interface Goal {
 }
 
 const Goals = () => {
+  const { fireCanon } = useConfetti();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
 
@@ -65,7 +67,9 @@ const Goals = () => {
           {goals.map((goal, i) => {
             const pct = goal.target_amount > 0 ? Math.round((Number(goal.current_amount) / Number(goal.target_amount)) * 100) : 0;
             return (
-              <motion.div key={goal.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="glass-card-hover p-5 space-y-4">
+              <motion.div key={goal.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={`glass-card-hover p-5 space-y-4 ${pct >= 100 ? "border-success/30 ring-1 ring-success/20" : ""}`}
+                onAnimationComplete={() => { if (pct >= 100) fireCanon(); }}
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{goal.icon || "🎯"}</span>

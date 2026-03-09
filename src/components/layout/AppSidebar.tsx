@@ -12,6 +12,7 @@ import {
   Key,
   Download,
   Trophy,
+  Zap,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -46,6 +47,7 @@ const mainItems = [
 const toolItems = [
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Insights IA", url: "/insights", icon: Brain },
+  { title: "Regras", url: "/rules", icon: Zap },
   { title: "Instalar App", url: "/install", icon: Download },
   { title: "Minha Licença", url: "/license", icon: Key },
   { title: "Configurações", url: "/settings", icon: Settings },
