@@ -1,9 +1,13 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
+import { useLicenseNotification } from "@/hooks/use-license-notification";
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoBackup();
+  useLicenseNotification();
+  useInactivityLogout();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
