@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download } from "lucide-react";
+import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,12 @@ const Transactions = () => {
           <h1 className="text-2xl font-bold text-foreground">Transações</h1>
           <p className="text-sm text-muted-foreground">Gerencie suas receitas e despesas</p>
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gradient-bg-primary text-primary-foreground gap-2">
-          <Plus className="h-4 w-4" /> Nova
-        </Button>
+        <div className="flex gap-2">
+          <CSVImport />
+          <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gradient-bg-primary text-primary-foreground gap-2">
+            <Plus className="h-4 w-4" /> Nova
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
