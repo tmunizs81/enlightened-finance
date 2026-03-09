@@ -141,7 +141,7 @@ const SettingsPage = () => {
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: "✅ *T2-FinAI* — Conexão testada com sucesso!", parse_mode: "Markdown" }),
+        body: JSON.stringify({ chat_id: chatId, text: "✅ *T2-SimplyFin* — Conexão testada com sucesso!", parse_mode: "Markdown" }),
       });
       const data = await resp.json();
       if (data.ok) toast.success("Mensagem de teste enviada!");
