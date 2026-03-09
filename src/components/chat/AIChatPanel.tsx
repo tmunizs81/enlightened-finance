@@ -1,12 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ReactMarkdown from "react-markdown";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+
+const QUICK_QUESTIONS = [
+  "Quanto gastei esse mês?",
+  "Como está meu orçamento?",
+  "Quais minhas metas?",
+  "Dicas para economizar",
+];
 
 async function streamChat({
   messages,
@@ -64,6 +72,24 @@ async function streamChat({
       }
     }
   }
+
+  // Flush remaining
+  if (textBuffer.trim()) {
+    for (let raw of textBuffer.split("\n")) {
+      if (!raw) continue;
+      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+      if (raw.startsWith(":") || raw.trim() === "") continue;
+      if (!raw.startsWith("data: ")) continue;
+      const jsonStr = raw.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch { /* ignore */ }
+    }
+  }
+
   onDone();
 }
 
@@ -78,9 +104,9 @@ export function AIChatPanel() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg: Msg = { role: "user", content: input.trim() };
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || loading) return;
+    const userMsg: Msg = { role: "user", content: text.trim() };
     setInput("");
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
@@ -112,6 +138,8 @@ export function AIChatPanel() {
     }
   };
 
+  const send = () => sendMessage(input);
+
   return (
     <>
       {/* FAB */}
@@ -136,38 +164,67 @@ export function AIChatPanel() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] h-[520px] glass-card flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] h-[560px] glass-card flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg gradient-bg-primary flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary-foreground" />
+                  <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">T2-FinAI Chat</p>
-                  <p className="text-[10px] text-muted-foreground">Assistente financeiro</p>
+                  <p className="text-[10px] text-primary">● Conectado aos seus dados</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMessages([])}
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    title="Limpar conversa"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
               {messages.length === 0 && (
-                <div className="text-center py-8">
-                  <Bot className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">Pergunte sobre suas finanças!</p>
-                  <p className="text-xs text-muted-foreground mt-1">Ex: "Quanto gastei com alimentação?"</p>
+                <div className="space-y-4">
+                  <div className="text-center py-4">
+                    <div className="h-12 w-12 rounded-2xl gradient-bg-primary flex items-center justify-center mx-auto mb-3">
+                      <Sparkles className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Assistente Financeiro IA</p>
+                    <p className="text-xs text-muted-foreground mt-1">Tenho acesso aos seus dados financeiros reais.<br />Pergunte qualquer coisa!</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-1">Perguntas rápidas</p>
+                    {QUICK_QUESTIONS.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => sendMessage(q)}
+                        className="w-full text-left px-3 py-2 rounded-lg bg-secondary/50 hover:bg-secondary text-xs text-foreground transition-colors border border-border/50 hover:border-primary/30"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {messages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   {msg.role === "assistant" && (
                     <div className="h-6 w-6 rounded-md gradient-bg-primary flex items-center justify-center shrink-0 mt-1">
-                      <Bot className="h-3 w-3 text-primary-foreground" />
+                      <Sparkles className="h-3 w-3 text-primary-foreground" />
                     </div>
                   )}
                   <div className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
@@ -175,7 +232,13 @@ export function AIChatPanel() {
                       ? "gradient-bg-primary text-primary-foreground"
                       : "bg-secondary text-foreground"
                   }`}>
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1.5 [&_p]:mt-0 [&_ul]:mb-1.5 [&_ul]:mt-0.5 [&_li]:mb-0.5 [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_code]:text-primary [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                   {msg.role === "user" && (
                     <div className="h-6 w-6 rounded-md bg-secondary flex items-center justify-center shrink-0 mt-1">
@@ -187,10 +250,11 @@ export function AIChatPanel() {
               {loading && messages[messages.length - 1]?.role !== "assistant" && (
                 <div className="flex gap-2">
                   <div className="h-6 w-6 rounded-md gradient-bg-primary flex items-center justify-center shrink-0">
-                    <Bot className="h-3 w-3 text-primary-foreground" />
+                    <Sparkles className="h-3 w-3 text-primary-foreground" />
                   </div>
-                  <div className="bg-secondary rounded-lg px-3 py-2">
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <div className="bg-secondary rounded-lg px-3 py-2 flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    <span className="text-[10px] text-muted-foreground">Analisando seus dados...</span>
                   </div>
                 </div>
               )}
@@ -202,7 +266,7 @@ export function AIChatPanel() {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Pergunte algo..."
+                  placeholder="Quanto gastei com alimentação?..."
                   className="flex-1 bg-secondary border-border text-xs h-9"
                   disabled={loading}
                 />
