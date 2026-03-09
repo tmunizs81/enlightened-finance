@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import AdminLicenses from "./pages/AdminLicenses";
 import LicenseStatus from "./pages/LicenseStatus";
 import Install from "./pages/Install";
+import Achievements from "./pages/Achievements";
 
 const queryClient = new QueryClient();
 
