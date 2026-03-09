@@ -16,6 +16,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   Sidebar,
   SidebarContent,
