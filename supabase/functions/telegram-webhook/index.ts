@@ -505,12 +505,11 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
     }
     updateData.date = text.trim();
   } else if (field === "category") {
-    // Find category by name (fuzzy)
+    // Find category by name (fuzzy) - search both types
     const { data: cats } = await supabase
       .from("categories")
-      .select("id, name")
-      .eq("user_id", pending.user_id)
-      .eq("type", "expense");
+      .select("id, name, type")
+      .eq("user_id", pending.user_id);
 
     const match = (cats || []).find((c: any) =>
       c.name.toLowerCase().includes(text.trim().toLowerCase())
@@ -518,8 +517,24 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
     if (match) {
       updateData.category_id = match.id;
     } else {
-      const catNames = (cats || []).map((c: any) => `• ${c.name}`).join("\n");
+      const catNames = (cats || []).map((c: any) => `• ${c.name} (${c.type})`).join("\n");
       await sendTg(`❌ Categoria não encontrada. Opções:\n${catNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
+      return new Response("ok");
+    }
+  } else if (field === "account") {
+    const { data: accs } = await supabase
+      .from("accounts")
+      .select("id, name")
+      .eq("user_id", pending.user_id);
+
+    const match = (accs || []).find((a: any) =>
+      a.name.toLowerCase().includes(text.trim().toLowerCase())
+    );
+    if (match) {
+      updateData.account_id = match.id;
+    } else {
+      const accNames = (accs || []).map((a: any) => `• ${a.name}`).join("\n");
+      await sendTg(`❌ Conta não encontrada. Opções:\n${accNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
       return new Response("ok");
     }
   }
