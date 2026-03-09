@@ -19,6 +19,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AdminLicenses from "./pages/AdminLicenses";
 import LicenseStatus from "./pages/LicenseStatus";
+import Install from "./pages/Install";
 
 const queryClient = new QueryClient();
 
