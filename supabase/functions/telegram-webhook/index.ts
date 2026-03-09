@@ -684,7 +684,7 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
     amount,
     description,
     date: new Date().toISOString().split("T")[0],
-    status: "completed",
+    status: "paid",
     notes: `Lançamento rápido via Telegram`,
   });
 
