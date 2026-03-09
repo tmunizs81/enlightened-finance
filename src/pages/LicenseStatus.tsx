@@ -125,7 +125,7 @@ export default function LicenseStatus() {
                 </p>
                 {!isExpired && !isBlocked && (
                   <p className={`text-xs mt-1 font-medium ${
-                    isExpiringSoon ? "text-yellow-500" : "text-primary"
+                    isExpiringSoon ? "text-amber-600" : "text-primary"
                   }`}>
                     {daysRemaining} {daysRemaining === 1 ? "dia restante" : "dias restantes"}
                   </p>
