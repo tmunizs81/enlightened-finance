@@ -9,12 +9,14 @@ import {
   PiggyBank,
   Repeat,
   FileText,
+  Key,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRole } from "@/hooks/use-user-role";
 import {
   Sidebar,
   SidebarContent,
@@ -49,6 +51,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useUserRole();
   const { data: accounts = [] } = useSupabaseQuery<{ id: string; balance: number }>("accounts");
   const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
   const isActive = (path: string) =>
@@ -117,6 +120,30 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Administração
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/licenses")}>
+                    <NavLink
+                      to="/admin/licenses"
+                      className="transition-colors"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Key className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>Licenças</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 space-y-2">
