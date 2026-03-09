@@ -548,6 +548,20 @@ const SettingsPage = () => {
               </select>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="new-user-telegram" className="text-xs text-muted-foreground">Telegram Chat ID (opcional)</Label>
+              <Input
+                id="new-user-telegram"
+                value={newUserTelegramChatId}
+                onChange={(e) => setNewUserTelegramChatId(e.target.value)}
+                placeholder="Ex: 123456789 — para receber alertas"
+                className="bg-secondary border-border font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                O usuário pode obter o Chat ID enviando /start ao bot do Telegram e usando "Detectar Chat ID" nas configurações dele.
+              </p>
+            </div>
+
             <Button
               onClick={handleCreateUser}
               disabled={creatingUser}
