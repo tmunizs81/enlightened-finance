@@ -55,7 +55,7 @@ export default function InstallPage() {
             <div className="space-y-2">
               <h2 className="text-lg font-bold text-foreground">App Instalado! ✅</h2>
               <p className="text-sm text-muted-foreground">
-                O T2-FinAI já está instalado no seu dispositivo. Abra pela tela inicial.
+                O T2-SimplyFin já está instalado no seu dispositivo. Abra pela tela inicial.
               </p>
             </div>
           </>
