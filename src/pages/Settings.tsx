@@ -272,6 +272,8 @@ const SettingsPage = () => {
           password: newUserPassword,
           displayName: newUserName || newUserEmail.split("@")[0],
           role: newUserRole,
+          telegramChatId: newUserTelegramChatId || null,
+          telegramBotToken: botToken || null,
         },
       });
 
@@ -282,6 +284,7 @@ const SettingsPage = () => {
       setNewUserPassword("");
       setNewUserName("");
       setNewUserRole("user");
+      setNewUserTelegramChatId("");
     } catch (e: any) {
       toast.error(e.message || "Erro ao criar usuário");
     } finally {
