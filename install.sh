@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================
-# FinanceAI - Installation Script
+# T2-SimplyFin - Installation Script
 # Ubuntu 24.04 LTS
 # ============================================
 
