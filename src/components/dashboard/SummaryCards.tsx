@@ -48,11 +48,11 @@ export function SummaryCards() {
       gradient: "gradient-bg-primary",
     },
     {
-      title: "Contas a Pagar Hoje",
-      value: `R$ ${dueTodayAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      subtitle: dueTodayAmount === 0 ? "Nenhuma pendência" : undefined,
+      title: "Gastos do Mês",
+      value: `R$ ${monthExpense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      subtitle: `${thisMonthTx.filter((t) => t.type === "expense").length} despesa(s)`,
       icon: AlertCircle,
-      gradient: "bg-success",
+      gradient: "bg-destructive",
     },
     {
       title: "Receitas Pendentes",
