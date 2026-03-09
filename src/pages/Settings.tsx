@@ -111,6 +111,28 @@ const SettingsPage = () => {
     else toast.success("Configuração do Telegram salva!");
   };
 
+  const handleDetectChatId = async () => {
+    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    setTesting(true);
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+      const data = await resp.json();
+      if (data.ok && data.result && data.result.length > 0) {
+        const lastUpdate = data.result[data.result.length - 1];
+        const detectedChatId = String(lastUpdate.message?.chat?.id || lastUpdate.callback_query?.message?.chat?.id || "");
+        if (detectedChatId) {
+          setChatId(detectedChatId);
+          toast.success(`Chat ID detectado: ${detectedChatId}\n\nAgora clique em "Salvar Configuração"`);
+        } else {
+          toast.error("Nenhuma mensagem encontrada. Envie /start para o bot primeiro.");
+        }
+      } else {
+        toast.error("Envie /start para o bot no Telegram primeiro, depois clique aqui novamente.");
+      }
+    } catch { toast.error("Falha ao detectar Chat ID."); }
+    finally { setTesting(false); }
+  };
+
   const handleTest = async () => {
     if (!botToken || !chatId) { toast.error("Preencha o token e o Chat ID primeiro."); return; }
     setTesting(true);
