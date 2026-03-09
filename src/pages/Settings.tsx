@@ -45,6 +45,7 @@ const SettingsPage = () => {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
+  const [newUserTelegramChatId, setNewUserTelegramChatId] = useState("");
   const [creatingUser, setCreatingUser] = useState(false);
 
   useEffect(() => {
