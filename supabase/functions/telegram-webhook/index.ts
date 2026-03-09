@@ -394,7 +394,7 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       amount: pending.amount,
       description: pending.description,
       date: pending.date,
-      status: "completed",
+      status: "paid",
       notes: `Lançado via Telegram OCR (confiança: ${pending.confidence})`,
       receipt_url: pending.receipt_url,
     };
