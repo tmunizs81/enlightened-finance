@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.financial-score]
 verify_jwt = false
+
+[functions.achievements]
+verify_jwt = false
