@@ -386,16 +386,19 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
     return new Response("ok");
   }
 
-  // --- CONFIRM ---
-  if (action === "ocr_confirm") {
+  // --- CONFIRM (OCR or command) ---
+  if (action === "ocr_confirm" || action === "cmd_confirm") {
+    const txType = action === "cmd_confirm" && parts[2] ? parts[2] : "expense";
     const txData: any = {
       user_id: pending.user_id,
-      type: "expense",
+      type: txType,
       amount: pending.amount,
       description: pending.description,
       date: pending.date,
       status: "paid",
-      notes: `Lançado via Telegram OCR (confiança: ${pending.confidence})`,
+      notes: action === "ocr_confirm"
+        ? `Lançado via Telegram OCR (confiança: ${pending.confidence})`
+        : `Lançamento rápido via Telegram`,
       receipt_url: pending.receipt_url,
     };
     if (pending.category_id) txData.category_id = pending.category_id;
@@ -408,20 +411,24 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       return new Response("ok");
     }
 
+    const label = txType === "income" ? "Receita" : "Despesa";
+    const icon = txType === "income" ? "📈" : "📉";
     await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", pendingId);
-    await editMsg(`✅ *Despesa salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
-    await answerCbq("Despesa salva com sucesso!");
+    await editMsg(`${icon} *${label} salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
+    await answerCbq(`${label} salva com sucesso!`);
 
     // Trigger spending monitor
-    try {
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-        body: JSON.stringify({ user_id: pending.user_id }),
-      });
-    } catch (e) { console.error("Monitor trigger error:", e); }
+    if (txType === "expense") {
+      try {
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          body: JSON.stringify({ user_id: pending.user_id }),
+        });
+      } catch (e) { console.error("Monitor trigger error:", e); }
+    }
 
     return new Response("ok");
   }
