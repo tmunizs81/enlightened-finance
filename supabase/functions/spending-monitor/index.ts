@@ -1,0 +1,162 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { user_id } = await req.json();
+    if (!user_id) throw new Error("user_id required");
+
+    // Get user profile for Telegram
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("telegram_bot_token, telegram_chat_id")
+      .eq("user_id", user_id)
+      .single();
+
+    if (!profile?.telegram_bot_token || !profile?.telegram_chat_id) {
+      return new Response(JSON.stringify({ message: "No Telegram configured" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const sendTg = async (text: string) => {
+      await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: profile.telegram_chat_id,
+          text,
+          parse_mode: "Markdown",
+        }),
+      });
+    };
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
+    const lastDay = new Date(currentYear, currentMonth, 0);
+    const lastDayStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
+
+    // Fetch budgets, transactions, goals, categories in parallel
+    const [budgetRes, txRes, goalRes, catRes] = await Promise.all([
+      supabase.from("budgets").select("*").eq("user_id", user_id).eq("month", currentMonth).eq("year", currentYear),
+      supabase.from("transactions").select("*").eq("user_id", user_id).eq("type", "expense").gte("date", firstDay).lte("date", lastDayStr),
+      supabase.from("goals").select("*").eq("user_id", user_id),
+      supabase.from("categories").select("id, name").eq("user_id", user_id),
+    ]);
+
+    const budgets = budgetRes.data || [];
+    const transactions = txRes.data || [];
+    const goals = goalRes.data || [];
+    const categories = catRes.data || [];
+    const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
+
+    const alerts: string[] = [];
+
+    // --- Check budgets ---
+    const spendingByCategory: Record<string, number> = {};
+    const totalSpending = transactions.reduce((sum: number, t: any) => {
+      const catId = t.category_id || "sem_categoria";
+      spendingByCategory[catId] = (spendingByCategory[catId] || 0) + Number(t.amount);
+      return sum + Number(t.amount);
+    }, 0);
+
+    for (const budget of budgets) {
+      const budgetAmount = Number(budget.amount);
+      const catId = budget.category_id;
+
+      if (catId) {
+        // Category-specific budget
+        const spent = spendingByCategory[catId] || 0;
+        const catName = catMap.get(catId) || "Categoria";
+        const pct = (spent / budgetAmount) * 100;
+
+        if (spent > budgetAmount) {
+          alerts.push(`🚨 *Orçamento estourado!*\n📂 ${catName}: R$ ${spent.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
+        } else if (pct >= 80) {
+          alerts.push(`⚠️ *Orçamento quase no limite!*\n📂 ${catName}: R$ ${spent.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
+        }
+      } else {
+        // General budget
+        const pct = (totalSpending / budgetAmount) * 100;
+        if (totalSpending > budgetAmount) {
+          alerts.push(`🚨 *Orçamento geral estourado!*\nGasto total: R$ ${totalSpending.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
+        } else if (pct >= 80) {
+          alerts.push(`⚠️ *Orçamento geral quase no limite!*\nGasto total: R$ ${totalSpending.toFixed(2)} / R$ ${budgetAmount.toFixed(2)} (${pct.toFixed(0)}%)`);
+        }
+      }
+    }
+
+    // --- Check goals ---
+    for (const goal of goals) {
+      const target = Number(goal.target_amount);
+      const current = Number(goal.current_amount);
+      if (target <= 0) continue;
+      const pct = (current / target) * 100;
+
+      if (pct >= 100) {
+        alerts.push(`🎉 *Meta alcançada!*\n🎯 ${goal.name}: R$ ${current.toFixed(2)} / R$ ${target.toFixed(2)}`);
+      } else if (pct >= 80) {
+        alerts.push(`✨ *Meta quase lá!*\n🎯 ${goal.name}: R$ ${current.toFixed(2)} / R$ ${target.toFixed(2)} (${pct.toFixed(0)}%)`);
+      }
+
+      // Check deadline proximity
+      if (goal.deadline) {
+        const deadline = new Date(goal.deadline);
+        const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysLeft <= 7 && daysLeft > 0 && pct < 80) {
+          alerts.push(`⏰ *Meta com prazo próximo!*\n🎯 ${goal.name}: faltam ${daysLeft} dias e só ${pct.toFixed(0)}% concluído`);
+        }
+      }
+    }
+
+    // --- AI analysis for excessive spending patterns ---
+    if (transactions.length >= 5) {
+      const dayOfMonth = now.getDate();
+      const daysInMonth = lastDay.getDate();
+      const expectedPct = (dayOfMonth / daysInMonth) * 100;
+
+      // Check if spending pace is too high
+      for (const budget of budgets) {
+        const budgetAmount = Number(budget.amount);
+        const catId = budget.category_id;
+        const spent = catId ? (spendingByCategory[catId] || 0) : totalSpending;
+        const actualPct = (spent / budgetAmount) * 100;
+
+        if (actualPct > expectedPct * 1.3 && actualPct < 80) {
+          const catName = catId ? (catMap.get(catId) || "Categoria") : "Geral";
+          alerts.push(`📊 *Ritmo de gasto acelerado!*\n📂 ${catName}: ${actualPct.toFixed(0)}% do orçamento usado com ${expectedPct.toFixed(0)}% do mês passado`);
+        }
+      }
+    }
+
+    // Send alerts via Telegram
+    if (alerts.length > 0) {
+      const message = `🤖 *T2-FinAI — Monitor de Gastos*\n\n${alerts.join("\n\n")}\n\n_Acesse o app para mais detalhes._`;
+      await sendTg(message);
+    }
+
+    return new Response(JSON.stringify({ alerts_sent: alerts.length, alerts }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("spending-monitor error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
