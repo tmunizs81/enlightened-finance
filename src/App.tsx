@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import AdminLicenses from "./pages/AdminLicenses";
 import LicenseStatus from "./pages/LicenseStatus";
 import Install from "./pages/Install";
+import Achievements from "./pages/Achievements";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ function ProtectedRoutes() {
         <Route path="/admin/licenses" element={<AdminLicenses />} />
         <Route path="/license" element={<LicenseStatus />} />
         <Route path="/install" element={<Install />} />
+        <Route path="/achievements" element={<Achievements />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <AIChatPanel />
