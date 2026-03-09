@@ -16,12 +16,18 @@
 ssh root@SEU_IP_DO_SERVIDOR
 ```
 
-### 2. Clone o repositório
+### 2. Baixe e execute o script de instalação
 ```bash
-cd /opt
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git financeai
-cd financeai
+curl -fsSL https://raw.githubusercontent.com/tmunizs81/enlightened-finance/main/install.sh -o install.sh
+chmod +x install.sh
+sudo bash install.sh
 ```
+
+**O script fará tudo automaticamente:**
+- ✅ Clonar o repositório
+- ✅ Atualizar o sistema
+- ✅ Instalar Docker
+- ✅ Construir e iniciar a aplicação
 
 ### 3. Configure as variáveis de ambiente
 O arquivo `.env` já está configurado com suas credenciais Supabase:
