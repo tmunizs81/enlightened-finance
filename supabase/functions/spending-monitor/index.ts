@@ -15,14 +15,43 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { user_id } = await req.json();
-    if (!user_id) throw new Error("user_id required");
+    const body = await req.json().catch(() => ({}));
+    const requestedUserId = body.user_id;
 
-    // Get user profile for Telegram
+    // If no user_id, broadcast mode: process all users with Telegram configured
+    if (!requestedUserId) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token, telegram_chat_id")
+        .not("telegram_bot_token", "is", null)
+        .not("telegram_chat_id", "is", null);
+
+      if (!profiles || profiles.length === 0) {
+        return new Response(JSON.stringify({ message: "No users with Telegram configured" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let totalAlerts = 0;
+      for (const p of profiles) {
+        try {
+          const result = await processUser(supabase, p.user_id, p.telegram_bot_token, p.telegram_chat_id);
+          totalAlerts += result;
+        } catch (e) {
+          console.error(`Error processing user ${p.user_id}:`, e);
+        }
+      }
+
+      return new Response(JSON.stringify({ users_processed: profiles.length, total_alerts: totalAlerts }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Single user mode
     const { data: profile } = await supabase
       .from("profiles")
       .select("telegram_bot_token, telegram_chat_id")
-      .eq("user_id", user_id)
+      .eq("user_id", requestedUserId)
       .single();
 
     if (!profile?.telegram_bot_token || !profile?.telegram_chat_id) {
@@ -31,7 +60,11 @@ serve(async (req) => {
       });
     }
 
-    const sendTg = async (text: string) => {
+    const alertCount = await processUser(supabase, requestedUserId, profile.telegram_bot_token, profile.telegram_chat_id);
+
+    return new Response(JSON.stringify({ alerts_sent: alertCount }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
       await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
