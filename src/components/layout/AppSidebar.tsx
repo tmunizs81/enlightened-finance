@@ -11,6 +11,7 @@ import {
   FileText,
   Key,
   Download,
+  Trophy,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
