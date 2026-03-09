@@ -43,6 +43,7 @@ const mainItems = [
 const toolItems = [
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Insights IA", url: "/insights", icon: Brain },
+  { title: "Minha Licença", url: "/license", icon: Key },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 

@@ -18,6 +18,7 @@ import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AdminLicenses from "./pages/AdminLicenses";
+import LicenseStatus from "./pages/LicenseStatus";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ function ProtectedRoutes() {
         <Route path="/insights" element={<Insights />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin/licenses" element={<AdminLicenses />} />
+        <Route path="/license" element={<LicenseStatus />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <AIChatPanel />
