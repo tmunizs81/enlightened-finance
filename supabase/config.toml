@@ -41,3 +41,15 @@ verify_jwt = false
 
 [functions.weekly-challenges]
 verify_jwt = false
+
+[functions.balance-forecast]
+verify_jwt = false
+
+[functions.ai-anomalies]
+verify_jwt = false
+
+[functions.ai-budget-suggest]
+verify_jwt = false
+
+[functions.ai-score-explain]
+verify_jwt = false

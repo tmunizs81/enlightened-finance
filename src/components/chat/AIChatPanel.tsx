@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { MessageCircle, X, Send, User, Loader2, Sparkles, Trash2, Baby, Brain, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
@@ -16,7 +16,17 @@ const QUICK_QUESTIONS = [
   "Dicas para economizar",
   "Posso comprar algo de R$500?",
   "Analise minhas assinaturas",
+  "Crie um plano financeiro para mim",
+  "Explique meu score financeiro",
 ];
+
+type ChatMode = "normal" | "simple" | "advisor";
+
+const MODE_LABELS: Record<ChatMode, { label: string; icon: any; desc: string; prefix: string }> = {
+  normal: { label: "Normal", icon: Brain, desc: "Respostas completas", prefix: "" },
+  simple: { label: "Simples", icon: Baby, desc: "Como se eu tivesse 5 anos", prefix: "[MODO SIMPLES: Responda como se o usuário tivesse 5 anos de idade. Use linguagem ultra-simples, analogias do dia a dia, sem termos técnicos. Máximo 3 frases curtas.]\n\n" },
+  advisor: { label: "Consultor", icon: TrendingUp, desc: "Consultoria financeira profissional", prefix: "[MODO CONSULTOR: Aja como um consultor financeiro sênior. Analise profundamente, cite números específicos, sugira estratégias detalhadas com prazos e valores. Seja formal e profissional.]\n\n" },
+};
 
 async function streamChat({
   messages,
@@ -40,6 +50,8 @@ async function streamChat({
 
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({ error: "Erro na conexão" }));
+    if (resp.status === 429) { onError("Limite de requisições excedido. Tente em instantes."); return; }
+    if (resp.status === 402) { onError("Créditos insuficientes. Adicione créditos ao workspace."); return; }
     onError(data.error || `Erro ${resp.status}`);
     return;
   }
@@ -75,7 +87,6 @@ async function streamChat({
     }
   }
 
-  // Flush remaining
   if (textBuffer.trim()) {
     for (let raw of textBuffer.split("\n")) {
       if (!raw) continue;
@@ -100,6 +111,7 @@ export function AIChatPanel() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<ChatMode>("normal");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,7 +120,9 @@ export function AIChatPanel() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+    const modePrefix = MODE_LABELS[mode].prefix;
     const userMsg: Msg = { role: "user", content: text.trim() };
+    const userMsgWithMode: Msg = { role: "user", content: modePrefix + text.trim() };
     setInput("");
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
@@ -125,9 +139,12 @@ export function AIChatPanel() {
       });
     };
 
+    // Build full history with mode prefix only on last message
+    const historyMessages = [...messages.map(m => ({ ...m })), userMsgWithMode];
+
     try {
       await streamChat({
-        messages: [...messages, userMsg],
+        messages: historyMessages,
         onDelta: upsert,
         onDone: () => setLoading(false),
         onError: (err) => {
@@ -166,7 +183,7 @@ export function AIChatPanel() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] h-[560px] glass-card flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] h-[600px] glass-card flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
@@ -176,7 +193,7 @@ export function AIChatPanel() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">T2-FinAI Chat</p>
-                  <p className="text-[10px] text-primary">● Conectado aos seus dados</p>
+                  <p className="text-[10px] text-primary">● Conectado · {MODE_LABELS[mode].desc}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -195,6 +212,27 @@ export function AIChatPanel() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            {/* Mode Selector */}
+            <div className="flex gap-1 p-2 border-b border-border/50">
+              {(Object.entries(MODE_LABELS) as [ChatMode, typeof MODE_LABELS["normal"]][]).map(([key, val]) => {
+                const Icon = val.icon;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setMode(key)}
+                    className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-medium transition-colors ${
+                      mode === key
+                        ? "bg-primary/15 text-primary border border-primary/30"
+                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 border border-transparent"
+                    }`}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {val.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Messages */}
@@ -268,7 +306,7 @@ export function AIChatPanel() {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Quanto gastei com alimentação?..."
+                  placeholder={mode === "simple" ? "Pergunta algo simples..." : mode === "advisor" ? "Consulte o especialista..." : "Quanto gastei com alimentação?..."}
                   className="flex-1 bg-secondary border-border text-xs h-9"
                   disabled={loading}
                 />
