@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -8,89 +8,117 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [licenseValid, setLicenseValid] = useState(true);
 
-  useEffect(() => {
-    const checkLicense = async (userId: string) => {
-      try {
-        // Verificar se o usuário é admin — admins não precisam de licença
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .eq("role", "admin")
-          .maybeSingle();
+  const checkLicense = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      // Verificar se o usuário é admin — admins não precisam de licença
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
 
-        if (roleData) return true; // Admin, pula verificação de licença
+      if (roleData) return true;
 
-        const { data, error } = await supabase
-          .from("licenses")
-          .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("licenses")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (!data) {
-          toast.error("Você não possui uma licença ativa. Contate o administrador.");
-          await supabase.auth.signOut();
-          return false;
-        }
-
-        const isActive = data.status === "active";
-        const notExpired = new Date(data.expires_at) > new Date();
-
-        if (!isActive) {
-          toast.error("Sua licença foi bloqueada. Contate o administrador.");
-          await supabase.auth.signOut();
-          return false;
-        }
-
-        if (!notExpired) {
-          toast.error("Sua licença expirou. Contate o administrador.");
-          await supabase.auth.signOut();
-          return false;
-        }
-
-        return true;
-      } catch (error) {
-        console.error("Error checking license:", error);
+      if (!data) {
+        toast.error("Você não possui uma licença ativa. Contate o administrador.");
         return false;
       }
-    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const isValid = await checkLicense(session.user.id);
-        setLicenseValid(isValid);
-        if (isValid) {
-          setSession(session);
-        } else {
-          setSession(null);
-        }
-      } else {
-        setSession(session);
-        setLicenseValid(true);
+      const isActive = data.status === "active";
+      const notExpired = new Date(data.expires_at) > new Date();
+
+      if (!isActive) {
+        toast.error("Sua licença foi bloqueada. Contate o administrador.");
+        return false;
       }
-      setLoading(false);
-    });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const isValid = await checkLicense(session.user.id);
-        setLicenseValid(isValid);
-        if (isValid) {
-          setSession(session);
-        } else {
-          setSession(null);
-        }
-      } else {
-        setSession(session);
-        setLicenseValid(true);
+      if (!notExpired) {
+        toast.error("Sua licença expirou. Contate o administrador.");
+        return false;
       }
-      setLoading(false);
-    });
 
-    return () => subscription.unsubscribe();
+      return true;
+    } catch (error) {
+      console.error("Error checking license:", error);
+      return false;
+    }
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Primeiro obter sessão existente
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (!mounted) return;
+
+      if (currentSession?.user) {
+        const isValid = await checkLicense(currentSession.user.id);
+        if (!mounted) return;
+
+        if (isValid) {
+          setSession(currentSession);
+          setLicenseValid(true);
+        } else {
+          await supabase.auth.signOut();
+          setSession(null);
+          setLicenseValid(false);
+        }
+      } else {
+        setSession(null);
+        setLicenseValid(true);
+      }
+      setLoading(false);
+    });
+
+    // Escutar mudanças de autenticação (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        if (!mounted) return;
+
+        // Ignorar INITIAL_SESSION pois getSession já trata
+        if (event === "INITIAL_SESSION") return;
+
+        if (event === "SIGNED_OUT") {
+          setSession(null);
+          setLicenseValid(true);
+          setLoading(false);
+          return;
+        }
+
+        if (newSession?.user) {
+          const isValid = await checkLicense(newSession.user.id);
+          if (!mounted) return;
+
+          if (isValid) {
+            setSession(newSession);
+            setLicenseValid(true);
+          } else {
+            await supabase.auth.signOut();
+            setSession(null);
+            setLicenseValid(false);
+          }
+        } else {
+          setSession(newSession);
+          setLicenseValid(true);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [checkLicense]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
