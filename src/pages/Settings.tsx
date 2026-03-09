@@ -45,6 +45,7 @@ const SettingsPage = () => {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
+  const [newUserTelegramChatId, setNewUserTelegramChatId] = useState("");
   const [creatingUser, setCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -271,6 +272,8 @@ const SettingsPage = () => {
           password: newUserPassword,
           displayName: newUserName || newUserEmail.split("@")[0],
           role: newUserRole,
+          telegramChatId: newUserTelegramChatId || null,
+          telegramBotToken: botToken || null,
         },
       });
 
@@ -281,6 +284,7 @@ const SettingsPage = () => {
       setNewUserPassword("");
       setNewUserName("");
       setNewUserRole("user");
+      setNewUserTelegramChatId("");
     } catch (e: any) {
       toast.error(e.message || "Erro ao criar usuário");
     } finally {
@@ -542,6 +546,20 @@ const SettingsPage = () => {
                 <option value="user">Usuário</option>
                 <option value="admin">Administrador</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-user-telegram" className="text-xs text-muted-foreground">Telegram Chat ID (opcional)</Label>
+              <Input
+                id="new-user-telegram"
+                value={newUserTelegramChatId}
+                onChange={(e) => setNewUserTelegramChatId(e.target.value)}
+                placeholder="Ex: 123456789 — para receber alertas"
+                className="bg-secondary border-border font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                O usuário pode obter o Chat ID enviando /start ao bot do Telegram e usando "Detectar Chat ID" nas configurações dele.
+              </p>
             </div>
 
             <Button
