@@ -105,7 +105,14 @@ export function CSVImport() {
     if (!file) return;
     e.target.value = "";
     const reader = new FileReader();
-    reader.onload = () => parseCSV(reader.result as string);
+    reader.onload = () => {
+      const content = reader.result as string;
+      if (file.name.toLowerCase().endsWith(".ofx")) {
+        parseOFX(content);
+      } else {
+        parseCSV(content);
+      }
+    };
     reader.readAsText(file, "UTF-8");
   };
 
