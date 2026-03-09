@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle, Cloud, RotateCcw, Trash2, Clock } from "lucide-react";
+import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle, Cloud, RotateCcw, Trash2, Clock, UserPlus, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ interface CloudBackup {
 
 const SettingsPage = () => {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [botToken, setBotToken] = useState("");
@@ -37,6 +39,13 @@ const SettingsPage = () => {
   const [restoringCloud, setRestoringCloud] = useState<string | null>(null);
   const [creatingCloud, setCreatingCloud] = useState(false);
   const { runBackupNow } = useAutoBackup();
+
+  // User management state
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
+  const [creatingUser, setCreatingUser] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -223,6 +232,37 @@ const SettingsPage = () => {
     } finally {
       setImporting(false);
       setImportProgress(0);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserPassword) {
+      toast.error("Email e senha são obrigatórios.");
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: newUserEmail,
+          password: newUserPassword,
+          displayName: newUserName || newUserEmail.split("@")[0],
+          role: newUserRole,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Usuário ${newUserEmail} criado com sucesso!`);
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserName("");
+      setNewUserRole("user");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao criar usuário");
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -416,6 +456,85 @@ const SettingsPage = () => {
           </p>
         </div>
       </div>
+
+      {/* Gerenciamento de Usuários (Admin Only) */}
+      {isAdmin && (
+        <div className="glass-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Gerenciamento de Usuários</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">Crie novos usuários e defina suas credenciais de acesso.</p>
+
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="new-user-email" className="text-xs text-muted-foreground">Email do Usuário</Label>
+              <Input
+                id="new-user-email"
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="usuario@exemplo.com"
+                className="bg-secondary border-border text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-user-name" className="text-xs text-muted-foreground">Nome (opcional)</Label>
+              <Input
+                id="new-user-name"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Nome do usuário"
+                className="bg-secondary border-border text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-user-password" className="text-xs text-muted-foreground">Senha</Label>
+              <Input
+                id="new-user-password"
+                type="password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                placeholder="Senha inicial (mínimo 6 caracteres)"
+                className="bg-secondary border-border text-xs"
+                minLength={6}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-user-role" className="text-xs text-muted-foreground">Permissão</Label>
+              <select
+                id="new-user-role"
+                value={newUserRole}
+                onChange={(e) => setNewUserRole(e.target.value as "user" | "admin")}
+                className="flex h-10 w-full rounded-md border border-border bg-secondary px-3 py-2 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="user">Usuário</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+
+            <Button
+              onClick={handleCreateUser}
+              disabled={creatingUser}
+              className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 w-full"
+            >
+              {creatingUser ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+              {creatingUser ? "Criando..." : "Criar Usuário"}
+            </Button>
+          </div>
+
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+            <p className="text-[11px] font-semibold text-foreground">ℹ️ Informações Importantes</p>
+            <p className="text-[11px] text-muted-foreground">• A senha será definida por você e deve ser repassada ao usuário</p>
+            <p className="text-[11px] text-muted-foreground">• O email será confirmado automaticamente (não requer verificação)</p>
+            <p className="text-[11px] text-muted-foreground">• Usuários comuns acessam apenas seus próprios dados</p>
+            <p className="text-[11px] text-muted-foreground">• Administradores podem criar novos usuários</p>
+          </div>
+        </div>
+      )}
 
       {/* Geral */}
       <div className="glass-card p-5 space-y-4">
