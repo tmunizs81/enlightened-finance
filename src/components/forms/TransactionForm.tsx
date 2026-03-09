@@ -195,6 +195,19 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Descrição</Label>
+            <Input value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className="bg-secondary border-border" required />
+            {aiSuggesting && (
+              <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                <Sparkles className="h-3 w-3 animate-pulse" />
+                <span>IA sugerindo categoria...</span>
+              </div>
+            )}
+            {aiSuggested && !aiSuggesting && (
+              <div className="flex items-center gap-1.5 text-[10px] text-success">
+                <Sparkles className="h-3 w-3" />
+                <span>IA sugeriu: <strong>{aiSuggested}</strong></span>
+              </div>
+            )}
             <Input value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-border" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
