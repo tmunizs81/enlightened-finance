@@ -79,7 +79,7 @@ export default function LicenseStatus() {
             ) : isExpired ? (
               <Badge variant="destructive" className="text-sm px-4 py-1">Expirada</Badge>
             ) : isExpiringSoon ? (
-              <Badge variant="outline" className="text-sm px-4 py-1 border-yellow-500 text-yellow-500">
+              <Badge variant="outline" className="text-sm px-4 py-1 border-amber-500 text-amber-600">
                 Expira em breve
               </Badge>
             ) : (
