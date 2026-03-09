@@ -16,6 +16,7 @@ import { WeeklyChallenges } from "@/components/dashboard/WeeklyChallenges";
 import { SubscriptionsDashboard } from "@/components/dashboard/SubscriptionsDashboard";
 import { YearlyComparison } from "@/components/dashboard/YearlyComparison";
 import { AIBudgetSuggestions } from "@/components/dashboard/AIBudgetSuggestions";
+import { PredictiveAlerts } from "@/components/dashboard/PredictiveAlerts";
 
 const Index = () => {
   return (
@@ -29,6 +30,8 @@ const Index = () => {
       </div>
 
       <SmartAlerts />
+
+      <PredictiveAlerts />
 
       <SummaryCards />
 
