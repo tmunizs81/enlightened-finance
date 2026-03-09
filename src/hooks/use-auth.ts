@@ -58,6 +58,7 @@ export function useAuth() {
 
     // Primeiro obter sessão existente
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      console.log("getSession:", { currentSession });
       if (!mounted) return;
 
       if (currentSession?.user) {
