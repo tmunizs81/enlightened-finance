@@ -411,6 +411,18 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
     await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", pendingId);
     await editMsg(`✅ *Despesa salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
     await answerCbq("Despesa salva com sucesso!");
+
+    // Trigger spending monitor
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({ user_id: pending.user_id }),
+      });
+    } catch (e) { console.error("Monitor trigger error:", e); }
+
     return new Response("ok");
   }
 
