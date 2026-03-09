@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download } from "lucide-react";
+import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
