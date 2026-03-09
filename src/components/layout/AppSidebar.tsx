@@ -40,6 +40,7 @@ const mainItems = [
   { title: "Orçamentos", url: "/budgets", icon: PiggyBank },
   { title: "Metas", url: "/goals", icon: Target },
   { title: "Contas", url: "/accounts", icon: Wallet },
+  { title: "Conquistas", url: "/achievements", icon: Trophy },
 ];
 
 const toolItems = [
