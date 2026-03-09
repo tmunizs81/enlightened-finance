@@ -335,7 +335,8 @@ const SettingsPage = () => {
           <p className="text-[11px] text-muted-foreground">1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong></p>
           <p className="text-[11px] text-muted-foreground">2. Envie <code className="bg-background px-1 rounded text-foreground">/newbot</code> e siga as instruções</p>
           <p className="text-[11px] text-muted-foreground">3. Copie o <strong className="text-foreground">Token</strong> gerado e cole abaixo</p>
-          <p className="text-[11px] text-muted-foreground">4. Para o Chat ID: <code className="bg-background px-1 rounded text-foreground text-[10px]">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code></p>
+          <p className="text-[11px] text-muted-foreground">4. Envie <code className="bg-background px-1 rounded text-foreground">/start</code> para o seu bot no Telegram</p>
+          <p className="text-[11px] text-muted-foreground">5. Clique em <strong className="text-foreground">"Detectar Chat ID"</strong> abaixo</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">Token do Bot</Label>
