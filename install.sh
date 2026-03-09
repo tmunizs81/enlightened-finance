@@ -47,11 +47,25 @@ if ! command -v docker &> /dev/null; then
   systemctl start docker
   log "Docker instalado"
 else
-  log "Docker já instalado"
+log "Docker já instalado"
 fi
 
 # ============================================
-# 3. Configure Environment
+# 3. Clone Repository
+# ============================================
+if [ -d "$INSTALL_DIR" ]; then
+  warn "Diretório $INSTALL_DIR já existe. Atualizando..."
+  cd "$INSTALL_DIR"
+  git pull
+else
+  info "Clonando repositório..."
+  git clone "$REPO_URL" "$INSTALL_DIR"
+  cd "$INSTALL_DIR"
+fi
+log "Código baixado"
+
+# ============================================
+# 4. Configure Environment
 # ============================================
 ENV_FILE=".env"
 if [ ! -f "$ENV_FILE" ]; then
