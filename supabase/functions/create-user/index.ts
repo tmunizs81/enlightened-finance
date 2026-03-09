@@ -102,7 +102,22 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error('Error assigning role:', roleError)
-      // Don't fail the request, just log the error
+    }
+
+    // Update profile with Telegram info if provided
+    if (telegramChatId || telegramBotToken) {
+      const updateData: Record<string, string> = {}
+      if (telegramChatId) updateData.telegram_chat_id = telegramChatId
+      if (telegramBotToken) updateData.telegram_bot_token = telegramBotToken
+
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update(updateData)
+        .eq('user_id', newUser.user.id)
+
+      if (profileError) {
+        console.error('Error updating profile with Telegram:', profileError)
+      }
     }
 
     return new Response(
