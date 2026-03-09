@@ -39,7 +39,7 @@ O processo leva cerca de 5-10 minutos. Você verá:
 🌐 Acesse: http://SEU_IP:80
 ```
 
-### 6. Acesse a aplicação
+### 4. Acesse a aplicação
 Abra no navegador:
 ```
 http://SEU_IP_DO_SERVIDOR

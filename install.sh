@@ -81,7 +81,7 @@ docker compose up -d --build
 log "Containers iniciados"
 
 # ============================================
-# 5. Health Check
+# 6. Health Check
 # ============================================
 info "Verificando saúde dos serviços..."
 sleep 5
