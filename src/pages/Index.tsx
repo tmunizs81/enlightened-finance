@@ -12,6 +12,9 @@ import { BalanceForecastML } from "@/components/dashboard/BalanceForecastML";
 import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
 import { FocusMode } from "@/components/dashboard/FocusMode";
 import { GoalProjection } from "@/components/dashboard/GoalProjection";
+import { WeeklyChallenges } from "@/components/dashboard/WeeklyChallenges";
+import { SubscriptionsDashboard } from "@/components/dashboard/SubscriptionsDashboard";
+import { YearlyComparison } from "@/components/dashboard/YearlyComparison";
 
 const Index = () => {
   return (
@@ -35,12 +38,16 @@ const Index = () => {
         <FinancialScore />
       </div>
 
+      <WeeklyChallenges />
+
       <WeeklySummary />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <MonthlyComparison />
         <CategoryPieChart />
       </div>
+
+      <YearlyComparison />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BalanceForecastML />
@@ -53,6 +60,7 @@ const Index = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SubscriptionsDashboard />
         <GoalsBarChart />
       </div>
 

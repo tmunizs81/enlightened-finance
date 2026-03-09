@@ -150,7 +150,7 @@ export function CSVImport() {
     <>
       <input ref={fileRef} type="file" accept=".csv,.txt,.ofx" className="hidden" onChange={handleFile} />
       <Button variant="outline" onClick={() => fileRef.current?.click()} className="gap-2 border-border text-muted-foreground hover:text-foreground">
-        <Upload className="h-4 w-4" /> Importar CSV
+        <Upload className="h-4 w-4" /> Importar CSV/OFX
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

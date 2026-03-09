@@ -299,6 +299,39 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             )}
           </div>
 
+          {/* Installments */}
+          {type === "expense" && !initialData && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="installment-check"
+                  checked={isInstallment}
+                  onChange={(e) => { setIsInstallment(e.target.checked); if (!e.target.checked) setInstallments("1"); }}
+                  className="rounded border-border"
+                />
+                <Label htmlFor="installment-check" className="text-xs text-muted-foreground cursor-pointer">Parcelar</Label>
+              </div>
+              {isInstallment && (
+                <div className="flex items-center gap-2">
+                  <Select value={installments} onValueChange={setInstallments}>
+                    <SelectTrigger className="bg-secondary border-border w-24"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                        <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {amount && parseFloat(amount) > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {parseInt(installments)}x de R$ {(parseFloat(amount) / parseInt(installments)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Account */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Conta</Label>
