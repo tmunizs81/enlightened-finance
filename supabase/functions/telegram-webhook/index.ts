@@ -141,9 +141,8 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
         return await handleCategorias(supabase, userId, sendTg);
       }
 
-      // Unknown text — show help hint
-      await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
-      return new Response("ok");
+      // Natural language processing with AI
+      return await handleNaturalLanguage(supabase, userId, message.text.trim(), chatId, botToken, sendTg);
     }
 
     // --- HANDLE PHOTO ---
@@ -901,4 +900,149 @@ async function handleCategorias(supabase: any, userId: string, sendTg: Function)
 
   await sendTg(msg);
   return new Response("ok");
+}
+
+// ===== NATURAL LANGUAGE HANDLER =====
+async function handleNaturalLanguage(supabase: any, userId: string, text: string, chatId: string, botToken: string, sendTg: Function) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
+    return new Response("ok");
+  }
+
+  // Fetch categories and accounts
+  const [catRes, accRes] = await Promise.all([
+    supabase.from("categories").select("id, name, type").eq("user_id", userId),
+    supabase.from("accounts").select("id, name, type").eq("user_id", userId),
+  ]);
+
+  const categories = catRes.data || [];
+  const accounts = accRes.data || [];
+  const catList = categories.map((c: any) => `- "${c.name}" tipo: ${c.type} (id: ${c.id})`).join("\n");
+  const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
+
+  try {
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{
+          role: "user",
+          content: `Você é um assistente financeiro que interpreta mensagens em linguagem natural para registrar transações.
+
+Mensagem do usuário: "${text}"
+
+Categorias disponíveis:
+${catList || "Nenhuma"}
+
+Contas disponíveis:
+${accList || "Nenhuma"}
+
+Data de hoje: ${new Date().toISOString().split("T")[0]}
+
+REGRAS:
+- Se a mensagem descreve uma transação financeira (gasto, compra, recebimento, pagamento, etc.), extraia os dados.
+- Se a mensagem NÃO é sobre uma transação financeira, retorne {"is_transaction": false, "reply": "uma resposta amigável curta"}
+- Palavras como "gastei", "paguei", "comprei", "almocei", "jantei" = despesa
+- Palavras como "recebi", "ganhei", "entrou" = receita
+- Se o valor não for mencionado, tente inferir ou retorne is_transaction false
+
+Responda APENAS JSON:
+{"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
+ou
+{"is_transaction": false, "reply": "mensagem"}`,
+        }],
+      }),
+    });
+
+    if (!aiResp.ok) {
+      console.error("AI NL error:", aiResp.status);
+      await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
+      return new Response("ok");
+    }
+
+    const aiData = await aiResp.json();
+    const raw = aiData.choices?.[0]?.message?.content || "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      await sendTg("🤔 Não entendi. Tente algo como:\n_\"Gastei 50 reais no mercado\"_\n_\"Recebi 3000 de salário\"_\n\nOu digite /ajuda");
+      return new Response("ok");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    if (!parsed.is_transaction) {
+      await sendTg(parsed.reply || "🤔 Não entendi. Tente _\"Gastei 50 reais no mercado\"_ ou /ajuda");
+      return new Response("ok");
+    }
+
+    const amount = Number(parsed.amount);
+    if (!amount || isNaN(amount)) {
+      await sendTg("🤔 Não consegui identificar o valor. Tente: _\"Gastei 45.90 no almoço\"_");
+      return new Response("ok");
+    }
+
+    const type = parsed.type || "expense";
+    const label = type === "income" ? "receita" : "despesa";
+    const catName = parsed.category_id ? (categories.find((c: any) => c.id === parsed.category_id)?.name || "Sem categoria") : "Sem categoria";
+    const accName = parsed.account_id ? (accounts.find((a: any) => a.id === parsed.account_id)?.name || "Sem conta") : "Sem conta";
+
+    // Save as pending
+    const { data: pending, error: pendingErr } = await supabase
+      .from("pending_ocr_transactions")
+      .insert({
+        user_id: userId,
+        chat_id: chatId,
+        amount,
+        description: parsed.description || text.slice(0, 50),
+        date: parsed.date || new Date().toISOString().split("T")[0],
+        category_id: parsed.category_id || null,
+        account_id: parsed.account_id || null,
+        confidence: "high",
+        status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (pendingErr || !pending) {
+      console.error("NL pending insert error:", pendingErr);
+      await sendTg("❌ Erro interno. Tente novamente.");
+      return new Response("ok");
+    }
+
+    const icon = type === "income" ? "📈" : "📉";
+    const previewMsg = `${icon} *${label.charAt(0).toUpperCase() + label.slice(1)} detectada — Confirme:*
+
+💰 *Valor:* R$ ${amount.toFixed(2)}
+📝 *Descrição:* ${parsed.description || text.slice(0, 50)}
+📅 *Data:* ${parsed.date || new Date().toLocaleDateString("pt-BR")}
+🏷️ *Categoria:* ${catName}
+🏦 *Conta:* ${accName}`;
+
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Confirmar", callback_data: `cmd_confirm:${pending.id}:${type}` },
+          { text: "❌ Cancelar", callback_data: `ocr_cancel:${pending.id}` },
+        ],
+        [
+          { text: "✏️ Categoria", callback_data: `ocr_edit:${pending.id}:category` },
+          { text: "✏️ Conta", callback_data: `ocr_edit:${pending.id}:account` },
+        ],
+        [
+          { text: "✏️ Valor", callback_data: `ocr_edit:${pending.id}:amount` },
+          { text: "✏️ Descrição", callback_data: `ocr_edit:${pending.id}:description` },
+        ],
+      ],
+    };
+
+    await sendTg(previewMsg, { reply_markup: inlineKeyboard });
+    return new Response("ok");
+  } catch (e) {
+    console.error("NL processing error:", e);
+    await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
+    return new Response("ok");
+  }
 }

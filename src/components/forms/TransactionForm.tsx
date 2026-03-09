@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Paperclip, X, FileImage, Loader2 } from "lucide-react";
+import { Plus, Paperclip, X, FileImage, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface Account {
@@ -47,12 +47,43 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(initialData?.receipt_url || null);
   const [uploading, setUploading] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggested, setAiSuggested] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertCategory = useSupabaseInsert("categories");
 
   const filteredCats = categories.filter((c) => c.type === type);
+
+  // Auto-categorize with AI
+  const autoCategorize = useCallback(async (desc: string, txType: string) => {
+    if (desc.length < 3 || categoryId !== "none") return;
+    setAiSuggesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-categorize", {
+        body: { description: desc, type: txType },
+      });
+      if (!error && data?.category_id) {
+        setAiSuggested(data.category_name);
+        setCategoryId(data.category_id);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setAiSuggesting(false);
+    }
+  }, [categoryId]);
+
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    setAiSuggested(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.length >= 4 && categoryId === "none") {
+      debounceRef.current = setTimeout(() => autoCategorize(value, type), 800);
+    }
+  };
 
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
@@ -164,6 +195,19 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Descrição</Label>
+            <Input value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className="bg-secondary border-border" required />
+            {aiSuggesting && (
+              <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                <Sparkles className="h-3 w-3 animate-pulse" />
+                <span>IA sugerindo categoria...</span>
+              </div>
+            )}
+            {aiSuggested && !aiSuggesting && (
+              <div className="flex items-center gap-1.5 text-[10px] text-success">
+                <Sparkles className="h-3 w-3" />
+                <span>IA sugeriu: <strong>{aiSuggested}</strong></span>
+              </div>
+            )}
             <Input value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-border" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
