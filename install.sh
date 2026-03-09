@@ -67,20 +67,10 @@ log "Código baixado"
 # ============================================
 # 4. Configure Environment
 # ============================================
-ENV_FILE=".env"
-if [ ! -f "$ENV_FILE" ]; then
-  info "Configurando variáveis de ambiente..."
-  cat > "$ENV_FILE" <<EOF
-# FinanceAI Environment Variables
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
-APP_PORT=80
-EOF
-  warn "Edite o arquivo .env com suas credenciais do Supabase antes de continuar!"
-  warn "Execute: nano .env"
-  read -p "Pressione ENTER após configurar o .env..."
+if [ -f ".env" ]; then
+  log "Arquivo .env encontrado e configurado"
 else
-  log "Arquivo .env encontrado"
+  err "Arquivo .env não encontrado! Verifique o repositório."
 fi
 
 # ============================================
