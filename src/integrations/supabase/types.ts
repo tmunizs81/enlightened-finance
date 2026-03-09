@@ -468,6 +468,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_profiles: {
+        Args: never
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       generate_license_key: { Args: never; Returns: string }
       has_role: {
         Args: {
