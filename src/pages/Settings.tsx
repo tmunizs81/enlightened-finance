@@ -111,6 +111,28 @@ const SettingsPage = () => {
     else toast.success("Configuração do Telegram salva!");
   };
 
+  const handleDetectChatId = async () => {
+    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    setTesting(true);
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
+      const data = await resp.json();
+      if (data.ok && data.result && data.result.length > 0) {
+        const lastUpdate = data.result[data.result.length - 1];
+        const detectedChatId = String(lastUpdate.message?.chat?.id || lastUpdate.callback_query?.message?.chat?.id || "");
+        if (detectedChatId) {
+          setChatId(detectedChatId);
+          toast.success(`Chat ID detectado: ${detectedChatId}\n\nAgora clique em "Salvar Configuração"`);
+        } else {
+          toast.error("Nenhuma mensagem encontrada. Envie /start para o bot primeiro.");
+        }
+      } else {
+        toast.error("Envie /start para o bot no Telegram primeiro, depois clique aqui novamente.");
+      }
+    } catch { toast.error("Falha ao detectar Chat ID."); }
+    finally { setTesting(false); }
+  };
+
   const handleTest = async () => {
     if (!botToken || !chatId) { toast.error("Preencha o token e o Chat ID primeiro."); return; }
     setTesting(true);
@@ -313,15 +335,21 @@ const SettingsPage = () => {
           <p className="text-[11px] text-muted-foreground">1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong></p>
           <p className="text-[11px] text-muted-foreground">2. Envie <code className="bg-background px-1 rounded text-foreground">/newbot</code> e siga as instruções</p>
           <p className="text-[11px] text-muted-foreground">3. Copie o <strong className="text-foreground">Token</strong> gerado e cole abaixo</p>
-          <p className="text-[11px] text-muted-foreground">4. Para o Chat ID: <code className="bg-background px-1 rounded text-foreground text-[10px]">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code></p>
+          <p className="text-[11px] text-muted-foreground">4. Envie <code className="bg-background px-1 rounded text-foreground">/start</code> para o seu bot no Telegram</p>
+          <p className="text-[11px] text-muted-foreground">5. Clique em <strong className="text-foreground">"Detectar Chat ID"</strong> abaixo</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">Token do Bot</Label>
           <Input id="telegram-token" value={botToken} onChange={(e) => setBotToken(e.target.value)} placeholder="123456789:ABCDEF..." className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">Chat ID</Label>
-          <Input id="telegram-chat" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Seu Chat ID" className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">Chat ID</Label>
+            <Button variant="ghost" size="sm" onClick={handleDetectChatId} disabled={testing || !botToken} className="text-[10px] h-6 px-2 text-primary">
+              {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "🔍 Detectar Chat ID"}
+            </Button>
+          </div>
+          <Input id="telegram-chat" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Envie /start no bot e clique em 'Detectar Chat ID'" className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
         </div>
         <div className="flex gap-2">
           <Button onClick={handleSave} disabled={saving || !loaded} className="gradient-bg-primary text-primary-foreground text-xs">
