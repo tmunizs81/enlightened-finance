@@ -34,8 +34,7 @@ export function usePushNotifications() {
           icon: "/pwa-icon-192.png",
           badge: "/pwa-icon-192.png",
           tag: tag || "t2-notification",
-          vibrate: [200, 100, 200],
-        });
+        } as NotificationOptions);
       });
     }
   }, [isSupported]);
