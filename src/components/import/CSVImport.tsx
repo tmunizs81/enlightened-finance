@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, Check, X, Loader2 } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Upload, FileText, Check, X, Loader2, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 import { toast } from "sonner";
 
 interface ParsedRow {
@@ -13,6 +14,14 @@ interface ParsedRow {
   description: string;
   amount: number;
   type: "income" | "expense";
+}
+
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  institution: string | null;
+  currency: string;
 }
 
 export function CSVImport() {
@@ -23,13 +32,14 @@ export function CSVImport() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [separator, setSeparator] = useState<"," | ";">(";");
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
 
   const parseCSV = (text: string) => {
     const lines = text.trim().split("\n").filter(Boolean);
     if (lines.length < 2) { toast.error("CSV vazio ou sem dados."); return; }
 
     const parsed: ParsedRow[] = [];
-    // Skip header
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(separator).map((c) => c.replace(/^"|"$/g, "").trim());
       if (cols.length < 3) continue;
@@ -74,7 +84,6 @@ export function CSVImport() {
         return m ? m[1].trim() : "";
       };
 
-      const trnType = getValue("TRNTYPE");
       const dtPosted = getValue("DTPOSTED");
       const trnAmt = getValue("TRNAMT");
       const memo = getValue("MEMO") || getValue("NAME") || "Transação OFX";
@@ -93,6 +102,16 @@ export function CSVImport() {
         amount: Math.abs(amount),
         type: amount < 0 ? "expense" : "income",
       });
+    }
+
+    // Try to detect bank from OFX
+    const orgMatch = text.match(/<ORG>([^<\n]+)/i);
+    if (orgMatch && accounts.length > 0) {
+      const orgName = orgMatch[1].trim().toLowerCase();
+      const matched = accounts.find(
+        (a) => a.institution?.toLowerCase().includes(orgName) || a.name.toLowerCase().includes(orgName)
+      );
+      if (matched) setSelectedAccountId(matched.id);
     }
 
     if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada no OFX."); return; }
@@ -127,6 +146,7 @@ export function CSVImport() {
         type: r.type,
         status: "paid",
         user_id: user.id,
+        ...(selectedAccountId ? { account_id: selectedAccountId } : {}),
       }));
 
       const batchSize = 100;
@@ -139,6 +159,7 @@ export function CSVImport() {
       toast.success(`${rows.length} transações importadas com sucesso!`);
       setOpen(false);
       setRows([]);
+      setSelectedAccountId("");
     } catch (e: any) {
       toast.error(e.message || "Erro ao importar");
     } finally {
@@ -160,17 +181,34 @@ export function CSVImport() {
             Importar Transações ({rows.length} encontradas)
           </DialogTitle>
 
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs text-muted-foreground">Separador:</span>
-            <Select value={separator} onValueChange={(v) => setSeparator(v as "," | ";")}>
-              <SelectTrigger className="w-24 h-8 text-xs bg-secondary border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value=";">Ponto-vírgula (;)</SelectItem>
-                <SelectItem value=",">Vírgula (,)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Separador:</span>
+              <Select value={separator} onValueChange={(v) => setSeparator(v as "," | ";")}>
+                <SelectTrigger className="w-24 h-8 text-xs bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value=";">Ponto-vírgula (;)</SelectItem>
+                  <SelectItem value=",">Vírgula (,)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Conta:</span>
+              <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                <SelectTrigger className="w-40 h-8 text-xs bg-secondary border-border">
+                  <SelectValue placeholder="Sem vínculo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sem vínculo</SelectItem>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="max-h-64 overflow-auto scrollbar-thin border border-border rounded-lg">
