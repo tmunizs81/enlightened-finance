@@ -4,6 +4,8 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useLicenseNotification } from "@/hooks/use-license-notification";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useDailyReminder } from "@/hooks/use-push-notifications";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 
@@ -11,6 +13,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoBackup();
   useLicenseNotification();
   useInactivityLogout();
+  useKeyboardShortcuts();
+  useDailyReminder();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
