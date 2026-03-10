@@ -19,6 +19,7 @@ import { YearlyComparison } from "@/components/dashboard/YearlyComparison";
 import { AIBudgetSuggestions } from "@/components/dashboard/AIBudgetSuggestions";
 import { PredictiveAlerts } from "@/components/dashboard/PredictiveAlerts";
 import { NetWorthEvolution } from "@/components/dashboard/NetWorthEvolution";
+import { NationalBenchmark } from "@/components/dashboard/NationalBenchmark";
 import {
   DraggableDashboard,
   DashboardWidgetManager,
@@ -92,6 +93,7 @@ const Index = () => {
         ),
         visible: true,
       },
+      { id: "national-benchmark", label: "Comparativo Nacional", component: <NationalBenchmark />, visible: true },
       { id: "insights", label: "Insights", component: <InsightsPanel />, visible: true },
     ],
     []
