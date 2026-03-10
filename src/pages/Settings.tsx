@@ -582,6 +582,12 @@ const SettingsPage = () => {
         </div>
       )}
 
+      {/* Notificações Push */}
+      <PushNotificationsSection />
+
+      {/* Atalhos de Teclado */}
+      <KeyboardShortcutsSection />
+
       {/* Geral */}
       <div className="glass-card p-5 space-y-4">
         <div className="flex items-center gap-3">
