@@ -223,7 +223,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                 <span>IA sugeriu: <strong>{aiSuggested}</strong></span>
               </div>
             )}
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-border" required />
+            
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

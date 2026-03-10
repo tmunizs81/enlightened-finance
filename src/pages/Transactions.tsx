@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag } from "lucide-react";
 import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { TransactionForm } from "@/components/forms/TransactionForm";
+import { TagManager } from "@/components/tags/TagManager";
+import { TransactionSplitDialog } from "@/components/splits/TransactionSplitDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -39,26 +44,98 @@ interface Category {
   id: string;
   name: string;
   icon: string | null;
+  type: string;
+}
+
+interface TagData {
+  id: string;
+  name: string;
+  color: string;
 }
 
 const Transactions = () => {
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [splitTx, setSplitTx] = useState<Transaction | null>(null);
+  const [allTags, setAllTags] = useState<TagData[]>([]);
+  const [txTags, setTxTags] = useState<Record<string, TagData[]>>({});
+  const [txSplits, setTxSplits] = useState<Set<string>>(new Set());
+  const [tagsVersion, setTagsVersion] = useState(0);
+
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
   const updateMutation = useSupabaseUpdate("transactions");
   const deleteMutation = useSupabaseDelete("transactions");
 
+  // Auto-open form if ?new=1
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setEditing(null);
+      setFormOpen(true);
+    }
+  }, [searchParams]);
+
+  // Load all tags
+  const loadTags = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from("tags" as any).select("*").eq("user_id", user.id);
+    if (data) setAllTags(data as any[]);
+  }, [user]);
+
+  // Load transaction-tag associations
+  const loadTxTags = useCallback(async () => {
+    if (!user || transactions.length === 0) return;
+    const txIds = transactions.map((t) => t.id);
+    const { data } = await supabase
+      .from("transaction_tags" as any)
+      .select("transaction_id, tag_id")
+      .in("transaction_id", txIds);
+
+    if (data) {
+      const map: Record<string, TagData[]> = {};
+      for (const row of data as any[]) {
+        const tag = allTags.find((t) => t.id === row.tag_id);
+        if (tag) {
+          if (!map[row.transaction_id]) map[row.transaction_id] = [];
+          map[row.transaction_id].push(tag);
+        }
+      }
+      setTxTags(map);
+    }
+  }, [user, transactions, allTags]);
+
+  // Load which transactions have splits
+  const loadSplitInfo = useCallback(async () => {
+    if (transactions.length === 0) return;
+    const txIds = transactions.map((t) => t.id);
+    const { data } = await supabase
+      .from("transaction_splits" as any)
+      .select("transaction_id")
+      .in("transaction_id", txIds);
+
+    if (data) {
+      setTxSplits(new Set((data as any[]).map((d: any) => d.transaction_id)));
+    }
+  }, [transactions]);
+
+  useEffect(() => { loadTags(); }, [loadTags]);
+  useEffect(() => { loadTxTags(); }, [loadTxTags, tagsVersion]);
+  useEffect(() => { loadSplitInfo(); }, [loadSplitInfo]);
+
   const catMap = new Map(categories.map((c) => [c.id, c]));
 
   const filtered = transactions.filter((t) => {
     const matchSearch = t.description.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === "all" || t.type === filter;
-    return matchSearch && matchFilter;
+    // Also search by tag name
+    const tagMatch = (txTags[t.id] || []).some((tag) => tag.name.toLowerCase().includes(search.toLowerCase()));
+    return (matchSearch || tagMatch) && matchFilter;
   });
 
   const handleSubmit = (data: any) => {
@@ -87,7 +164,7 @@ const Transactions = () => {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar transações..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-secondary border-border" />
+          <Input placeholder="Buscar transações ou tags..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-secondary border-border" />
         </div>
         <div className="flex gap-2">
           {(["all", "income", "expense"] as const).map((f) => (
@@ -113,16 +190,32 @@ const Transactions = () => {
                 {t.type === "income" ? <ArrowUpRight className="h-4 w-4 text-success" /> : <ArrowDownRight className="h-4 w-4 text-destructive" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{t.description}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-foreground truncate">{t.description}</p>
+                  {txSplits.has(t.id) && (
+                    <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">Split</Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {t.category_id && catMap.has(t.category_id) ? `${catMap.get(t.category_id)!.icon || ""}${catMap.get(t.category_id)!.name} · ` : ""}{new Date(t.date).toLocaleDateString("pt-BR")}
                 </p>
+                <div className="mt-1">
+                  <TagManager
+                    transactionId={t.id}
+                    tags={txTags[t.id] || []}
+                    allTags={allTags}
+                    onTagsChange={() => { setTagsVersion((v) => v + 1); loadTags(); }}
+                  />
+                </div>
               </div>
               <Badge variant="outline" className={`text-[10px] hidden sm:flex ${statusStyles[t.status]}`}>{statusLabels[t.status]}</Badge>
               <p className={`text-sm font-bold tabular-nums ${t.type === "income" ? "text-success" : "text-foreground"}`}>
                 {t.type === "income" ? "+" : "-"} R$ {Number(t.amount).toLocaleString("pt-BR")}
               </p>
               <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" title="Dividir" onClick={() => setSplitTx(t)}>
+                  <Split className="h-3 w-3" />
+                </Button>
                 {t.receipt_url && (
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" onClick={() => setReceiptUrl(t.receipt_url)}>
                     <Paperclip className="h-3 w-3" />
@@ -147,6 +240,19 @@ const Transactions = () => {
         initialData={editing}
         loading={insertMutation.isPending || updateMutation.isPending}
       />
+
+      {splitTx && (
+        <TransactionSplitDialog
+          open={!!splitTx}
+          onOpenChange={(v) => { if (!v) setSplitTx(null); }}
+          transactionId={splitTx.id}
+          transactionAmount={Number(splitTx.amount)}
+          transactionType={splitTx.type}
+          transactionDescription={splitTx.description}
+          categories={categories}
+          onSaved={() => loadSplitInfo()}
+        />
+      )}
 
       <Dialog open={!!receiptUrl} onOpenChange={(v) => { if (!v) setReceiptUrl(null); }}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
