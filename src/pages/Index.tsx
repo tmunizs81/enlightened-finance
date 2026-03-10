@@ -93,6 +93,7 @@ const Index = () => {
         ),
         visible: true,
       },
+      { id: "national-benchmark", label: "Comparativo Nacional", component: <NationalBenchmark />, visible: true },
       { id: "insights", label: "Insights", component: <InsightsPanel />, visible: true },
     ],
     []
