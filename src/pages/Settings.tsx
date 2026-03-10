@@ -11,6 +11,62 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { SHORTCUTS_LIST } from "@/hooks/use-keyboard-shortcuts";
+
+function PushNotificationsSection() {
+  const { isSupported, isEnabled, requestPermission } = usePushNotifications();
+  return (
+    <div className="glass-card p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Bell className="h-5 w-5 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Notificações Push</h2>
+        </div>
+        {isEnabled && (
+          <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
+            <CheckCircle className="h-3 w-3 mr-1" /> Ativadas
+          </Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Receba lembretes diários às 21h para registrar seus gastos e alertas importantes.
+      </p>
+      {!isSupported ? (
+        <p className="text-xs text-muted-foreground">Seu navegador não suporta notificações push.</p>
+      ) : isEnabled ? (
+        <div className="rounded-lg bg-success/5 border border-success/20 p-3">
+          <p className="text-[11px] text-success">✅ Notificações ativadas. Você receberá lembretes diários às 21h.</p>
+        </div>
+      ) : (
+        <Button onClick={requestPermission} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5">
+          <Bell className="h-3.5 w-3.5" /> Ativar Notificações
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function KeyboardShortcutsSection() {
+  return (
+    <div className="glass-card p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        <Keyboard className="h-5 w-5 text-primary" />
+        <h2 className="text-sm font-semibold text-foreground">Atalhos de Teclado</h2>
+      </div>
+      <p className="text-xs text-muted-foreground">Use atalhos para navegar e executar ações rapidamente.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {SHORTCUTS_LIST.map((s) => (
+          <div key={s.keys} className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 border border-border/50">
+            <span className="text-[11px] text-muted-foreground">{s.label}</span>
+            <kbd className="px-2 py-0.5 rounded bg-muted text-[10px] font-mono text-foreground">{s.keys}</kbd>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 const BACKUP_TABLES = ["accounts", "categories", "transactions", "goals", "budgets", "recurring_transactions", "ai_insights"] as const;
 
