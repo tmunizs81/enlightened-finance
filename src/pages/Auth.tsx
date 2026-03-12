@@ -66,7 +66,7 @@ const Auth = () => {
           </Button>
         </form>
       </motion.div>
-      <p className="absolute bottom-4 text-center text-[10px] text-muted-foreground/60 max-w-sm px-4">
+      <p className="mt-6 text-center text-[10px] text-muted-foreground/60 max-w-sm px-4">
         Todos os direitos reservados a T2 Soluções Tecnológicas. Proibido cópia ou distribuição não autorizada.
       </p>
     </div>
