@@ -61,9 +61,9 @@ serve(async (req) => {
 
     // Get AI explanation for anomalies
     let aiExplanation = "";
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
-    if (LOVABLE_API_KEY && anomalies.length > 0) {
+    if (DEEPSEEK_API_KEY && anomalies.length > 0) {
       try {
         const anomalyText = anomalies.slice(0, 5).map((a: any) =>
           `"${a.description}" em ${a.category}: R$ ${a.amount} (média R$ ${a.average}, ${a.ratio}x acima)`
