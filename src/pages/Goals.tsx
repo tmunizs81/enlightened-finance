@@ -108,6 +108,8 @@ const Goals = () => {
         </div>
       )}
 
+      {goals.length > 0 && <GoalAIMonitor />}
+
       <GoalForm
         open={formOpen}
         onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
