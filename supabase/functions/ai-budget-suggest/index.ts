@@ -79,10 +79,10 @@ serve(async (req) => {
     const avgIncome = monthlyIncomes.reduce((a, b) => a + b, 0) / Math.max(monthlyIncomes.length, 1);
 
     // Use AI to suggest optimal budgets
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     let suggestions: any[] = [];
 
-    if (LOVABLE_API_KEY && spendingSummary.length > 0) {
+    if (DEEPSEEK_API_KEY && spendingSummary.length > 0) {
       try {
         const prompt = `Você é um planejador financeiro. Com base nos dados abaixo, sugira orçamentos mensais ideais para cada categoria.
 
