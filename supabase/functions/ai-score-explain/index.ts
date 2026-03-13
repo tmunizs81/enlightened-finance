@@ -11,8 +11,8 @@ serve(async (req) => {
 
   try {
     const { scoreData } = await req.json();
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
 
     const prompt = `Você é um consultor financeiro analisando o score financeiro de um usuário. Dados:
 
