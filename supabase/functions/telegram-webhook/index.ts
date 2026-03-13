@@ -206,14 +206,15 @@ Responda APENAS JSON:
 
 Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
-    const aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "google/gemini-2.5-flash",
         messages: [{
           role: "user",
           content: [
