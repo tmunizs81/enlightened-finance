@@ -904,8 +904,8 @@ async function handleCategorias(supabase: any, userId: string, sendTg: Function)
 
 // ===== NATURAL LANGUAGE HANDLER =====
 async function handleNaturalLanguage(supabase: any, userId: string, text: string, chatId: string, botToken: string, sendTg: Function) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) {
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
