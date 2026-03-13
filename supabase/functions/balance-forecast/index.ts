@@ -60,10 +60,10 @@ serve(async (req) => {
     const projectedMonthlyNet = avgNet * 0.6 + monthlyRecurringNet * 0.4;
 
     // Build AI context for analysis
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     let aiAnalysis = "";
 
-    if (LOVABLE_API_KEY) {
+    if (DEEPSEEK_API_KEY) {
       try {
         const prompt = `Analise estes dados financeiros e dê uma previsão curta (máximo 3 frases em português) sobre a tendência do saldo:
 - Saldo atual: R$ ${currentBalance.toFixed(2)}
