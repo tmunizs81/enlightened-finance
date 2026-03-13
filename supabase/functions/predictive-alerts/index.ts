@@ -131,9 +131,9 @@ serve(async (req) => {
     let aiSuggestions: string[] = [];
 
     if (predictions.length > 0) {
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
-      if (LOVABLE_API_KEY) {
+      if (DEEPSEEK_API_KEY) {
         const context = predictions.map((p) =>
           `${p.categoryName}: gasto R$${p.spent.toFixed(2)} de R$${p.budget.toFixed(2)} (${p.pctSpent}%), projeção ${p.pctProjected}% ao final do mês${p.projectedOverrun > 0 ? `, estouro previsto de R$${p.projectedOverrun.toFixed(2)}` : ""}`
         ).join("\n");
