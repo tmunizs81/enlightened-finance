@@ -734,11 +734,11 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
         const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
         const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
 
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "deepseek-chat",
             messages: [{
               role: "user",
               content: `Classifique esta ${label}: "${description}" (R$ ${amount.toFixed(2)})
