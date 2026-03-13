@@ -61,8 +61,8 @@ serve(async (req) => {
     }
 
     // Use AI for classification
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) {
       return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
