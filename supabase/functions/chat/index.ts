@@ -176,14 +176,14 @@ INSTRUÇÕES IMPORTANTES:
 - Quando o usuário perguntar "quanto gastei com X", procure nos gastos por categoria e nas transações recentes.
 - Calcule percentuais e comparativos quando fizer sentido.`;
 
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,

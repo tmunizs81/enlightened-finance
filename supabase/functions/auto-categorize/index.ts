@@ -74,11 +74,11 @@ serve(async (req) => {
       return `"${t.description}" → ${catName}`;
     }).join("\n");
 
-    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "llama-3.3-70b-versatile",
         messages: [{
           role: "user",
           content: `Classifique esta transação na categoria mais adequada.
