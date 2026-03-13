@@ -923,11 +923,11 @@ async function handleNaturalLanguage(supabase: any, userId: string, text: string
   const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
 
   try {
-    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "llama-3.3-70b-versatile",
         messages: [{
           role: "user",
           content: `Você é um assistente financeiro que interpreta mensagens em linguagem natural para registrar transações.
