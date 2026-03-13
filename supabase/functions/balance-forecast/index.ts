@@ -60,7 +60,7 @@ serve(async (req) => {
     const projectedMonthlyNet = avgNet * 0.6 + monthlyRecurringNet * 0.4;
 
     // Build AI context for analysis
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     let aiAnalysis = "";
 
     if (DEEPSEEK_API_KEY) {
