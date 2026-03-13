@@ -107,8 +107,8 @@ serve(async (req) => {
     });
     const totalSpend = transactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const weekEndDate = new Date(weekStart);
     weekEndDate.setDate(weekEndDate.getDate() + 6);
@@ -131,11 +131,11 @@ Regras:
 - XP: 30-100 baseado na dificuldade
 - Use categorias onde o usuário gasta mais`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você cria desafios financeiros gamificados. Retorne JSON estruturado." },
           { role: "user", content: prompt },

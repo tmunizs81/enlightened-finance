@@ -11,8 +11,8 @@ serve(async (req) => {
 
   try {
     const { scoreData } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const prompt = `Você é um consultor financeiro analisando o score financeiro de um usuário. Dados:
 
@@ -31,11 +31,11 @@ Dê uma explicação curta e personalizada (máximo 5 frases em português) sobr
 
 Seja direto, prático e motivador. Responda APENAS com a análise.`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
       }),
     });

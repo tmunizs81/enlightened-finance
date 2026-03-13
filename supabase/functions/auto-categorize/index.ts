@@ -61,8 +61,8 @@ serve(async (req) => {
     }
 
     // Use AI for classification
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) {
       return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -74,11 +74,11 @@ serve(async (req) => {
       return `"${t.description}" → ${catName}`;
     }).join("\n");
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek-chat",
         messages: [{
           role: "user",
           content: `Classifique esta transação na categoria mais adequada.
