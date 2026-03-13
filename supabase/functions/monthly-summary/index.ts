@@ -79,17 +79,17 @@ Mês anterior (${prevMonthName}):
 
 Retorne um resumo narrativo de 3-5 frases analisando a evolução, destacando categorias com maior variação e dando uma recomendação prática.`;
 
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
 
-    const aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: "Você é um analista financeiro pessoal. Seja direto e use emojis com moderação." },
           { role: "user", content: prompt },

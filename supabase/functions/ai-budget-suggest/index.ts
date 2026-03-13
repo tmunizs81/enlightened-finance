@@ -79,33 +79,29 @@ serve(async (req) => {
     const avgIncome = monthlyIncomes.reduce((a, b) => a + b, 0) / Math.max(monthlyIncomes.length, 1);
 
     // Use AI to suggest optimal budgets
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     let suggestions: any[] = [];
 
-    if (DEEPSEEK_API_KEY && spendingSummary.length > 0) {
+    if (GROQ_API_KEY && spendingSummary.length > 0) {
       try {
         const prompt = `Você é um planejador financeiro. Com base nos dados abaixo, sugira orçamentos mensais ideais para cada categoria.
 
-Renda média mensal: R$ ${avgIncome.toFixed(0)}
-${goals.length > 0 ? `Metas: ${goals.map((g: any) => `${g.name} (faltam R$ ${(Number(g.target_amount) - Number(g.current_amount)).toFixed(0)})`).join(", ")}` : ""}
-
-Gastos médios por categoria (últimos 3 meses):
-${spendingSummary.map((s: any) => `- ${s.catName}: R$ ${s.avg}/mês`).join("\n")}
-
-Responda APENAS com um JSON array no formato:
-[{"catName": "nome", "catId": "id", "currentAvg": numero, "suggestedBudget": numero, "reason": "motivo curto"}]
+Renda mensal: R$ ${monthlyIncome.toFixed(2)}
+Gastos por categoria (últimos 3 meses):
+${spendingSummary.map(s => `- ${s.categoryName}: média R$ ${s.avgSpending.toFixed(2)}/mês (${s.months} meses de dados)`).join("\n")}
 
 Regras:
-- Sugira valores realistas, idealmente 5-15% menor que a média para categorias não essenciais
-- Mantenha ou aumente para categorias essenciais
-- Considere as metas do usuário
+- Sugira valores realistas baseados no histórico
+- O total dos orçamentos não deve ultrapassar 90% da renda
+- Priorize categorias essenciais
+- Para cada categoria, explique brevemente o raciocínio
 - Inclua TODAS as categorias listadas`;
 
-        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "deepseek-chat",
+            model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
             tools: [{
               type: "function",

@@ -61,9 +61,9 @@ serve(async (req) => {
 
     // Get AI explanation for anomalies
     let aiExplanation = "";
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
-    if (DEEPSEEK_API_KEY && anomalies.length > 0) {
+    if (GROQ_API_KEY && anomalies.length > 0) {
       try {
         const anomalyText = anomalies.slice(0, 5).map((a: any) =>
           `"${a.description}" em ${a.category}: R$ ${a.amount} (média R$ ${a.average}, ${a.ratio}x acima)`
@@ -73,11 +73,11 @@ serve(async (req) => {
 ${anomalyText}
 Responda APENAS com a análise, sem saudações. Seja direto e prático.`;
 
-        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "deepseek-chat",
+            model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
           }),
         });

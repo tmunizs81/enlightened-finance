@@ -131,32 +131,27 @@ serve(async (req) => {
     let aiSuggestions: string[] = [];
 
     if (predictions.length > 0) {
-      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
-      if (DEEPSEEK_API_KEY) {
+      if (GROQ_API_KEY) {
         const context = predictions.map((p) =>
           `${p.categoryName}: gasto R$${p.spent.toFixed(2)} de R$${p.budget.toFixed(2)} (${p.pctSpent}%), projeção ${p.pctProjected}% ao final do mês${p.projectedOverrun > 0 ? `, estouro previsto de R$${p.projectedOverrun.toFixed(2)}` : ""}`
         ).join("\n");
 
-        const prompt = `Você é um consultor financeiro do T2-SimplyFin. Analise os dados de orçamento abaixo e gere 3 sugestões específicas e práticas para evitar estouro nos próximos ${daysLeft} dias. Seja direto e use valores reais.
+        const prompt = `Analise estas projeções de orçamento e dê conselhos curtos e práticos (máximo 3 frases em português):
+${context}
 
-Dia atual: ${dayOfMonth}/${currentMonth}/${currentYear} (${daysLeft} dias restantes no mês)
-Gasto total até agora: R$${totalSpentSoFar.toFixed(2)}
-Projeção total: R$${projectedTotal.toFixed(2)}
-Contas recorrentes previstas: R$${upcomingRecurringTotal.toFixed(2)}
-
-Orçamentos:
-${context}`;
+Responda APENAS com a análise, sem saudações. Foque em ações concretas para evitar o estouro.`;
 
         try {
-          const aiRes = await fetch("https://api.deepseek.com/chat/completions", {
+          const aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+              Authorization: `Bearer ${GROQ_API_KEY}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "deepseek-chat",
+              model: "llama-3.3-70b-versatile",
               messages: [
                 { role: "system", content: "Você é um consultor financeiro conciso. Responda sempre em português brasileiro com bullet points curtos e práticos." },
                 { role: "user", content: prompt },

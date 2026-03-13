@@ -60,10 +60,10 @@ serve(async (req) => {
     const projectedMonthlyNet = avgNet * 0.6 + monthlyRecurringNet * 0.4;
 
     // Build AI context for analysis
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     let aiAnalysis = "";
 
-    if (DEEPSEEK_API_KEY) {
+    if (GROQ_API_KEY) {
       try {
         const prompt = `Analise estes dados financeiros e dê uma previsão curta (máximo 3 frases em português) sobre a tendência do saldo:
 - Saldo atual: R$ ${currentBalance.toFixed(2)}
@@ -73,11 +73,11 @@ serve(async (req) => {
 - Meses com dados: ${monthlyNets.map((n, i) => `Mês -${i + 1}: R$ ${n.toFixed(0)}`).join(", ")}
 Responda APENAS com a análise, sem saudações.`;
 
-        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "deepseek-chat",
+            model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
           }),
         });
