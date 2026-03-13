@@ -61,11 +61,11 @@ serve(async (req) => {
 
 Gere em 4-5 linhas: 1) Resumo do comportamento 2) Destaque positivo ou negativo 3) Dica prática para a próxima semana. Seja direto e motivacional.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você é um analista financeiro pessoal. Responda sempre em português brasileiro, conciso e motivacional." },
           { role: "user", content: prompt },

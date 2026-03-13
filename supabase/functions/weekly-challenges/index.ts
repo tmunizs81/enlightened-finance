@@ -131,11 +131,11 @@ Regras:
 - XP: 30-100 baseado na dificuldade
 - Use categorias onde o usuário gasta mais`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você cria desafios financeiros gamificados. Retorne JSON estruturado." },
           { role: "user", content: prompt },

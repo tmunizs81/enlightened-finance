@@ -176,14 +176,14 @@ INSTRUÇÕES IMPORTANTES:
 - Quando o usuário perguntar "quanto gastei com X", procure nos gastos por categoria e nas transações recentes.
 - Calcule percentuais e comparativos quando fizer sentido.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,

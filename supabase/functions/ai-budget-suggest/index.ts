@@ -101,11 +101,11 @@ Regras:
 - Considere as metas do usuário
 - Inclua TODAS as categorias listadas`;
 
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             tools: [{
               type: "function",
