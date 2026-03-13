@@ -11,8 +11,8 @@ serve(async (req) => {
 
   try {
     const { scoreData } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const prompt = `Você é um consultor financeiro analisando o score financeiro de um usuário. Dados:
 
