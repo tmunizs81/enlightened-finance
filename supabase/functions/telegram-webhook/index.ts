@@ -728,8 +728,8 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
 
   // Use AI to classify category and account
   if (categories.length > 0 || accounts.length > 0) {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (LOVABLE_API_KEY) {
+      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (DEEPSEEK_API_KEY) {
       try {
         const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
         const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
