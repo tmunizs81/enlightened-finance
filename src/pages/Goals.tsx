@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { GoalForm } from "@/components/forms/GoalForm";
+import { GoalAIMonitor } from "@/components/dashboard/GoalAIMonitor";
 import { useConfetti } from "@/hooks/use-confetti";
 
 const colorMap: Record<string, string> = {
@@ -106,6 +107,8 @@ const Goals = () => {
           })}
         </div>
       )}
+
+      {goals.length > 0 && <GoalAIMonitor />}
 
       <GoalForm
         open={formOpen}

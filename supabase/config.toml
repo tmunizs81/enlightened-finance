@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.predictive-alerts]
 verify_jwt = false
+
+[functions.goal-monitor]
+verify_jwt = false
