@@ -25,9 +25,10 @@ serve(async (req) => {
           { global: { headers: { Authorization: authHeader } } }
         );
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const userId = user.id;
+        const chatToken = authHeader.replace("Bearer ", "");
+        const { data: chatClaims } = await supabase.auth.getClaims(chatToken);
+        if (chatClaims?.claims) {
+          const userId = chatClaims.claims.sub as string;
           const now = new Date();
           const currentMonth = now.getMonth();
           const currentYear = now.getFullYear();

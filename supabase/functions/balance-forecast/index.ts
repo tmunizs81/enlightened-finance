@@ -17,10 +17,11 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader! } } }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const token = (authHeader || "").replace("Bearer ", "");
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
 
     const [txRes, accountsRes, recurringRes] = await Promise.all([
       supabase.from("transactions").select("amount, type, status, date").eq("user_id", userId).eq("status", "paid").order("date", { ascending: false }).limit(500),

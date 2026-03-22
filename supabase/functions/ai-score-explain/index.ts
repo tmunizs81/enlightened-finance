@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// No auth needed - receives scoreData directly from client
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
