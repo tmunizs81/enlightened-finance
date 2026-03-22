@@ -97,6 +97,9 @@ serve(async (req) => {
 🎯 /metas — Progresso das metas
 💳 /contas — Lista de contas
 🏷️ /categorias — Lista de categorias
+💡 /dicas — Dicas de economia personalizadas
+📈 /analise — Análise inteligente dos gastos
+📊 /resumo — Resumo financeiro completo
 📸 *Envie uma foto* — OCR de comprovante
 
 _Exemplo: /despesa 45.90 Almoço restaurante_`
@@ -140,6 +143,15 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
       }
       if (cmd === "/categorias") {
         return await handleCategorias(supabase, userId, sendTg);
+      }
+      if (cmd === "/dicas") {
+        return await handleDicasEconomia(supabase, userId, sendTg);
+      }
+      if (cmd === "/analise") {
+        return await handleAnaliseIA(supabase, userId, sendTg);
+      }
+      if (cmd === "/resumo") {
+        return await handleResumoCompleto(supabase, userId, sendTg);
       }
 
       // Natural language processing with AI
@@ -379,6 +391,27 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
   const parts = data.split(":");
   const action = parts[0];
   const pendingId = parts[1];
+
+  // Handle daily insight buttons (no pendingId needed)
+  if (action.startsWith("daily_")) {
+    const userId = profile.user_id;
+    if (action === "daily_extrato") {
+      return await handleExtrato(supabase, userId, sendTg);
+    }
+    if (action === "daily_metas") {
+      return await handleMetas(supabase, userId, sendTg);
+    }
+    if (action === "daily_dicas") {
+      await answerCbq("Gerando dicas...");
+      return await handleDicasEconomia(supabase, userId, sendTg);
+    }
+    if (action === "daily_analise") {
+      await answerCbq("Analisando...");
+      return await handleAnaliseIA(supabase, userId, sendTg);
+    }
+    await answerCbq("OK");
+    return new Response("ok");
+  }
 
   const { data: pending } = await supabase
     .from("pending_ocr_transactions")
@@ -1050,4 +1083,291 @@ ou
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
+}
+
+// ===== NEW AI-POWERED COMMANDS =====
+
+async function handleDicasEconomia(supabase: any, userId: string, sendTg: Function) {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) {
+    await sendTg("❌ IA não configurada.");
+    return new Response("ok");
+  }
+
+  await sendTg("💡 Analisando seus gastos para gerar dicas personalizadas...");
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
+  const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, "0")}`;
+
+  const [txRes, catRes, budgetRes] = await Promise.all([
+    supabase.from("transactions").select("*").eq("user_id", userId).eq("type", "expense").gte("date", firstDay).lte("date", lastDay),
+    supabase.from("categories").select("id, name").eq("user_id", userId),
+    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+  ]);
+
+  const txs = txRes.data || [];
+  const cats = catRes.data || [];
+  const budgets = budgetRes.data || [];
+  const catMap = new Map(cats.map((c: any) => [c.id, c.name]));
+
+  const byCat: Record<string, number> = {};
+  txs.forEach((t: any) => {
+    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
+    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+  });
+  const total = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
+
+  const catLines = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`).join("\n");
+
+  try {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{
+          role: "system",
+          content: "Você é um consultor financeiro prático e empático. Dê exatamente 5 dicas de economia personalizadas baseadas nos gastos do usuário. Seja específico com valores e categorias. Use emojis. Formato Markdown."
+        }, {
+          role: "user",
+          content: `Gastos deste mês: R$ ${total.toFixed(2)}\n\nPor categoria:\n${catLines}\n\nOrçamentos:\n${budgets.map((b: any) => `- ${b.category_id ? catMap.get(b.category_id) || "Geral" : "Geral"}: R$ ${Number(b.amount).toFixed(2)}`).join("\n") || "Nenhum definido"}\n\nDia do mês: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}`
+        }],
+      }),
+    });
+
+    if (aiResp.ok) {
+      const aiData = await aiResp.json();
+      const tips = aiData.choices?.[0]?.message?.content || "Não foi possível gerar dicas.";
+      await sendTg(`💡 *Dicas de Economia Personalizadas:*\n\n${tips}`);
+    } else {
+      await sendTg("❌ Erro ao gerar dicas. Tente novamente.");
+    }
+  } catch (e) {
+    console.error("Dicas AI error:", e);
+    await sendTg("❌ Erro ao gerar dicas. Tente novamente.");
+  }
+  return new Response("ok");
+}
+
+async function handleAnaliseIA(supabase: any, userId: string, sendTg: Function) {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) {
+    await sendTg("❌ IA não configurada.");
+    return new Response("ok");
+  }
+
+  await sendTg("📈 Realizando análise inteligente dos seus gastos...");
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
+  const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, "0")}`;
+
+  // Previous month
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+  const prevFirstDay = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+  const prevLastDay = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(new Date(prevYear, prevMonth, 0).getDate()).padStart(2, "0")}`;
+
+  const [txRes, prevTxRes, catRes, goalRes, accRes, budgetRes] = await Promise.all([
+    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).lte("date", lastDay),
+    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", prevFirstDay).lte("date", prevLastDay),
+    supabase.from("categories").select("id, name").eq("user_id", userId),
+    supabase.from("goals").select("*").eq("user_id", userId),
+    supabase.from("accounts").select("id, name, balance").eq("user_id", userId),
+    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+  ]);
+
+  const txs = txRes.data || [];
+  const prevTxs = prevTxRes.data || [];
+  const cats = catRes.data || [];
+  const goals = goalRes.data || [];
+  const accounts = accRes.data || [];
+  const budgets = budgetRes.data || [];
+  const catMap = new Map(cats.map((c: any) => [c.id, c.name]));
+
+  const expenses = txs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const income = txs.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const prevExpenses = prevTxs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
+
+  const byCat: Record<string, number> = {};
+  txs.filter((t: any) => t.type === "expense").forEach((t: any) => {
+    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
+    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+  });
+
+  const context = `
+Dados financeiros completos:
+
+Saldo total: R$ ${totalBalance.toFixed(2)}
+Contas: ${accounts.map((a: any) => `${a.name}: R$ ${Number(a.balance).toFixed(2)}`).join(", ")}
+
+Mês atual - Receitas: R$ ${income.toFixed(2)}, Despesas: R$ ${expenses.toFixed(2)}, Saldo: R$ ${(income - expenses).toFixed(2)}
+Mês anterior - Despesas: R$ ${prevExpenses.toFixed(2)}
+
+Gastos por categoria:
+${Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`).join("\n")}
+
+Metas: ${goals.map((g: any) => `${g.name}: R$ ${Number(g.current_amount).toFixed(2)}/${Number(g.target_amount).toFixed(2)} ${g.deadline ? `(prazo: ${g.deadline})` : ""}`).join("; ") || "Nenhuma"}
+
+Orçamentos: ${budgets.map((b: any) => `${b.category_id ? catMap.get(b.category_id) || "Geral" : "Geral"}: R$ ${Number(b.amount).toFixed(2)}`).join("; ") || "Nenhum"}
+
+Dia: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}
+`;
+
+  try {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{
+          role: "system",
+          content: `Você é um consultor financeiro sênior. Faça uma análise profunda e completa incluindo:
+1. 📊 Diagnóstico geral da saúde financeira
+2. 📈 Comparação com mês anterior (melhorou ou piorou?)
+3. 🔍 Padrões detectados nos gastos
+4. ⚠️ Previsão: vai estourar o orçamento? Quando?
+5. 🎯 Status das metas: vai alcançar no prazo?
+6. 💰 Quanto pode economizar e como
+7. 🏆 Nota de 0 a 10 para a gestão financeira
+
+Use emojis, seja direto e cite números. Formato Markdown.`
+        }, {
+          role: "user",
+          content: context,
+        }],
+      }),
+    });
+
+    if (aiResp.ok) {
+      const aiData = await aiResp.json();
+      const analysis = aiData.choices?.[0]?.message?.content || "Não foi possível gerar análise.";
+
+      // Split long messages (Telegram limit ~4096 chars)
+      if (analysis.length > 3800) {
+        const mid = analysis.lastIndexOf("\n", 3800);
+        await sendTg(`📈 *Análise Financeira Inteligente (1/2):*\n\n${analysis.slice(0, mid)}`);
+        await sendTg(`📈 *Análise (2/2):*\n\n${analysis.slice(mid)}`);
+      } else {
+        await sendTg(`📈 *Análise Financeira Inteligente:*\n\n${analysis}`);
+      }
+    } else {
+      await sendTg("❌ Erro ao gerar análise. Tente novamente.");
+    }
+  } catch (e) {
+    console.error("Analysis AI error:", e);
+    await sendTg("❌ Erro ao gerar análise. Tente novamente.");
+  }
+  return new Response("ok");
+}
+
+async function handleResumoCompleto(supabase: any, userId: string, sendTg: Function) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
+  const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, "0")}`;
+
+  const [txRes, catRes, accRes, goalRes, budgetRes] = await Promise.all([
+    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).lte("date", lastDay),
+    supabase.from("categories").select("id, name").eq("user_id", userId),
+    supabase.from("accounts").select("id, name, balance").eq("user_id", userId),
+    supabase.from("goals").select("*").eq("user_id", userId),
+    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+  ]);
+
+  const txs = txRes.data || [];
+  const cats = catRes.data || [];
+  const accounts = accRes.data || [];
+  const goals = goalRes.data || [];
+  const budgets = budgetRes.data || [];
+  const catMap = new Map(cats.map((c: any) => [c.id, c.name]));
+
+  const expenses = txs.filter((t: any) => t.type === "expense");
+  const incomes = txs.filter((t: any) => t.type === "income");
+  const totalExp = expenses.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const totalInc = incomes.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
+
+  const byCat: Record<string, number> = {};
+  expenses.forEach((t: any) => {
+    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
+    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+  });
+
+  const monthName = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const daysLeft = new Date(currentYear, currentMonth, 0).getDate() - now.getDate();
+
+  let msg = `📊 *Resumo Financeiro — ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}*\n\n`;
+
+  // Accounts
+  msg += `💳 *Contas:*\n`;
+  accounts.forEach((a: any) => {
+    const emoji = Number(a.balance) >= 0 ? "🟢" : "🔴";
+    msg += `  ${emoji} ${a.name}: R$ ${Number(a.balance).toFixed(2)}\n`;
+  });
+  msg += `  💰 *Total: R$ ${totalBalance.toFixed(2)}*\n\n`;
+
+  // Month
+  msg += `📈 *Receitas:* R$ ${totalInc.toFixed(2)} (${incomes.length})\n`;
+  msg += `📉 *Despesas:* R$ ${totalExp.toFixed(2)} (${expenses.length})\n`;
+  msg += `💵 *Saldo:* R$ ${(totalInc - totalExp).toFixed(2)}\n\n`;
+
+  // Categories
+  if (Object.keys(byCat).length > 0) {
+    msg += `🏷️ *Gastos por categoria:*\n`;
+    Object.entries(byCat).sort((a, b) => b[1] - a[1]).forEach(([name, val]) => {
+      const pct = totalExp > 0 ? (val / totalExp * 100).toFixed(0) : "0";
+      msg += `  • ${name}: R$ ${val.toFixed(2)} (${pct}%)\n`;
+    });
+    msg += `\n`;
+  }
+
+  // Budgets
+  if (budgets.length > 0) {
+    msg += `🎯 *Orçamentos:*\n`;
+    for (const b of budgets) {
+      const budgetAmt = Number(b.amount);
+      const catId = b.category_id;
+      const catName = catId ? (catMap.get(catId) || "Categoria") : "Geral";
+      const spent = catId
+        ? expenses.filter((t: any) => t.category_id === catId).reduce((s: number, t: any) => s + Number(t.amount), 0)
+        : totalExp;
+      const pct = (spent / budgetAmt * 100).toFixed(0);
+      const icon = spent > budgetAmt ? "🚨" : Number(pct) >= 80 ? "⚠️" : "✅";
+      msg += `  ${icon} ${catName}: R$ ${spent.toFixed(2)} / R$ ${budgetAmt.toFixed(2)} (${pct}%)\n`;
+    }
+    msg += `\n`;
+  }
+
+  // Goals
+  if (goals.length > 0) {
+    msg += `🏆 *Metas:*\n`;
+    goals.forEach((g: any) => {
+      const pct = Number(g.target_amount) > 0 ? Math.round(Number(g.current_amount) / Number(g.target_amount) * 100) : 0;
+      const bar = "█".repeat(Math.floor(pct / 10)) + "░".repeat(10 - Math.floor(pct / 10));
+      msg += `  🎯 ${g.name}: ${bar} ${pct}%\n`;
+    });
+    msg += `\n`;
+  }
+
+  msg += `_${daysLeft} dias restantes no mês_`;
+
+  const inlineKeyboard = {
+    inline_keyboard: [
+      [
+        { text: "💡 Dicas de economia", callback_data: "daily_dicas" },
+        { text: "📈 Análise IA", callback_data: "daily_analise" },
+      ],
+    ],
+  };
+
+  await sendTg(msg, { reply_markup: inlineKeyboard });
+  return new Response("ok");
 }
