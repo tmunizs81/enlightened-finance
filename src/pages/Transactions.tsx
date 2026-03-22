@@ -140,11 +140,13 @@ const Transactions = () => {
     return (matchSearch || tagMatch) && matchFilter;
   });
 
+  const invalidateAccounts = () => queryClient.invalidateQueries({ queryKey: ["accounts"] });
+
   const handleSubmit = (data: any) => {
     if (data.id) {
-      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); invalidateAccounts(); } });
     } else {
-      insertMutation.mutate(data, { onSuccess: () => setFormOpen(false) });
+      insertMutation.mutate(data, { onSuccess: () => { setFormOpen(false); invalidateAccounts(); } });
     }
   };
 
