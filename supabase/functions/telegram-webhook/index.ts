@@ -97,6 +97,9 @@ serve(async (req) => {
 🎯 /metas — Progresso das metas
 💳 /contas — Lista de contas
 🏷️ /categorias — Lista de categorias
+💡 /dicas — Dicas de economia personalizadas
+📈 /analise — Análise inteligente dos gastos
+📊 /resumo — Resumo financeiro completo
 📸 *Envie uma foto* — OCR de comprovante
 
 _Exemplo: /despesa 45.90 Almoço restaurante_`
