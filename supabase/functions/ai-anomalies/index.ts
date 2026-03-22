@@ -31,7 +31,6 @@ serve(async (req) => {
     const categories = catRes.data || [];
     const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
-    // Detect anomalies: transactions 2x+ above category average
     const catGroups = new Map<string, number[]>();
     transactions.forEach((t: any) => {
       const key = t.category_id || "none";
@@ -59,11 +58,10 @@ serve(async (req) => {
       }
     }
 
-    // Get AI explanation for anomalies
     let aiExplanation = "";
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
-    if (GROQ_API_KEY && anomalies.length > 0) {
+    if (DEEPSEEK_API_KEY && anomalies.length > 0) {
       try {
         const anomalyText = anomalies.slice(0, 5).map((a: any) =>
           `"${a.description}" em ${a.category}: R$ ${a.amount} (média R$ ${a.average}, ${a.ratio}x acima)`
@@ -73,11 +71,11 @@ serve(async (req) => {
 ${anomalyText}
 Responda APENAS com a análise, sem saudações. Seja direto e prático.`;
 
-        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
           }),
         });

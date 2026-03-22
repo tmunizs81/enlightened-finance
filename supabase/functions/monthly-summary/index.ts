@@ -22,10 +22,9 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Não autorizado");
 
-    // Current and previous month ranges
     const now = new Date();
     const curYear = now.getFullYear();
-    const curMonth = now.getMonth(); // 0-indexed
+    const curMonth = now.getMonth();
 
     const curStart = new Date(curYear, curMonth, 1).toISOString().split("T")[0];
     const curEnd = new Date(curYear, curMonth + 1, 0).toISOString().split("T")[0];
@@ -79,17 +78,17 @@ Mês anterior (${prevMonthName}):
 
 Retorne um resumo narrativo de 3-5 frases analisando a evolução, destacando categorias com maior variação e dando uma recomendação prática.`;
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você é um analista financeiro pessoal. Seja direto e use emojis com moderação." },
           { role: "user", content: prompt },

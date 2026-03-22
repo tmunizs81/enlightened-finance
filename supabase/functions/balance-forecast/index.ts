@@ -34,7 +34,6 @@ serve(async (req) => {
 
     const currentBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
 
-    // Monthly net calculation from last 6 months
     const monthlyNets: number[] = [];
     const now = new Date();
     for (let i = 1; i <= 6; i++) {
@@ -53,17 +52,13 @@ serve(async (req) => {
       ? Math.sqrt(monthlyNets.reduce((s, v) => s + Math.pow(v - avgNet, 2), 0) / (monthlyNets.length - 1))
       : Math.abs(avgNet) * 0.3;
 
-    // Recurring impact
     const monthlyRecurringNet = recurring.reduce((s: number, r: any) => s + (r.type === "income" ? 1 : -1) * Number(r.amount), 0);
-
-    // Weighted average (recurrings more reliable)
     const projectedMonthlyNet = avgNet * 0.6 + monthlyRecurringNet * 0.4;
 
-    // Build AI context for analysis
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     let aiAnalysis = "";
 
-    if (GROQ_API_KEY) {
+    if (DEEPSEEK_API_KEY) {
       try {
         const prompt = `Analise estes dados financeiros e dê uma previsão curta (máximo 3 frases em português) sobre a tendência do saldo:
 - Saldo atual: R$ ${currentBalance.toFixed(2)}
@@ -73,11 +68,11 @@ serve(async (req) => {
 - Meses com dados: ${monthlyNets.map((n, i) => `Mês -${i + 1}: R$ ${n.toFixed(0)}`).join(", ")}
 Responda APENAS com a análise, sem saudações.`;
 
-        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
           }),
         });
@@ -91,7 +86,6 @@ Responda APENAS com a análise, sem saudações.`;
       }
     }
 
-    // Build forecast data points
     const scenarios = {
       optimistic: [] as { month: string; value: number }[],
       realistic: [] as { month: string; value: number }[],
@@ -104,7 +98,6 @@ Responda APENAS com a análise, sem saudações.`;
 
     const monthName = (d: Date) => d.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
 
-    // Current month
     const nowLabel = monthName(now);
     scenarios.optimistic.push({ month: nowLabel, value: currentBalance });
     scenarios.realistic.push({ month: nowLabel, value: currentBalance });
