@@ -22,7 +22,6 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Não autorizado");
 
-    // Fetch user's transactions (last 90 days)
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -40,7 +39,6 @@ serve(async (req) => {
 
     const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
-    // Build summary for AI
     const totalIncome = transactions.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
     const totalExpense = transactions.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
 
@@ -74,17 +72,17 @@ Regras:
 - Use "success" para elogios (boa economia, metas no caminho)
 - Se houver poucas transações, sugira ao usuário cadastrar mais dados`;
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você é um analista financeiro. Retorne insights estruturados." },
           { role: "user", content: prompt },
@@ -143,12 +141,9 @@ Regras:
       insights = parsed.insights || [];
     }
 
-    // Save insights to database
     if (insights.length > 0) {
-      // Delete old insights for this user
       await supabase.from("ai_insights").delete().eq("user_id", user.id);
 
-      // Insert new ones
       const rows = insights.map((ins: any) => ({
         user_id: user.id,
         type: ins.type,
@@ -158,7 +153,6 @@ Regras:
       }));
       await supabase.from("ai_insights").insert(rows);
 
-      // Send destructive insights via Telegram
       const destructiveInsights = insights.filter((ins: any) => ins.type === "destructive");
       if (destructiveInsights.length > 0) {
         const { data: profile } = await supabase
@@ -187,7 +181,6 @@ Regras:
                 }),
               }
             );
-            console.log("Telegram notification sent");
           } catch (tgErr) {
             console.error("Telegram send error:", tgErr);
           }

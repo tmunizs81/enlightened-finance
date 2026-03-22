@@ -25,7 +25,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Fetch user's categories
     const { data: categories } = await supabase
       .from("categories")
       .select("id, name")
@@ -36,7 +35,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Fetch recent transactions for learning patterns
     const { data: recentTx } = await supabase
       .from("transactions")
       .select("description, category_id")
@@ -46,7 +44,6 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    // Check exact/fuzzy match from history first
     const descLower = description.toLowerCase().trim();
     const historyMatch = (recentTx || []).find((t: any) =>
       t.description.toLowerCase().trim() === descLower
@@ -60,25 +57,23 @@ serve(async (req) => {
       }
     }
 
-    // Use AI for classification
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) {
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) {
       return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
 
-    // Build history context
     const historyExamples = (recentTx || []).slice(0, 20).map((t: any) => {
       const catName = categories.find((c: any) => c.id === t.category_id)?.name || "?";
       return `"${t.description}" → ${catName}`;
     }).join("\n");
 
-    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [{
           role: "user",
           content: `Classifique esta transação na categoria mais adequada.

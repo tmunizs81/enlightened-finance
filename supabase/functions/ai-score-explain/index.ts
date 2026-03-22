@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,8 +10,8 @@ serve(async (req) => {
 
   try {
     const { scoreData } = await req.json();
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const prompt = `Você é um consultor financeiro analisando o score financeiro de um usuário. Dados:
 
@@ -31,11 +30,11 @@ Dê uma explicação curta e personalizada (máximo 5 frases em português) sobr
 
 Seja direto, prático e motivador. Responda APENAS com a análise.`;
 
-    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
       }),
     });

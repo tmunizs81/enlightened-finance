@@ -363,16 +363,16 @@ const SettingsPage = () => {
             <h2 className="text-sm font-semibold text-foreground">Inteligência Artificial — Google Gemini</h2>
           </div>
           <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-            <CheckCircle className="h-3 w-3 mr-1" /> Gemini Ativo
+            <CheckCircle className="h-3 w-3 mr-1" /> DeepSeek Ativo
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O T2-SimplyFin utiliza o <strong className="text-foreground">Google Gemini</strong> via Lovable AI como assistente financeiro. Nenhuma chave externa necessária.
+          O T2-SimplyFin utiliza o <strong className="text-foreground">DeepSeek</strong> como assistente financeiro inteligente.
         </p>
         <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-2">
-          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Modelo:</strong> Gemini 3 Flash Preview</p>
-          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Provedor:</strong> Lovable AI Gateway</p>
-          <p className="text-[11px] text-muted-foreground">Integrado automaticamente — uso incluso no plano Lovable.</p>
+          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Modelo:</strong> DeepSeek Chat (V3)</p>
+          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Provedor:</strong> DeepSeek API</p>
+          <p className="text-[11px] text-muted-foreground">Integrado via API Key — modelo de IA avançado para análise financeira.</p>
         </div>
       </div>
 

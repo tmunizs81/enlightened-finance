@@ -23,7 +23,6 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "generate";
 
-    // === GET active challenges ===
     if (action === "list") {
       const { data: challenges } = await supabase
         .from("weekly_challenges")
@@ -32,7 +31,6 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      // Update progress for active challenges
       const active = (challenges || []).filter((c: any) => c.status === "active");
       for (const ch of active) {
         const progress = await calculateProgress(supabase, user.id, ch);
@@ -53,13 +51,11 @@ serve(async (req) => {
       });
     }
 
-    // === GENERATE new challenges ===
     const now = new Date();
     const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
     const weekStartStr = weekStart.toISOString().split("T")[0];
 
-    // Check if already generated this week
     const { data: existing } = await supabase
       .from("weekly_challenges")
       .select("id")
@@ -68,7 +64,6 @@ serve(async (req) => {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      // Return existing
       const { data: challenges } = await supabase
         .from("weekly_challenges")
         .select("*")
@@ -79,7 +74,6 @@ serve(async (req) => {
       });
     }
 
-    // Fetch user data for AI
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
     const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
@@ -107,8 +101,8 @@ serve(async (req) => {
     });
     const totalSpend = transactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY not configured");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const weekEndDate = new Date(weekStart);
     weekEndDate.setDate(weekEndDate.getDate() + 6);
@@ -131,11 +125,11 @@ Regras:
 - XP: 30-100 baseado na dificuldade
 - Use categorias onde o usuário gasta mais`;
 
-    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: "Você cria desafios financeiros gamificados. Retorne JSON estruturado." },
           { role: "user", content: prompt },
@@ -189,7 +183,6 @@ Regras:
       challenges = JSON.parse(toolCall.function.arguments).challenges || [];
     }
 
-    // Insert challenges
     const rows = challenges.slice(0, 3).map((ch: any) => ({
       user_id: user.id,
       title: ch.title,

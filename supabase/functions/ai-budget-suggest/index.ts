@@ -36,7 +36,6 @@ serve(async (req) => {
     const goals = goalsRes.data || [];
     const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
-    // Calculate average spending per category over last 3 months
     const catMonthly = new Map<string, number[]>();
     for (let i = 0; i < 3; i++) {
       const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -57,7 +56,6 @@ serve(async (req) => {
       });
     }
 
-    // Build spending summary for AI
     const spendingSummary: any[] = [];
     catMonthly.forEach((amounts, catId) => {
       const avg = amounts.reduce((a, b) => a + b, 0) / Math.max(amounts.length, 1);
@@ -66,7 +64,6 @@ serve(async (req) => {
       spendingSummary.push({ catId, catName, avg: Math.round(avg), months: amounts.length, hasExisting });
     });
 
-    // Monthly income
     const monthlyIncomes: number[] = [];
     for (let i = 0; i < 3; i++) {
       const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -78,17 +75,16 @@ serve(async (req) => {
     }
     const avgIncome = monthlyIncomes.reduce((a, b) => a + b, 0) / Math.max(monthlyIncomes.length, 1);
 
-    // Use AI to suggest optimal budgets
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     let suggestions: any[] = [];
 
-    if (GROQ_API_KEY && spendingSummary.length > 0) {
+    if (DEEPSEEK_API_KEY && spendingSummary.length > 0) {
       try {
         const prompt = `Você é um planejador financeiro. Com base nos dados abaixo, sugira orçamentos mensais ideais para cada categoria.
 
-Renda mensal: R$ ${monthlyIncome.toFixed(2)}
+Renda mensal: R$ ${avgIncome.toFixed(2)}
 Gastos por categoria (últimos 3 meses):
-${spendingSummary.map(s => `- ${s.categoryName}: média R$ ${s.avgSpending.toFixed(2)}/mês (${s.months} meses de dados)`).join("\n")}
+${spendingSummary.map(s => `- ${s.catName}: média R$ ${s.avg.toFixed(2)}/mês (${s.months} meses de dados)`).join("\n")}
 
 Regras:
 - Sugira valores realistas baseados no histórico
@@ -97,11 +93,11 @@ Regras:
 - Para cada categoria, explique brevemente o raciocínio
 - Inclua TODAS as categorias listadas`;
 
-        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             tools: [{
               type: "function",
@@ -149,7 +145,6 @@ Regras:
       }
     }
 
-    // Fallback: if AI didn't return suggestions, use calculated ones
     if (suggestions.length === 0) {
       suggestions = spendingSummary.map((s: any) => ({
         catName: s.catName,
