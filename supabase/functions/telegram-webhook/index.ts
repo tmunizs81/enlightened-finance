@@ -144,6 +144,15 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
       if (cmd === "/categorias") {
         return await handleCategorias(supabase, userId, sendTg);
       }
+      if (cmd === "/dicas") {
+        return await handleDicasEconomia(supabase, userId, sendTg);
+      }
+      if (cmd === "/analise") {
+        return await handleAnaliseIA(supabase, userId, sendTg);
+      }
+      if (cmd === "/resumo") {
+        return await handleResumoCompleto(supabase, userId, sendTg);
+      }
 
       // Natural language processing with AI
       return await handleNaturalLanguage(supabase, userId, message.text.trim(), chatId, botToken, sendTg);
