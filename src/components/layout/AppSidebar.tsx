@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -53,14 +54,14 @@ const toolItems = [
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
-export function AppSidebar() {
+export const AppSidebar = memo(function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
   const { data: accounts = [] } = useSupabaseQuery<{ id: string; balance: number }>("accounts");
-  const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
+  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Number(a.balance), 0), [accounts]);
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
@@ -169,4 +170,4 @@ export function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   );
-}
+});
