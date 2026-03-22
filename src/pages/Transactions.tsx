@@ -228,7 +228,7 @@ const Transactions = () => {
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(t.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(t.id, { onSuccess: invalidateAccounts })}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
