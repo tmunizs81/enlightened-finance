@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag } from "lucide-react";
@@ -56,6 +57,7 @@ interface TagData {
 const Transactions = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
@@ -138,11 +140,13 @@ const Transactions = () => {
     return (matchSearch || tagMatch) && matchFilter;
   });
 
+  const invalidateAccounts = () => queryClient.invalidateQueries({ queryKey: ["accounts"] });
+
   const handleSubmit = (data: any) => {
     if (data.id) {
-      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); invalidateAccounts(); } });
     } else {
-      insertMutation.mutate(data, { onSuccess: () => setFormOpen(false) });
+      insertMutation.mutate(data, { onSuccess: () => { setFormOpen(false); invalidateAccounts(); } });
     }
   };
 
@@ -224,7 +228,7 @@ const Transactions = () => {
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(t.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(t.id, { onSuccess: invalidateAccounts })}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
