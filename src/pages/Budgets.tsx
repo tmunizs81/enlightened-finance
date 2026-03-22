@@ -4,8 +4,11 @@ import { PiggyBank, Plus, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRig
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { BudgetForm } from "@/components/forms/BudgetForm";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
 
 interface Budget {
@@ -42,6 +45,7 @@ const Budgets = () => {
   const [year, setYear] = useState(now.getFullYear());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Budget | null>(null);
+  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: budgets = [], isLoading } = useSupabaseQuery<Budget>("budgets", "created_at", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
@@ -55,7 +59,6 @@ const Budgets = () => {
 
   const monthBudgets = budgets.filter((b) => b.month === month && b.year === year);
 
-  // Calculate actual spending per category for the selected month
   const spending = useMemo(() => {
     const map: Record<string, number> = {};
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -87,7 +90,6 @@ const Budgets = () => {
     if (data.id) {
       updateBudget.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
     } else {
-      // Check if budget already exists for this category/month/year
       const exists = monthBudgets.find((b) => b.category_id === data.category_id);
       if (exists) {
         toast.error("Já existe um orçamento para esta categoria neste mês.");
@@ -104,7 +106,6 @@ const Budgets = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="gradient-bg-primary rounded-lg p-2.5">
@@ -120,7 +121,6 @@ const Budgets = () => {
         </Button>
       </div>
 
-      {/* Month Selector */}
       <div className="flex items-center justify-center gap-4">
         <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" />
@@ -133,7 +133,6 @@ const Budgets = () => {
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-card p-4 text-center">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orçado</p>
@@ -153,7 +152,6 @@ const Budgets = () => {
         </div>
       </div>
 
-      {/* Over budget alert */}
       {overBudgetCount > 0 && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
@@ -163,14 +161,15 @@ const Budgets = () => {
         </motion.div>
       )}
 
-      {/* Budget List */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
+        </div>
       ) : monthBudgets.length === 0 ? (
-        <div className="glass-card p-8 text-center">
-          <PiggyBank className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum orçamento definido para este mês.</p>
-          <p className="text-xs text-muted-foreground mt-1">Crie categorias de despesa e defina limites mensais.</p>
+        <div className="glass-card p-8 text-center space-y-3">
+          <div className="text-4xl">🐷</div>
+          <p className="text-sm text-muted-foreground font-medium">Nenhum orçamento definido para este mês.</p>
+          <p className="text-xs text-muted-foreground">Crie categorias de despesa e defina limites mensais.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -209,7 +208,7 @@ const Budgets = () => {
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(budget); setFormOpen(true); }}>
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteBudget.mutate(budget.id)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => requestDelete(budget.id, cat?.name || "este orçamento")}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -239,6 +238,14 @@ const Budgets = () => {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => { if (!open) cancelDelete(); }}
+        title="Excluir orçamento"
+        description={`Tem certeza que deseja excluir o orçamento de "${deleteTarget?.name || ""}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => confirmDelete((id) => deleteBudget.mutate(id))}
+      />
 
       <BudgetForm
         open={formOpen}

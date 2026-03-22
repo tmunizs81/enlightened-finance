@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { useAutoBackup } from "@/hooks/use-auto-backup";
 import { useLicenseNotification } from "@/hooks/use-license-notification";
 import { useInactivityLogout } from "@/hooks/use-inactivity-logout";
@@ -35,7 +36,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 overflow-auto scrollbar-thin p-4 md:p-6 lg:p-8">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
       </div>
