@@ -207,21 +207,25 @@ Responda APENAS JSON:
 
 Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    // Use Groq for vision/OCR (DeepSeek doesn't support vision)
+    const ocrApiKey = GROQ_API_KEY || DEEPSEEK_API_KEY;
+    const ocrUrl = GROQ_API_KEY ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+    const ocrModel = GROQ_API_KEY ? "meta-llama/llama-4-scout-17b-16e-instruct" : "deepseek-chat";
+
+    const aiResponse = await fetch(ocrUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${ocrApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: ocrModel,
         messages: [{
           role: "user",
-          content: [
+          content: GROQ_API_KEY ? [
             { type: "text", text: aiPrompt },
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
-          ],
+          ] : aiPrompt,
         }],
       }),
     });
