@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ import { TagManager } from "@/components/tags/TagManager";
 import { TransactionSplitDialog } from "@/components/splits/TransactionSplitDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -54,11 +55,14 @@ interface TagData {
   color: string;
 }
 
+const PAGE_SIZE = 50;
+
 const Transactions = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 250);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -68,6 +72,7 @@ const Transactions = () => {
   const [txTags, setTxTags] = useState<Record<string, TagData[]>>({});
   const [txSplits, setTxSplits] = useState<Set<string>>(new Set());
   const [tagsVersion, setTagsVersion] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
@@ -75,7 +80,6 @@ const Transactions = () => {
   const updateMutation = useSupabaseUpdate("transactions");
   const deleteMutation = useSupabaseDelete("transactions");
 
-  // Auto-open form if ?new=1
   useEffect(() => {
     if (searchParams.get("new") === "1") {
       setEditing(null);
@@ -83,14 +87,12 @@ const Transactions = () => {
     }
   }, [searchParams]);
 
-  // Load all tags
   const loadTags = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from("tags" as any).select("*").eq("user_id", user.id);
     if (data) setAllTags(data as any[]);
   }, [user]);
 
-  // Load transaction-tag associations
   const loadTxTags = useCallback(async () => {
     if (!user || transactions.length === 0) return;
     const txIds = transactions.map((t) => t.id);
@@ -112,7 +114,6 @@ const Transactions = () => {
     }
   }, [user, transactions, allTags]);
 
-  // Load which transactions have splits
   const loadSplitInfo = useCallback(async () => {
     if (transactions.length === 0) return;
     const txIds = transactions.map((t) => t.id);
@@ -130,15 +131,24 @@ const Transactions = () => {
   useEffect(() => { loadTxTags(); }, [loadTxTags, tagsVersion]);
   useEffect(() => { loadSplitInfo(); }, [loadSplitInfo]);
 
-  const catMap = new Map(categories.map((c) => [c.id, c]));
+  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
-  const filtered = transactions.filter((t) => {
-    const matchSearch = t.description.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "all" || t.type === filter;
-    // Also search by tag name
-    const tagMatch = (txTags[t.id] || []).some((tag) => tag.name.toLowerCase().includes(search.toLowerCase()));
-    return (matchSearch || tagMatch) && matchFilter;
-  });
+  const filtered = useMemo(() => {
+    const lowerSearch = debouncedSearch.toLowerCase();
+    return transactions.filter((t) => {
+      const matchFilter = filter === "all" || t.type === filter;
+      if (!matchFilter) return false;
+      if (!lowerSearch) return true;
+      const matchSearch = t.description.toLowerCase().includes(lowerSearch);
+      const tagMatch = (txTags[t.id] || []).some((tag) => tag.name.toLowerCase().includes(lowerSearch));
+      return matchSearch || tagMatch;
+    });
+  }, [transactions, debouncedSearch, filter, txTags]);
+
+  // Reset visible count when filter changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [debouncedSearch, filter]);
+
+  const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   const invalidateAccounts = () => queryClient.invalidateQueries({ queryKey: ["accounts"] });
 
@@ -188,8 +198,8 @@ const Transactions = () => {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((t, i) => (
-            <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="glass-card-hover p-4 flex items-center gap-4">
+          {visibleItems.map((t, i) => (
+            <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} className="glass-card-hover p-4 flex items-center gap-4">
               <div className={`rounded-lg p-2 ${t.type === "income" ? "bg-success/15" : "bg-destructive/15"}`}>
                 {t.type === "income" ? <ArrowUpRight className="h-4 w-4 text-success" /> : <ArrowDownRight className="h-4 w-4 text-destructive" />}
               </div>
@@ -234,6 +244,14 @@ const Transactions = () => {
               </div>
             </motion.div>
           ))}
+
+          {visibleCount < filtered.length && (
+            <div className="text-center pt-2">
+              <Button variant="outline" size="sm" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+                Carregar mais ({filtered.length - visibleCount} restantes)
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -275,7 +293,7 @@ const Transactions = () => {
             receiptUrl.endsWith(".pdf") ? (
               <iframe src={receiptUrl} className="w-full h-[70vh]" />
             ) : (
-              <img src={receiptUrl} alt="Comprovante" className="w-full max-h-[70vh] object-contain p-4" />
+              <img src={receiptUrl} alt="Comprovante" className="w-full max-h-[70vh] object-contain p-4" loading="lazy" />
             )
           )}
         </DialogContent>

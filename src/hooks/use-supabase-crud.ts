@@ -18,6 +18,9 @@ export function useSupabaseQuery<T>(table: Tables, orderBy = "created_at", ascen
       return data as T[];
     },
     enabled: !!user,
+    staleTime: 2 * 60 * 1000, // 2 min - avoid redundant refetches
+    gcTime: 10 * 60 * 1000,
+    refetchOnMount: "always",
   });
 }
 
