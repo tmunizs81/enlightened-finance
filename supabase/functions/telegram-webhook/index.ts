@@ -734,17 +734,16 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
 
   // Use AI to classify category and account
   if (categories.length > 0 || accounts.length > 0) {
-      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (GROQ_API_KEY) {
+    if (DEEPSEEK_API_KEY) {
       try {
         const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
         const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
 
-        const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "deepseek-chat",
             messages: [{
               role: "user",
               content: `Classifique esta ${label}: "${description}" (R$ ${amount.toFixed(2)})
