@@ -392,6 +392,27 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
   const action = parts[0];
   const pendingId = parts[1];
 
+  // Handle daily insight buttons (no pendingId needed)
+  if (action.startsWith("daily_")) {
+    const userId = profile.user_id;
+    if (action === "daily_extrato") {
+      return await handleExtrato(supabase, userId, sendTg);
+    }
+    if (action === "daily_metas") {
+      return await handleMetas(supabase, userId, sendTg);
+    }
+    if (action === "daily_dicas") {
+      await answerCbq("Gerando dicas...");
+      return await handleDicasEconomia(supabase, userId, sendTg);
+    }
+    if (action === "daily_analise") {
+      await answerCbq("Analisando...");
+      return await handleAnaliseIA(supabase, userId, sendTg);
+    }
+    await answerCbq("OK");
+    return new Response("ok");
+  }
+
   const { data: pending } = await supabase
     .from("pending_ocr_transactions")
     .select("*")
