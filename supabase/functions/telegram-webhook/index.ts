@@ -909,8 +909,8 @@ async function handleCategorias(supabase: any, userId: string, sendTg: Function)
 
 // ===== NATURAL LANGUAGE HANDLER =====
 async function handleNaturalLanguage(supabase: any, userId: string, text: string, chatId: string, botToken: string, sendTg: Function) {
-  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-  if (!GROQ_API_KEY) {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) {
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
@@ -927,11 +927,11 @@ async function handleNaturalLanguage(supabase: any, userId: string, text: string
   const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
 
   try {
-    const aiResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "deepseek-chat",
         messages: [{
           role: "user",
           content: `Você é um assistente financeiro que interpreta mensagens em linguagem natural para registrar transações.
