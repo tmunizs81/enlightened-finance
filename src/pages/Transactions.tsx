@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SkeletonList } from "@/components/ui/skeleton-card";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { TransactionForm } from "@/components/forms/TransactionForm";
 import { TagManager } from "@/components/tags/TagManager";
@@ -15,6 +17,7 @@ import { TransactionSplitDialog } from "@/components/splits/TransactionSplitDial
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -73,6 +76,8 @@ const Transactions = () => {
   const [txSplits, setTxSplits] = useState<Set<string>>(new Set());
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
@@ -145,7 +150,6 @@ const Transactions = () => {
     });
   }, [transactions, debouncedSearch, filter, txTags]);
 
-  // Reset visible count when filter changes
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [debouncedSearch, filter]);
 
   const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
@@ -158,6 +162,12 @@ const Transactions = () => {
     } else {
       insertMutation.mutate(data, { onSuccess: () => { setFormOpen(false); invalidateAccounts(); } });
     }
+  };
+
+  const handleDeleteConfirm = () => {
+    confirmDelete((id) => {
+      deleteMutation.mutate(id, { onSuccess: invalidateAccounts });
+    });
   };
 
   return (
@@ -190,11 +200,12 @@ const Transactions = () => {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+        <SkeletonList count={6} />
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground text-sm">Nenhuma transação encontrada</p>
-          <p className="text-muted-foreground text-xs mt-1">Clique em "Nova" para adicionar</p>
+        <div className="text-center py-16 space-y-3">
+          <div className="text-4xl">📋</div>
+          <p className="text-muted-foreground text-sm font-medium">Nenhuma transação encontrada</p>
+          <p className="text-muted-foreground text-xs">Clique em "Nova" para adicionar sua primeira transação</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -238,7 +249,7 @@ const Transactions = () => {
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
                   <Pencil className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(t.id, { onSuccess: invalidateAccounts })}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => requestDelete(t.id, t.description)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -254,6 +265,14 @@ const Transactions = () => {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => { if (!open) cancelDelete(); }}
+        title="Excluir transação"
+        description={`Tem certeza que deseja excluir "${deleteTarget?.name || "esta transação"}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleDeleteConfirm}
+      />
 
       <TransactionForm
         open={formOpen}

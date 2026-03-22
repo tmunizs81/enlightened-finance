@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SkeletonCard } from "@/components/ui/skeleton-card";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { GoalForm } from "@/components/forms/GoalForm";
 import { GoalAIMonitor } from "@/components/dashboard/GoalAIMonitor";
 import { useConfetti } from "@/hooks/use-confetti";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 
 const colorMap: Record<string, string> = {
   primary: "text-primary",
@@ -30,6 +33,7 @@ const Goals = () => {
   const { fireCanon } = useConfetti();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
+  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: goals = [], isLoading } = useSupabaseQuery<Goal>("goals");
   const insertMutation = useSupabaseInsert("goals");
@@ -57,11 +61,14 @@ const Goals = () => {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
+        </div>
       ) : goals.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground text-sm">Nenhuma meta criada</p>
-          <p className="text-muted-foreground text-xs mt-1">Clique em "Nova Meta" para começar</p>
+        <div className="text-center py-16 space-y-3">
+          <div className="text-4xl">🎯</div>
+          <p className="text-muted-foreground text-sm font-medium">Nenhuma meta criada</p>
+          <p className="text-muted-foreground text-xs">Clique em "Nova Meta" para começar a economizar</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -86,7 +93,7 @@ const Goals = () => {
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(goal); setFormOpen(true); }}>
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteMutation.mutate(goal.id)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => requestDelete(goal.id, goal.name)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -109,6 +116,14 @@ const Goals = () => {
       )}
 
       {goals.length > 0 && <GoalAIMonitor />}
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => { if (!open) cancelDelete(); }}
+        title="Excluir meta"
+        description={`Tem certeza que deseja excluir a meta "${deleteTarget?.name || ""}"? Esta ação não pode ser desfeita.`}
+        onConfirm={() => confirmDelete((id) => deleteMutation.mutate(id))}
+      />
 
       <GoalForm
         open={formOpen}
