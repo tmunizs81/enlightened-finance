@@ -57,6 +57,7 @@ interface TagData {
 const Transactions = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [formOpen, setFormOpen] = useState(false);
