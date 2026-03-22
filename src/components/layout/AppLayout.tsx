@@ -9,6 +9,8 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useDailyReminder } from "@/hooks/use-push-notifications";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoBackup();
@@ -19,6 +21,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <OfflineIndicator />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
@@ -32,6 +35,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span>Buscar...</span>
                 <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">⌘K</kbd>
               </button>
+              <NotificationCenter />
               <ThemeToggle />
             </div>
           </header>
