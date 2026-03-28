@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,16 @@ export function BudgetForm({ open, onOpenChange, onSubmit, initialData, loading,
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
-  const expenseCategories = categories.filter((c) => c.type === "expense");
+  const expenseCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return categories.filter((c) => {
+      if (c.type !== "expense") return false;
+      const key = c.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
