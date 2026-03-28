@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +57,16 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertCategory = useSupabaseInsert("categories");
 
-  const filteredCats = categories.filter((c) => c.type === type);
+  const filteredCats = useMemo(() => {
+    const seen = new Set<string>();
+    return categories.filter((c) => {
+      if (c.type !== type) return false;
+      const key = c.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [categories, type]);
 
   // Auto-categorize with AI
   const autoCategorize = useCallback(async (desc: string, txType: string) => {
