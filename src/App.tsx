@@ -24,6 +24,7 @@ const LicenseStatus = lazy(() => import("./pages/LicenseStatus"));
 const Install = lazy(() => import("./pages/Install"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const FinancialRules = lazy(() => import("./pages/FinancialRules"));
+const Categories = lazy(() => import("./pages/Categories"));
 const AIChatPanel = lazy(() => import("./components/chat/AIChatPanel").then(m => ({ default: m.AIChatPanel })));
 
 // Optimized QueryClient with better caching
@@ -77,6 +78,7 @@ function ProtectedRoutes() {
           <Route path="/install" element={<Install />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/rules" element={<FinancialRules />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
