@@ -14,6 +14,7 @@ import {
   Download,
   Trophy,
   Zap,
+  FolderOpen,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -42,6 +43,7 @@ const mainItems = [
   { title: "Orçamentos", url: "/budgets", icon: PiggyBank },
   { title: "Metas", url: "/goals", icon: Target },
   { title: "Contas", url: "/accounts", icon: Wallet },
+  { title: "Categorias", url: "/categories", icon: FolderOpen },
   { title: "Conquistas", url: "/achievements", icon: Trophy },
 ];
 
