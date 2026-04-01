@@ -137,30 +137,41 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     }
   };
 
+  const handleBoletoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Formato não suportado. Use JPG, PNG, WebP ou PDF."); return; }
+    setBoletoFile(file);
+    if (file.type.startsWith("image/")) { setBoletoPreview(URL.createObjectURL(file)); } else { setBoletoPreview(null); }
+  };
+
   const removeReceipt = () => {
     setReceiptFile(null);
     setReceiptPreview(null);
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const uploadReceipt = async (): Promise<string | null> => {
-    if (!receiptFile || !user) return initialData?.receipt_url || null;
+  const removeBoleto = () => {
+    setBoletoFile(null);
+    setBoletoPreview(null);
+    if (boletoRef.current) boletoRef.current.value = "";
+  };
 
+  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+    if (!user) return null;
     setUploading(true);
     try {
-      const ext = receiptFile.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${Date.now()}.${ext}`;
-
-      const { error } = await supabase.storage
-        .from("receipts")
-        .upload(path, receiptFile, { upsert: true });
-
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (error) throw error;
-
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
       return urlData.publicUrl;
     } catch (err: any) {
-      toast.error("Erro ao enviar comprovante: " + err.message);
+      toast.error("Erro ao enviar arquivo: " + err.message);
       return null;
     } finally {
       setUploading(false);
@@ -171,16 +182,13 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     e.preventDefault();
 
     let receiptUrl = initialData?.receipt_url || null;
+    let boletoUrl = initialData?.boleto_url || null;
 
-    // If user removed receipt
-    if (!receiptFile && !receiptPreview) {
-      receiptUrl = null;
-    }
+    if (!receiptFile && !receiptPreview) receiptUrl = null;
+    if (!boletoFile && !boletoPreview) boletoUrl = null;
 
-    // If user added new file
-    if (receiptFile) {
-      receiptUrl = await uploadReceipt();
-    }
+    if (receiptFile) receiptUrl = await uploadFile(receiptFile, "comprovantes");
+    if (boletoFile) boletoUrl = await uploadFile(boletoFile, "boletos");
 
     const numInstallments = isInstallment ? parseInt(installments) : 1;
     const installmentAmount = parseFloat(amount) / numInstallments;
@@ -203,13 +211,14 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
         category_id: categoryId === "none" ? null : categoryId,
         account_id: accountId === "none" ? null : accountId,
         receipt_url: i === 0 ? receiptUrl : null,
+        boleto_url: i === 0 ? boletoUrl : null,
       });
     }
 
     if (!initialData) {
       setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
       setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
-      removeReceipt();
+      removeReceipt(); removeBoleto();
     }
   };
 
