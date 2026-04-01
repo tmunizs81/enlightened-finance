@@ -259,7 +259,7 @@ const Recurring = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ force: true }),
       });
       if (!resp.ok) throw new Error("Erro ao processar");
       const result = await resp.json();
