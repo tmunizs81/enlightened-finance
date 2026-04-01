@@ -363,6 +363,13 @@ const Recurring = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1">
+                  {rec.boleto_url && (
+                    <a href={rec.boleto_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" title="Ver boleto">
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                    </a>
+                  )}
                   <Switch checked={rec.active} onCheckedChange={() => toggleActive(rec)} className="scale-75" />
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(rec); setFormOpen(true); }}>
                     <Pencil className="h-3 w-3" />
