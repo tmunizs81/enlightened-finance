@@ -46,6 +46,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [showNewCat, setShowNewCat] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(initialData?.receipt_url || null);
+  const [boletoFile, setBoletoFile] = useState<File | null>(null);
+  const [boletoPreview, setBoletoPreview] = useState<string | null>(initialData?.boleto_url || null);
   const [uploading, setUploading] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<string | null>(null);
