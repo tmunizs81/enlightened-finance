@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      devOptions: { enabled: false },
       includeAssets: ["favicon.png", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
         name: "T2-SimplyFin - Controle Financeiro Inteligente",
