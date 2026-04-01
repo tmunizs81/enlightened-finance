@@ -43,6 +43,7 @@ interface Transaction {
   category_id: string | null;
   notes: string | null;
   receipt_url: string | null;
+  boleto_url: string | null;
 }
 
 interface Category {
