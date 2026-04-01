@@ -7,6 +7,7 @@ import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SkeletonList } from "@/components/ui/skeleton-card";
@@ -14,10 +15,13 @@ import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDele
 import { TransactionForm } from "@/components/forms/TransactionForm";
 import { TagManager } from "@/components/tags/TagManager";
 import { TransactionSplitDialog } from "@/components/splits/TransactionSplitDialog";
+import { TransactionAdvancedSearch, emptyFilters, type AdvancedFilters } from "@/components/transactions/TransactionAdvancedSearch";
+import { TransactionBatchBar } from "@/components/transactions/TransactionBatchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
+import { toast } from "sonner";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -53,6 +57,12 @@ interface Category {
   type: string;
 }
 
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+}
+
 interface TagData {
   id: string;
   name: string;
@@ -68,6 +78,7 @@ const Transactions = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
+  const [advFilters, setAdvFilters] = useState<AdvancedFilters>(emptyFilters);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
@@ -79,10 +90,16 @@ const Transactions = () => {
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
+  // Batch selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchConfirmOpen, setBatchConfirmOpen] = useState(false);
+
   const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
   const { data: transactions = [], isLoading } = useSupabaseQuery<Transaction>("transactions", "date", false);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
+  const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertMutation = useSupabaseInsert("transactions");
   const updateMutation = useSupabaseUpdate("transactions");
   const deleteMutation = useSupabaseDelete("transactions");
@@ -143,18 +160,30 @@ const Transactions = () => {
   const filtered = useMemo(() => {
     const lowerSearch = debouncedSearch.toLowerCase();
     return transactions.filter((t) => {
-      const matchFilter = filter === "all" || t.type === filter;
-      if (!matchFilter) return false;
-      if (!lowerSearch) return true;
-      const matchSearch = t.description.toLowerCase().includes(lowerSearch);
-      const tagMatch = (txTags[t.id] || []).some((tag) => tag.name.toLowerCase().includes(lowerSearch));
-      return matchSearch || tagMatch;
+      if (filter !== "all" && t.type !== filter) return false;
+      if (lowerSearch) {
+        const matchSearch = t.description.toLowerCase().includes(lowerSearch);
+        const tagMatch = (txTags[t.id] || []).some((tag) => tag.name.toLowerCase().includes(lowerSearch));
+        if (!matchSearch && !tagMatch) return false;
+      }
+      // Advanced filters
+      if (advFilters.dateFrom && t.date < advFilters.dateFrom) return false;
+      if (advFilters.dateTo && t.date > advFilters.dateTo) return false;
+      if (advFilters.categoryId && t.category_id !== advFilters.categoryId) return false;
+      if (advFilters.accountId && t.account_id !== advFilters.accountId) return false;
+      if (advFilters.status && t.status !== advFilters.status) return false;
+      if (advFilters.amountMin && Number(t.amount) < Number(advFilters.amountMin)) return false;
+      if (advFilters.amountMax && Number(t.amount) > Number(advFilters.amountMax)) return false;
+      return true;
     });
-  }, [transactions, debouncedSearch, filter, txTags]);
+  }, [transactions, debouncedSearch, filter, txTags, advFilters]);
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [debouncedSearch, filter]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [debouncedSearch, filter, advFilters]);
 
   const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+
+  // Clear selection when filters change
+  useEffect(() => { setSelected(new Set()); }, [debouncedSearch, filter, advFilters]);
 
   const invalidateAccounts = () => queryClient.invalidateQueries({ queryKey: ["accounts"] });
 
@@ -170,6 +199,40 @@ const Transactions = () => {
     confirmDelete((id) => {
       deleteMutation.mutate(id, { onSuccess: invalidateAccounts });
     });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === visibleItems.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(visibleItems.map((t) => t.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    setBatchDeleting(true);
+    try {
+      const ids = Array.from(selected);
+      const { error } = await supabase.from("transactions").delete().in("id", ids);
+      if (error) throw error;
+      toast.success(`${ids.length} transações excluídas`);
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      invalidateAccounts();
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao excluir");
+    } finally {
+      setBatchDeleting(false);
+      setBatchConfirmOpen(false);
+    }
   };
 
   return (
@@ -201,6 +264,13 @@ const Transactions = () => {
         </div>
       </div>
 
+      <TransactionAdvancedSearch
+        filters={advFilters}
+        onChange={setAdvFilters}
+        categories={categories}
+        accounts={accounts}
+      />
+
       {isLoading ? (
         <SkeletonList count={6} />
       ) : filtered.length === 0 ? (
@@ -211,8 +281,27 @@ const Transactions = () => {
         </div>
       ) : (
         <div className="space-y-2">
+          {/* Select all header */}
+          <div className="flex items-center gap-3 px-4 py-2">
+            <Checkbox
+              checked={visibleItems.length > 0 && selected.size === visibleItems.length}
+              onCheckedChange={toggleSelectAll}
+              aria-label="Selecionar todos"
+            />
+            <span className="text-xs text-muted-foreground">
+              {selected.size > 0
+                ? `${selected.size} de ${filtered.length} selecionados`
+                : `${filtered.length} transações`}
+            </span>
+          </div>
+
           {visibleItems.map((t, i) => (
-            <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} className="glass-card-hover p-4 flex items-center gap-4">
+            <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} className={`glass-card-hover p-4 flex items-center gap-4 ${selected.has(t.id) ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}>
+              <Checkbox
+                checked={selected.has(t.id)}
+                onCheckedChange={() => toggleSelect(t.id)}
+                aria-label={`Selecionar ${t.description}`}
+              />
               <div className={`rounded-lg p-2 ${t.type === "income" ? "bg-success/15" : "bg-destructive/15"}`}>
                 {t.type === "income" ? <ArrowUpRight className="h-4 w-4 text-success" /> : <ArrowDownRight className="h-4 w-4 text-destructive" />}
               </div>
@@ -272,6 +361,23 @@ const Transactions = () => {
           )}
         </div>
       )}
+
+      {/* Batch action bar */}
+      <TransactionBatchBar
+        count={selected.size}
+        onDelete={() => setBatchConfirmOpen(true)}
+        onClear={() => setSelected(new Set())}
+        loading={batchDeleting}
+      />
+
+      {/* Batch delete confirm */}
+      <ConfirmDialog
+        open={batchConfirmOpen}
+        onOpenChange={(open) => { if (!open) setBatchConfirmOpen(false); }}
+        title="Excluir transações em lote"
+        description={`Tem certeza que deseja excluir ${selected.size} transações? Esta ação não pode ser desfeita.`}
+        onConfirm={handleBatchDelete}
+      />
 
       <ConfirmDialog
         open={isConfirmOpen}
