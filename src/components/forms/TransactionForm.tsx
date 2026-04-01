@@ -56,6 +56,26 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [installments, setInstallments] = useState("1");
   const [isInstallment, setIsInstallment] = useState(false);
 
+  // Sync form state when initialData changes (edit mode)
+  useEffect(() => {
+    setDescription(initialData?.description || "");
+    setAmount(initialData?.amount?.toString() || "");
+    setType(initialData?.type || "expense");
+    setStatus(initialData?.status || "pending");
+    setDate(initialData?.date || new Date().toISOString().split("T")[0]);
+    setCategoryId(initialData?.category_id || "none");
+    setAccountId(initialData?.account_id || "none");
+    setReceiptFile(null);
+    setReceiptPreview(initialData?.receipt_url || null);
+    setBoletoFile(null);
+    setBoletoPreview(initialData?.boleto_url || null);
+    setAiSuggested(null);
+    setIsInstallment(false);
+    setInstallments("1");
+    setShowNewCat(false);
+    setNewCatName("");
+  }, [initialData, open]);
+
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const insertCategory = useSupabaseInsert("categories");
