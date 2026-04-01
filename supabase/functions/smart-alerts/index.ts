@@ -184,6 +184,28 @@ serve(async (req) => {
       return order[a.severity] - order[b.severity];
     });
 
+    // Save boleto alerts as persistent insights
+    const boletoAlerts = sortedAlerts.filter(a => a.type.startsWith("boleto_"));
+    if (boletoAlerts.length > 0) {
+      const insightsToSave = boletoAlerts.map(a => ({
+        user_id: userId,
+        type: a.type,
+        title: `${a.icon} ${a.title}`,
+        description: a.message,
+      }));
+      // Avoid duplicates: check today's existing insights
+      const { data: existingInsights } = await supabase
+        .from("ai_insights")
+        .select("title")
+        .eq("user_id", userId)
+        .gte("created_at", today + "T00:00:00");
+      const existingTitles = new Set((existingInsights || []).map((i: any) => i.title));
+      const newInsights = insightsToSave.filter(i => !existingTitles.has(i.title));
+      if (newInsights.length > 0) {
+        await supabase.from("ai_insights").insert(newInsights);
+      }
+    }
+
     // Send alerts to Telegram if configured
     const { data: profile } = await supabase
       .from("profiles")
@@ -194,9 +216,23 @@ serve(async (req) => {
     if (profile?.telegram_bot_token && profile?.telegram_chat_id && sortedAlerts.length > 0) {
       const dangerAndWarning = sortedAlerts.filter(a => a.severity === "danger" || a.severity === "warning");
       if (dangerAndWarning.length > 0) {
-        const lines = dangerAndWarning.map(a => `${a.icon} *${a.title}*\n${a.message}`);
-        const budgetLine = dailyBudget > 0 ? `\n💰 Orçamento diário: R$ ${dailyBudget.toFixed(2)} (${daysLeft} dias restantes)` : "";
-        const text = `🔔 *T2-SimplyFin — Alertas*\n\n${lines.join("\n\n")}${budgetLine}\n\n_Acesse o app para mais detalhes._`;
+        // Separate boleto alerts in Telegram message
+        const boletoTg = dangerAndWarning.filter(a => a.type.startsWith("boleto_"));
+        const otherTg = dangerAndWarning.filter(a => !a.type.startsWith("boleto_"));
+
+        let text = `🔔 *T2-SimplyFin — Alertas*\n`;
+
+        if (boletoTg.length > 0) {
+          text += `\n📄 *BOLETOS:*\n`;
+          text += boletoTg.map(a => `${a.icon} *${a.title}*\n${a.message}`).join("\n\n");
+        }
+        if (otherTg.length > 0) {
+          text += `\n\n💳 *CONTAS:*\n`;
+          text += otherTg.map(a => `${a.icon} *${a.title}*\n${a.message}`).join("\n\n");
+        }
+
+        const budgetLine = dailyBudget > 0 ? `\n\n💰 Orçamento diário: R$ ${dailyBudget.toFixed(2)} (${daysLeft} dias restantes)` : "";
+        text += `${budgetLine}\n\n_Acesse o app para mais detalhes._`;
 
         try {
           await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
