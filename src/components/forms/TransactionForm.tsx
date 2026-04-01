@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Paperclip, X, FileImage, Loader2, Sparkles } from "lucide-react";
+import { Plus, Paperclip, X, FileImage, Loader2, Sparkles, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface Account {
@@ -35,6 +35,7 @@ interface TransactionFormProps {
 export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loading }: TransactionFormProps) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const boletoRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(initialData?.description || "");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
   const [type, setType] = useState(initialData?.type || "expense");
@@ -46,6 +47,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [showNewCat, setShowNewCat] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(initialData?.receipt_url || null);
+  const [boletoFile, setBoletoFile] = useState<File | null>(null);
+  const [boletoPreview, setBoletoPreview] = useState<string | null>(initialData?.boleto_url || null);
   const [uploading, setUploading] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<string | null>(null);
@@ -134,30 +137,41 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     }
   };
 
+  const handleBoletoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Formato não suportado. Use JPG, PNG, WebP ou PDF."); return; }
+    setBoletoFile(file);
+    if (file.type.startsWith("image/")) { setBoletoPreview(URL.createObjectURL(file)); } else { setBoletoPreview(null); }
+  };
+
   const removeReceipt = () => {
     setReceiptFile(null);
     setReceiptPreview(null);
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const uploadReceipt = async (): Promise<string | null> => {
-    if (!receiptFile || !user) return initialData?.receipt_url || null;
+  const removeBoleto = () => {
+    setBoletoFile(null);
+    setBoletoPreview(null);
+    if (boletoRef.current) boletoRef.current.value = "";
+  };
 
+  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+    if (!user) return null;
     setUploading(true);
     try {
-      const ext = receiptFile.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${Date.now()}.${ext}`;
-
-      const { error } = await supabase.storage
-        .from("receipts")
-        .upload(path, receiptFile, { upsert: true });
-
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (error) throw error;
-
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
       return urlData.publicUrl;
     } catch (err: any) {
-      toast.error("Erro ao enviar comprovante: " + err.message);
+      toast.error("Erro ao enviar arquivo: " + err.message);
       return null;
     } finally {
       setUploading(false);
@@ -168,16 +182,13 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     e.preventDefault();
 
     let receiptUrl = initialData?.receipt_url || null;
+    let boletoUrl = initialData?.boleto_url || null;
 
-    // If user removed receipt
-    if (!receiptFile && !receiptPreview) {
-      receiptUrl = null;
-    }
+    if (!receiptFile && !receiptPreview) receiptUrl = null;
+    if (!boletoFile && !boletoPreview) boletoUrl = null;
 
-    // If user added new file
-    if (receiptFile) {
-      receiptUrl = await uploadReceipt();
-    }
+    if (receiptFile) receiptUrl = await uploadFile(receiptFile, "comprovantes");
+    if (boletoFile) boletoUrl = await uploadFile(boletoFile, "boletos");
 
     const numInstallments = isInstallment ? parseInt(installments) : 1;
     const installmentAmount = parseFloat(amount) / numInstallments;
@@ -200,13 +211,14 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
         category_id: categoryId === "none" ? null : categoryId,
         account_id: accountId === "none" ? null : accountId,
         receipt_url: i === 0 ? receiptUrl : null,
+        boleto_url: i === 0 ? boletoUrl : null,
       });
     }
 
     if (!initialData) {
       setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
       setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
-      removeReceipt();
+      removeReceipt(); removeBoleto();
     }
   };
 
@@ -397,6 +409,49 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <FileImage className="h-5 w-5" />
                     <span className="text-xs">{receiptFile?.name || "Comprovante anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Boleto Upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Boleto</Label>
+            <input
+              ref={boletoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={handleBoletoChange}
+            />
+
+            {!boletoFile && !boletoPreview ? (
+              <button
+                type="button"
+                onClick={() => boletoRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-xs">Anexar boleto (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button
+                  type="button"
+                  onClick={removeBoleto}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {boletoPreview && boletoPreview.startsWith("blob:") ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : boletoPreview ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-5 w-5" />
+                    <span className="text-xs">{boletoFile?.name || "Boleto anexado"}</span>
                   </div>
                 )}
               </div>

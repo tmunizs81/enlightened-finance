@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag, FileText } from "lucide-react";
 import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,7 @@ interface Transaction {
   category_id: string | null;
   notes: string | null;
   receipt_url: string | null;
+  boleto_url: string | null;
 }
 
 interface Category {
@@ -242,8 +243,13 @@ const Transactions = () => {
                   <Split className="h-3 w-3" />
                 </Button>
                 {t.receipt_url && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" onClick={() => setReceiptUrl(t.receipt_url)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" title="Comprovante" onClick={() => setReceiptUrl(t.receipt_url)}>
                     <Paperclip className="h-3 w-3" />
+                  </Button>
+                )}
+                {t.boleto_url && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" type="button" title="Boleto" onClick={() => setReceiptUrl(t.boleto_url)}>
+                    <FileText className="h-3 w-3" />
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>

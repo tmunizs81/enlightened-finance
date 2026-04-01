@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Repeat, Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
-  Pause, Play, Calendar,
+  Pause, Play, Calendar, Paperclip, FileText, X, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
 interface RecurringTransaction {
@@ -26,6 +27,7 @@ interface RecurringTransaction {
   active: boolean;
   last_generated: string | null;
   user_id: string;
+  boleto_url: string | null;
 }
 
 interface Category {
@@ -50,19 +52,60 @@ function RecurringForm({
   initialData?: RecurringTransaction | null;
   loading: boolean;
 }) {
+  const { user } = useAuth();
+  const boletoRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(initialData?.description || "");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
   const [type, setType] = useState(initialData?.type || "expense");
   const [dayOfMonth, setDayOfMonth] = useState(initialData?.day_of_month?.toString() || "1");
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "none");
   const [accountId, setAccountId] = useState(initialData?.account_id || "none");
+  const [boletoFile, setBoletoFile] = useState<File | null>(null);
+  const [boletoPreview, setBoletoPreview] = useState<string | null>(initialData?.boleto_url || null);
+  const [uploading, setUploading] = useState(false);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
   const filteredCats = categories.filter((c) => c.type === type);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleBoletoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Formato não suportado."); return; }
+    setBoletoFile(file);
+    if (file.type.startsWith("image/")) { setBoletoPreview(URL.createObjectURL(file)); } else { setBoletoPreview(null); }
+  };
+
+  const removeBoleto = () => {
+    setBoletoFile(null);
+    setBoletoPreview(null);
+    if (boletoRef.current) boletoRef.current.value = "";
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let boletoUrl = initialData?.boleto_url || null;
+    if (!boletoFile && !boletoPreview) boletoUrl = null;
+
+    if (boletoFile && user) {
+      setUploading(true);
+      try {
+        const ext = boletoFile.name.split(".").pop() || "pdf";
+        const path = `${user.id}/boletos/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("receipts").upload(path, boletoFile, { upsert: true });
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+        boletoUrl = urlData.publicUrl;
+      } catch (err: any) {
+        toast.error("Erro ao enviar boleto: " + err.message);
+      } finally {
+        setUploading(false);
+      }
+    }
+
     onSubmit({
       ...(initialData?.id ? { id: initialData.id } : {}),
       description,
@@ -72,15 +115,17 @@ function RecurringForm({
       category_id: categoryId === "none" ? null : categoryId,
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
+      boleto_url: boletoUrl,
     });
     if (!initialData) {
       setDescription(""); setAmount(""); setType("expense"); setDayOfMonth("1"); setCategoryId("none"); setAccountId("none");
+      removeBoleto();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-card border-border sm:max-w-md">
+      <DialogContent className="glass-card border-border sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">{initialData ? "Editar" : "Nova"} Transação Recorrente</DialogTitle>
         </DialogHeader>
@@ -135,10 +180,39 @@ function RecurringForm({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Boleto Upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Boleto / Carnê</Label>
+            <input ref={boletoRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleBoletoChange} />
+            {!boletoFile && !boletoPreview ? (
+              <button type="button" onClick={() => boletoRef.current?.click()} className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs">Anexar boleto (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button type="button" onClick={removeBoleto} className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10">
+                  <X className="h-3 w-3" />
+                </button>
+                {boletoPreview && boletoPreview.startsWith("blob:") ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : boletoPreview ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-5 w-5" />
+                    <span className="text-xs">{boletoFile?.name || "Boleto anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
-            <Button type="submit" disabled={loading} className="gradient-bg-primary text-primary-foreground">
-              {loading ? "Salvando..." : "Salvar"}
+            <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
+              {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Enviando...</> : loading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </form>
@@ -289,6 +363,13 @@ const Recurring = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-1">
+                  {rec.boleto_url && (
+                    <a href={rec.boleto_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" title="Ver boleto">
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                    </a>
+                  )}
                   <Switch checked={rec.active} onCheckedChange={() => toggleActive(rec)} className="scale-75" />
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(rec); setFormOpen(true); }}>
                     <Pencil className="h-3 w-3" />
