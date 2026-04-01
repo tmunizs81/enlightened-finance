@@ -243,8 +243,13 @@ const Transactions = () => {
                   <Split className="h-3 w-3" />
                 </Button>
                 {t.receipt_url && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" onClick={() => setReceiptUrl(t.receipt_url)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" title="Comprovante" onClick={() => setReceiptUrl(t.receipt_url)}>
                     <Paperclip className="h-3 w-3" />
+                  </Button>
+                )}
+                {t.boleto_url && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" type="button" title="Boleto" onClick={() => setReceiptUrl(t.boleto_url)}>
+                    <FileText className="h-3 w-3" />
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
