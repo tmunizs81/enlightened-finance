@@ -71,15 +71,50 @@ serve(async (req) => {
       }
     }
 
-    // 2. Upcoming due
+    // 2. Boleto-specific due date alerts
     const pendingExpenses = transactions.filter((t: any) => t.type === "expense" && t.status === "pending");
-    const dueTomorrow = pendingExpenses.filter((t: any) => {
-      const d = new Date(t.date + "T12:00:00");
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      return t.date === tomorrow.toISOString().split("T")[0];
-    });
-    const dueToday = pendingExpenses.filter((t: any) => t.date === today);
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+    const in3days = new Date(now); in3days.setDate(in3days.getDate() + 3);
+    const in7days = new Date(now); in7days.setDate(in7days.getDate() + 7);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+    const in3daysStr = in3days.toISOString().split("T")[0];
+    const in7daysStr = in7days.toISOString().split("T")[0];
+
+    // Boletos vencendo
+    const boletosAll = pendingExpenses.filter((t: any) => t.boleto_url);
+    const boletosToday = boletosAll.filter((t: any) => t.date === today);
+    const boletosTomorrow = boletosAll.filter((t: any) => t.date === tomorrowStr);
+    const boletosSoon = boletosAll.filter((t: any) => t.date > tomorrowStr && t.date <= in3daysStr);
+    const boletosWeek = boletosAll.filter((t: any) => t.date > in3daysStr && t.date <= in7daysStr);
+    const boletosOverdue = boletosAll.filter((t: any) => t.date < today);
+
+    if (boletosOverdue.length > 0) {
+      const total = boletosOverdue.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const names = boletosOverdue.map((t: any) => t.description).slice(0, 3).join(", ");
+      alerts.push({ type: "boleto_overdue", severity: "danger", title: `${boletosOverdue.length} boleto(s) vencido(s)!`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. ${names}${boletosOverdue.length > 3 ? "..." : ""}. Pague para evitar juros!`, icon: "🚨" });
+    }
+    if (boletosToday.length > 0) {
+      const total = boletosToday.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const names = boletosToday.map((t: any) => t.description).slice(0, 3).join(", ");
+      alerts.push({ type: "boleto_today", severity: "danger", title: `${boletosToday.length} boleto(s) vencem HOJE`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. ${names}. Pague antes do fim do dia!`, icon: "📄" });
+    }
+    if (boletosTomorrow.length > 0) {
+      const total = boletosTomorrow.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      alerts.push({ type: "boleto_tomorrow", severity: "warning", title: `${boletosTomorrow.length} boleto(s) vencem amanhã`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. Prepare o pagamento!`, icon: "📋" });
+    }
+    if (boletosSoon.length > 0) {
+      const total = boletosSoon.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      alerts.push({ type: "boleto_soon", severity: "info", title: `${boletosSoon.length} boleto(s) nos próximos 3 dias`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. Planeje-se!`, icon: "📅" });
+    }
+    if (boletosWeek.length > 0) {
+      const total = boletosWeek.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      alerts.push({ type: "boleto_week", severity: "info", title: `${boletosWeek.length} boleto(s) na próxima semana`, message: `Total: R$ ${total.toLocaleString("pt-BR")}.`, icon: "🗓️" });
+    }
+
+    // General pending (non-boleto) due dates
+    const nonBoleto = pendingExpenses.filter((t: any) => !t.boleto_url);
+    const dueToday = nonBoleto.filter((t: any) => t.date === today);
+    const dueTomorrow = nonBoleto.filter((t: any) => t.date === tomorrowStr);
 
     if (dueToday.length > 0) {
       const total = dueToday.reduce((s: number, t: any) => s + Number(t.amount), 0);
@@ -90,8 +125,8 @@ serve(async (req) => {
       alerts.push({ type: "due_tomorrow", severity: "warning", title: `${dueTomorrow.length} conta(s) vencem amanhã`, message: `Total: R$ ${total.toLocaleString("pt-BR")}`, icon: "🟡" });
     }
 
-    // 3. Overdue
-    const overdue = pendingExpenses.filter((t: any) => t.date < today);
+    // 3. Overdue (non-boleto)
+    const overdue = nonBoleto.filter((t: any) => t.date < today);
     if (overdue.length > 0) {
       const total = overdue.reduce((s: number, t: any) => s + Number(t.amount), 0);
       alerts.push({ type: "overdue", severity: "danger", title: `${overdue.length} conta(s) em atraso`, message: `Total em atraso: R$ ${total.toLocaleString("pt-BR")}. Regularize para manter seu score!`, icon: "🚫" });
