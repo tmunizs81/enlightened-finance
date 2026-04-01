@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Paperclip, X, FileImage, Loader2, Sparkles } from "lucide-react";
+import { Plus, Paperclip, X, FileImage, Loader2, Sparkles, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 interface Account {
