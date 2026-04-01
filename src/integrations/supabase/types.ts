@@ -407,6 +407,7 @@ export type Database = {
           account_id: string | null
           active: boolean
           amount: number
+          boleto_url: string | null
           category_id: string | null
           created_at: string
           day_of_month: number
@@ -421,6 +422,7 @@ export type Database = {
           account_id?: string | null
           active?: boolean
           amount: number
+          boleto_url?: string | null
           category_id?: string | null
           created_at?: string
           day_of_month?: number
@@ -435,6 +437,7 @@ export type Database = {
           account_id?: string | null
           active?: boolean
           amount?: number
+          boleto_url?: string | null
           category_id?: string | null
           created_at?: string
           day_of_month?: number
@@ -598,6 +601,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          boleto_url: string | null
           category_id: string | null
           created_at: string
           date: string
@@ -613,6 +617,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          boleto_url?: string | null
           category_id?: string | null
           created_at?: string
           date?: string
@@ -628,6 +633,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          boleto_url?: string | null
           category_id?: string | null
           created_at?: string
           date?: string
