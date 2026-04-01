@@ -35,6 +35,7 @@ interface TransactionFormProps {
 export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loading }: TransactionFormProps) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
+  const boletoRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(initialData?.description || "");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
   const [type, setType] = useState(initialData?.type || "expense");
