@@ -30,11 +30,11 @@ interface Category {
 
 const FinancialRules = () => {
   const [formOpen, setFormOpen] = useState(false);
-  const { data: rules = [], isLoading } = useSupabaseQuery<Rule>("financial_rules" as any);
+  const { data: rules = [], isLoading } = useSupabaseQuery<Rule>("financial_rules");
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
-  const insertMutation = useSupabaseInsert("financial_rules" as any);
-  const updateMutation = useSupabaseUpdate("financial_rules" as any);
-  const deleteMutation = useSupabaseDelete("financial_rules" as any);
+  const insertMutation = useSupabaseInsert("financial_rules");
+  const updateMutation = useSupabaseUpdate("financial_rules");
+  const deleteMutation = useSupabaseDelete("financial_rules");
 
   const [name, setName] = useState("");
   const [conditionType, setConditionType] = useState("category_spending");
