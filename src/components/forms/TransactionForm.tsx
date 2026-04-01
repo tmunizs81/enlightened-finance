@@ -415,6 +415,49 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             )}
           </div>
 
+          {/* Boleto Upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Boleto</Label>
+            <input
+              ref={boletoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={handleBoletoChange}
+            />
+
+            {!boletoFile && !boletoPreview ? (
+              <button
+                type="button"
+                onClick={() => boletoRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-xs">Anexar boleto (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button
+                  type="button"
+                  onClick={removeBoleto}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {boletoPreview && boletoPreview.startsWith("blob:") ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : boletoPreview ? (
+                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-5 w-5" />
+                    <span className="text-xs">{boletoFile?.name || "Boleto anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
