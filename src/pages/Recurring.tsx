@@ -256,14 +256,68 @@ function RecurringForm({
   );
 }
 
+const statusStyles: Record<string, string> = {
+  paid: "bg-success/15 text-success border-success/20",
+  pending: "bg-warning/15 text-warning border-warning/20",
+  overdue: "bg-destructive/15 text-destructive border-destructive/20",
+};
+
+const statusLabels: Record<string, string> = {
+  paid: "Pago",
+  pending: "Pendente",
+  overdue: "Atrasado",
+};
+
+interface MonthTransaction {
+  description: string;
+  type: string;
+  status: string;
+  user_id: string;
+}
+
 const Recurring = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [monthTxMap, setMonthTxMap] = useState<Map<string, string>>(new Map());
+  const { user } = useAuth();
 
   const { data: recurrings = [], isLoading } = useSupabaseQuery<RecurringTransaction>("recurring_transactions" as any, "description", true);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
+
+  // Fetch current month transactions to determine status of each recurring
+  useEffect(() => {
+    if (!user) return;
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
+    
+    supabase
+      .from("transactions")
+      .select("description, type, status, user_id")
+      .eq("user_id", user.id)
+      .gte("date", monthStart)
+      .lte("date", monthEnd)
+      .then(({ data }) => {
+        const map = new Map<string, string>();
+        (data || []).forEach((tx: MonthTransaction) => {
+          const key = `${tx.description}::${tx.type}`;
+          map.set(key, tx.status);
+        });
+        setMonthTxMap(map);
+      });
+  }, [user, recurrings]);
+
+  const getRecurringStatus = (rec: RecurringTransaction): string => {
+    const key = `${rec.description}::${rec.type}`;
+    const txStatus = monthTxMap.get(key);
+    if (txStatus) return txStatus;
+    // No transaction generated yet
+    const now = new Date();
+    if (rec.day_of_month <= now.getDate()) return "overdue";
+    return "pending";
+  };
 
   const insertMutation = useSupabaseInsert("recurring_transactions" as any);
   const updateMutation = useSupabaseUpdate("recurring_transactions" as any);
@@ -416,10 +470,18 @@ const Recurring = () => {
                     Dia {rec.day_of_month}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className={`text-sm font-bold tabular-nums ${rec.type === "income" ? "text-success" : "text-foreground"}`}>
                     {rec.type === "income" ? "+" : "-"} R$ {Number(rec.amount).toLocaleString("pt-BR")}
                   </p>
+                  {(() => {
+                    const status = rec.active ? getRecurringStatus(rec) : "pending";
+                    return (
+                      <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${statusStyles[status] || statusStyles.pending}`}>
+                        {statusLabels[status] || "Pendente"}
+                      </Badge>
+                    );
+                  })()}
                   {rec.last_generated && (
                     <p className="text-[10px] text-muted-foreground">
                       Último: {new Date(rec.last_generated).toLocaleDateString("pt-BR")}
