@@ -50,7 +50,8 @@ serve(async (req) => {
       // When forcing, check if transaction already exists this month to avoid duplicates
       if (force) {
         const monthStart = `${currentMonth}-01`;
-        const monthEnd = `${currentMonth}-31`;
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const monthEnd = `${currentMonth}-${String(lastDay).padStart(2, "0")}`;
         const { data: existing } = await supabase
           .from("transactions")
           .select("id")
