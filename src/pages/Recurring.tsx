@@ -272,11 +272,40 @@ const Recurring = () => {
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const accMap = new Map(accounts.map((a) => [a.id, a]));
 
-  const handleSubmit = (data: any) => {
-    if (data.id) {
-      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+  const handleSubmit = async (data: any) => {
+    const { _markAsPaid, ...submitData } = data;
+    
+    if (submitData.id) {
+      updateMutation.mutate(submitData, {
+        onSuccess: async () => {
+          // If user wants to mark related transactions as paid
+          if (_markAsPaid) {
+            try {
+              const now = new Date();
+              const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+              const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
+              
+              const { error } = await supabase
+                .from("transactions")
+                .update({ status: "paid", receipt_url: submitData.boleto_url } as any)
+                .eq("description", submitData.description)
+                .eq("type", submitData.type)
+                .gte("date", monthStart)
+                .lte("date", monthEnd);
+              
+              if (!error) {
+                toast.success("Transações do mês marcadas como pagas!");
+              }
+            } catch {
+              // silent fail - main update already succeeded
+            }
+          }
+          setEditing(null);
+          setFormOpen(false);
+        },
+      });
     } else {
-      insertMutation.mutate(data, { onSuccess: () => setFormOpen(false) });
+      insertMutation.mutate(submitData, { onSuccess: () => setFormOpen(false) });
     }
   };
 
