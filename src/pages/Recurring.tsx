@@ -228,6 +228,22 @@ function RecurringForm({
             )}
           </div>
 
+          {/* Mark as paid option - shown when editing and attaching a receipt */}
+          {editingIdRef.current && (boletoFile || boletoPreview) && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
+              <input
+                type="checkbox"
+                id="mark-as-paid"
+                checked={markAsPaid}
+                onChange={(e) => setMarkAsPaid(e.target.checked)}
+                className="rounded border-border accent-success"
+              />
+              <Label htmlFor="mark-as-paid" className="text-xs text-success cursor-pointer font-medium">
+                Marcar transações deste mês como pagas
+              </Label>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
