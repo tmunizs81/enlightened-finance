@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
   Calendar,
   FileText,
+  Paperclip,
   X,
   Loader2,
 } from "lucide-react";
@@ -82,10 +83,13 @@ const buildRecurringKey = (
 
 const getCurrentMonthRange = () => {
   const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthStr = String(month + 1).padStart(2, "0");
   return {
-    monthStart: `${now.getFullYear()}-${month}-01`,
-    monthEnd: `${now.getFullYear()}-${month}-31`,
+    monthStart: `${year}-${monthStr}-01`,
+    monthEnd: `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`,
   };
 };
 
@@ -147,6 +151,7 @@ function RecurringForm({
 }) {
   const { user } = useAuth();
   const boletoRef = useRef<HTMLInputElement>(null);
+  const receiptRef = useRef<HTMLInputElement>(null);
   const editingIdRef = useRef<string | null>(null);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -157,6 +162,8 @@ function RecurringForm({
   const [accountId, setAccountId] = useState("none");
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
   const [boletoPreview, setBoletoPreview] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -171,6 +178,8 @@ function RecurringForm({
     setAccountId(initialData?.account_id || "none");
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
+    setReceiptFile(null);
+    setReceiptPreview((initialData as any)?.receipt_url || null);
   }, [initialData, open, currentStatus]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
@@ -203,6 +212,32 @@ function RecurringForm({
     if (boletoRef.current) boletoRef.current.value = "";
   };
 
+  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Formato não suportado."); return; }
+    setReceiptFile(file);
+    if (file.type.startsWith("image/")) { setReceiptPreview(URL.createObjectURL(file)); } else { setReceiptPreview(null); }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    if (receiptRef.current) receiptRef.current.value = "";
+  };
+
+  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop() || "pdf";
+    const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentEditingId = editingIdRef.current;
@@ -210,21 +245,19 @@ function RecurringForm({
     let boletoUrl = initialData?.boleto_url || null;
     if (!boletoFile && !boletoPreview) boletoUrl = null;
 
-    if (boletoFile && user) {
-      setUploading(true);
-      try {
-        const ext = boletoFile.name.split(".").pop() || "pdf";
-        const path = `${user.id}/boletos/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from("receipts").upload(path, boletoFile, { upsert: true });
-        if (error) throw error;
-        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-        boletoUrl = urlData.publicUrl;
-      } catch (err: any) {
-        toast.error("Erro ao enviar boleto: " + err.message);
-      } finally {
-        setUploading(false);
-      }
+    let receiptUrl = (initialData as any)?.receipt_url || null;
+    if (!receiptFile && !receiptPreview) receiptUrl = null;
+
+    setUploading(true);
+    try {
+      if (boletoFile) boletoUrl = await uploadFile(boletoFile, "boletos");
+      if (receiptFile) receiptUrl = await uploadFile(receiptFile, "comprovantes");
+    } catch (err: any) {
+      toast.error("Erro ao enviar arquivo: " + err.message);
+      setUploading(false);
+      return;
     }
+    setUploading(false);
 
     onSubmit({
       ...(currentEditingId ? { id: currentEditingId } : {}),
@@ -236,6 +269,7 @@ function RecurringForm({
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
       boleto_url: boletoUrl,
+      receipt_url: receiptUrl,
       _status: status,
     });
 
@@ -248,6 +282,7 @@ function RecurringForm({
       setCategoryId("none");
       setAccountId("none");
       removeBoleto();
+      removeReceipt();
     }
   };
 
@@ -382,6 +417,41 @@ function RecurringForm({
             )}
           </div>
 
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">📎 Comprovante</Label>
+            <input ref={receiptRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleReceiptChange} />
+            {!receiptFile && !receiptPreview ? (
+              <button
+                type="button"
+                onClick={() => receiptRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
+                <Paperclip className="h-4 w-4" />
+                <span className="text-xs">Anexar comprovante (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button
+                  type="button"
+                  onClick={removeReceipt}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {receiptPreview && receiptPreview.startsWith("blob:") ? (
+                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : receiptPreview ? (
+                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Paperclip className="h-5 w-5" />
+                    <span className="text-xs">{receiptFile?.name || "Comprovante anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
@@ -457,6 +527,7 @@ const Recurring = () => {
       category_id: nextData.category_id,
       account_id: nextData.account_id,
       boleto_url: nextData.boleto_url,
+      receipt_url: (nextData as any).receipt_url,
     };
 
     if (existingTransactions && existingTransactions.length > 0) {
@@ -639,6 +710,13 @@ const Recurring = () => {
                     <a href={rec.boleto_url} target="_blank" rel="noopener noreferrer">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" title="Ver boleto">
                         <FileText className="h-3 w-3" />
+                      </Button>
+                    </a>
+                  )}
+                  {(rec as any).receipt_url && (
+                    <a href={(rec as any).receipt_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-success hover:text-success/80" title="Ver comprovante">
+                        <Paperclip className="h-3 w-3" />
                       </Button>
                     </a>
                   )}
