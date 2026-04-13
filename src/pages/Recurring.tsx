@@ -82,10 +82,13 @@ const buildRecurringKey = (
 
 const getCurrentMonthRange = () => {
   const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthStr = String(month + 1).padStart(2, "0");
   return {
-    monthStart: `${now.getFullYear()}-${month}-01`,
-    monthEnd: `${now.getFullYear()}-${month}-31`,
+    monthStart: `${year}-${monthStr}-01`,
+    monthEnd: `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`,
   };
 };
 
@@ -147,6 +150,7 @@ function RecurringForm({
 }) {
   const { user } = useAuth();
   const boletoRef = useRef<HTMLInputElement>(null);
+  const receiptRef = useRef<HTMLInputElement>(null);
   const editingIdRef = useRef<string | null>(null);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -157,6 +161,8 @@ function RecurringForm({
   const [accountId, setAccountId] = useState("none");
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
   const [boletoPreview, setBoletoPreview] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -171,6 +177,8 @@ function RecurringForm({
     setAccountId(initialData?.account_id || "none");
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
+    setReceiptFile(null);
+    setReceiptPreview((initialData as any)?.receipt_url || null);
   }, [initialData, open, currentStatus]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
