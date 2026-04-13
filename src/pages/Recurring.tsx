@@ -451,6 +451,8 @@ function RecurringForm({
               </div>
             )}
           </div>
+
+          <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
               {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Enviando...</> : loading ? "Salvando..." : "Salvar"}
