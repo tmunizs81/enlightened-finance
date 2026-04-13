@@ -1,8 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Repeat, Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
-  Pause, Play, Calendar, Paperclip, FileText, X, Loader2,
+  Repeat,
+  Plus,
+  Pencil,
+  Trash2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calendar,
+  FileText,
+  X,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,14 +51,99 @@ interface Account {
   institution: string | null;
 }
 
+type RecurringStatus = "pending" | "paid" | "overdue";
+
+interface MonthTransaction {
+  description: string;
+  type: string;
+  status: string;
+  account_id: string | null;
+  category_id: string | null;
+}
+
+const statusStyles: Record<RecurringStatus, string> = {
+  paid: "bg-success/15 text-success border-success/20",
+  pending: "bg-warning/15 text-warning border-warning/20",
+  overdue: "bg-destructive/15 text-destructive border-destructive/20",
+};
+
+const statusLabels: Record<RecurringStatus, string> = {
+  paid: "Pago",
+  pending: "Pendente",
+  overdue: "Atrasado",
+};
+
+const buildRecurringKey = (
+  description: string,
+  type: string,
+  accountId: string | null,
+  categoryId: string | null,
+) => [description.trim().toLowerCase(), type, accountId || "none", categoryId || "none"].join("::");
+
+const getCurrentMonthRange = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return {
+    monthStart: `${now.getFullYear()}-${month}-01`,
+    monthEnd: `${now.getFullYear()}-${month}-31`,
+  };
+};
+
+const loadCurrentMonthStatusMap = async (userId: string) => {
+  const { monthStart, monthEnd } = getCurrentMonthRange();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("description, type, status, account_id, category_id")
+    .eq("user_id", userId)
+    .gte("date", monthStart)
+    .lte("date", monthEnd);
+
+  if (error) throw error;
+
+  const map = new Map<string, RecurringStatus>();
+  (data || []).forEach((tx: MonthTransaction) => {
+    const key = buildRecurringKey(tx.description, tx.type, tx.account_id, tx.category_id);
+    const status = (tx.status || "pending") as RecurringStatus;
+    map.set(key, status);
+  });
+
+  return map;
+};
+
+const applyRecurringFilters = (
+  query: any,
+  userId: string,
+  source: Pick<RecurringTransaction, "description" | "type" | "account_id" | "category_id">,
+) => {
+  const { monthStart, monthEnd } = getCurrentMonthRange();
+
+  let nextQuery = query
+    .eq("user_id", userId)
+    .eq("description", source.description)
+    .eq("type", source.type)
+    .gte("date", monthStart)
+    .lte("date", monthEnd);
+
+  nextQuery = source.account_id ? nextQuery.eq("account_id", source.account_id) : nextQuery.is("account_id", null);
+  nextQuery = source.category_id ? nextQuery.eq("category_id", source.category_id) : nextQuery.is("category_id", null);
+
+  return nextQuery;
+};
+
 function RecurringForm({
-  open, onOpenChange, onSubmit, initialData, loading,
+  open,
+  onOpenChange,
+  onSubmit,
+  initialData,
+  loading,
+  currentStatus = "pending",
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSubmit: (d: any) => void;
   initialData?: RecurringTransaction | null;
   loading: boolean;
+  currentStatus?: RecurringStatus;
 }) {
   const { user } = useAuth();
   const boletoRef = useRef<HTMLInputElement>(null);
@@ -58,28 +151,27 @@ function RecurringForm({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("expense");
+  const [status, setStatus] = useState<RecurringStatus>("pending");
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [categoryId, setCategoryId] = useState("none");
   const [accountId, setAccountId] = useState("none");
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
   const [boletoPreview, setBoletoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [markAsPaid, setMarkAsPaid] = useState(false);
 
-  // Sync form when initialData or open changes
   useEffect(() => {
     if (!open) return;
     editingIdRef.current = initialData?.id || null;
     setDescription(initialData?.description ?? "");
     setAmount(initialData?.amount != null ? String(initialData.amount) : "");
     setType(initialData?.type || "expense");
+    setStatus(currentStatus);
     setDayOfMonth(initialData?.day_of_month != null ? String(initialData.day_of_month) : "1");
     setCategoryId(initialData?.category_id || "none");
     setAccountId(initialData?.account_id || "none");
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
-    setMarkAsPaid(false);
-  }, [initialData, open]);
+  }, [initialData, open, currentStatus]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -88,11 +180,21 @@ function RecurringForm({
   const handleBoletoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo: 10MB");
+      return;
+    }
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowed.includes(file.type)) { toast.error("Formato não suportado."); return; }
+    if (!allowed.includes(file.type)) {
+      toast.error("Formato não suportado.");
+      return;
+    }
     setBoletoFile(file);
-    if (file.type.startsWith("image/")) { setBoletoPreview(URL.createObjectURL(file)); } else { setBoletoPreview(null); }
+    if (file.type.startsWith("image/")) {
+      setBoletoPreview(URL.createObjectURL(file));
+    } else {
+      setBoletoPreview(null);
+    }
   };
 
   const removeBoleto = () => {
@@ -134,11 +236,18 @@ function RecurringForm({
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
       boleto_url: boletoUrl,
-      _markAsPaid: markAsPaid,
+      _status: status,
     });
+
     if (!currentEditingId) {
-      setDescription(""); setAmount(""); setType("expense"); setDayOfMonth("1"); setCategoryId("none"); setAccountId("none");
-      removeBoleto(); setMarkAsPaid(false);
+      setDescription("");
+      setAmount("");
+      setType("expense");
+      setStatus("pending");
+      setDayOfMonth("1");
+      setCategoryId("none");
+      setAccountId("none");
+      removeBoleto();
     }
   };
 
@@ -151,18 +260,42 @@ function RecurringForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Descrição</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} className="bg-secondary border-border" required placeholder="Ex: Aluguel, Netflix, Salário..." />
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-secondary border-border"
+              required
+              placeholder="Ex: Aluguel, Netflix, Salário..."
+            />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-secondary border-border" required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="bg-secondary border-border"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Dia do mês</Label>
-              <Input type="number" min="1" max="31" value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className="bg-secondary border-border" required />
+              <Input
+                type="number"
+                min="1"
+                max="31"
+                value={dayOfMonth}
+                onChange={(e) => setDayOfMonth(e.target.value)}
+                className="bg-secondary border-border"
+                required
+              />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Tipo</Label>
@@ -175,6 +308,20 @@ function RecurringForm({
               </Select>
             </div>
             <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={status} onValueChange={(value) => setStatus(value as RecurringStatus)}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="paid">Pago</SelectItem>
+                  <SelectItem value="overdue">Atrasado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Categoria</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -186,32 +333,39 @@ function RecurringForm({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Conta</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem conta</SelectItem>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}{a.institution ? ` (${a.institution})` : ""}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Conta</Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem conta</SelectItem>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}{a.institution ? ` (${a.institution})` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Boleto Upload */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Boleto / Carnê</Label>
             <input ref={boletoRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleBoletoChange} />
             {!boletoFile && !boletoPreview ? (
-              <button type="button" onClick={() => boletoRef.current?.click()} className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors">
+              <button
+                type="button"
+                onClick={() => boletoRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
                 <FileText className="h-4 w-4" />
                 <span className="text-xs">Anexar boleto (JPG, PNG, PDF — máx 10MB)</span>
               </button>
             ) : (
               <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
-                <button type="button" onClick={removeBoleto} className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10">
+                <button
+                  type="button"
+                  onClick={removeBoleto}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
                   <X className="h-3 w-3" />
                 </button>
                 {boletoPreview && boletoPreview.startsWith("blob:") ? (
@@ -228,22 +382,6 @@ function RecurringForm({
             )}
           </div>
 
-          {/* Mark as paid option - shown when editing and attaching a receipt */}
-          {editingIdRef.current && (boletoFile || boletoPreview) && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
-              <input
-                type="checkbox"
-                id="mark-as-paid"
-                checked={markAsPaid}
-                onChange={(e) => setMarkAsPaid(e.target.checked)}
-                className="rounded border-border accent-success"
-              />
-              <Label htmlFor="mark-as-paid" className="text-xs text-success cursor-pointer font-medium">
-                Marcar transações deste mês como pagas
-              </Label>
-            </div>
-          )}
-
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
@@ -256,64 +394,33 @@ function RecurringForm({
   );
 }
 
-const statusStyles: Record<string, string> = {
-  paid: "bg-success/15 text-success border-success/20",
-  pending: "bg-warning/15 text-warning border-warning/20",
-  overdue: "bg-destructive/15 text-destructive border-destructive/20",
-};
-
-const statusLabels: Record<string, string> = {
-  paid: "Pago",
-  pending: "Pendente",
-  overdue: "Atrasado",
-};
-
-interface MonthTransaction {
-  description: string;
-  type: string;
-  status: string;
-  user_id: string;
-}
-
 const Recurring = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [monthTxMap, setMonthTxMap] = useState<Map<string, string>>(new Map());
+  const [monthTxMap, setMonthTxMap] = useState<Map<string, RecurringStatus>>(new Map());
   const { user } = useAuth();
 
   const { data: recurrings = [], isLoading } = useSupabaseQuery<RecurringTransaction>("recurring_transactions" as any, "description", true);
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
 
-  // Fetch current month transactions to determine status of each recurring
   useEffect(() => {
-    if (!user) return;
-    const now = new Date();
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
-    
-    supabase
-      .from("transactions")
-      .select("description, type, status, user_id")
-      .eq("user_id", user.id)
-      .gte("date", monthStart)
-      .lte("date", monthEnd)
-      .then(({ data }) => {
-        const map = new Map<string, string>();
-        (data || []).forEach((tx: MonthTransaction) => {
-          const key = `${tx.description}::${tx.type}`;
-          map.set(key, tx.status);
-        });
-        setMonthTxMap(map);
-      });
-  }, [user, recurrings]);
+    if (!user) {
+      setMonthTxMap(new Map());
+      return;
+    }
 
-  const getRecurringStatus = (rec: RecurringTransaction): string => {
-    const key = `${rec.description}::${rec.type}`;
+    loadCurrentMonthStatusMap(user.id)
+      .then(setMonthTxMap)
+      .catch(() => setMonthTxMap(new Map()));
+  }, [user?.id]);
+
+  const getRecurringStatus = (rec: RecurringTransaction): RecurringStatus => {
+    const key = buildRecurringKey(rec.description, rec.type, rec.account_id, rec.category_id);
     const txStatus = monthTxMap.get(key);
     if (txStatus) return txStatus;
-    // No transaction generated yet
+
     const now = new Date();
     if (rec.day_of_month <= now.getDate()) return "overdue";
     return "pending";
@@ -326,36 +433,77 @@ const Recurring = () => {
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const accMap = new Map(accounts.map((a) => [a.id, a]));
 
+  const syncCurrentMonthTransaction = async (
+    previousData: RecurringTransaction,
+    nextData: Omit<RecurringTransaction, "last_generated" | "user_id">,
+    nextStatus: RecurringStatus,
+  ) => {
+    if (!user) return;
+
+    const matchQuery = applyRecurringFilters(
+      supabase.from("transactions").select("id"),
+      user.id,
+      previousData,
+    );
+
+    const { data: existingTransactions, error: fetchError } = await matchQuery.limit(1);
+    if (fetchError) throw fetchError;
+
+    const transactionPayload = {
+      description: nextData.description,
+      amount: nextData.amount,
+      type: nextData.type,
+      status: nextStatus,
+      category_id: nextData.category_id,
+      account_id: nextData.account_id,
+      boleto_url: nextData.boleto_url,
+    };
+
+    if (existingTransactions && existingTransactions.length > 0) {
+      const { error: updateError } = await applyRecurringFilters(
+        supabase.from("transactions").update(transactionPayload as any),
+        user.id,
+        previousData,
+      );
+
+      if (updateError) throw updateError;
+      return;
+    }
+
+    const now = new Date();
+    const day = Math.min(nextData.day_of_month, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
+    const txDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    const { error: insertError } = await supabase.from("transactions").insert({
+      ...transactionPayload,
+      user_id: user.id,
+      date: txDate,
+      notes: "Transação recorrente sincronizada manualmente",
+    } as any);
+
+    if (insertError) throw insertError;
+  };
+
   const handleSubmit = async (data: any) => {
-    const { _markAsPaid, ...submitData } = data;
-    
+    const { _status, ...submitData } = data;
+    const nextStatus = (_status || "pending") as RecurringStatus;
+
     if (submitData.id) {
       updateMutation.mutate(submitData, {
         onSuccess: async () => {
-          // If user wants to mark related transactions as paid
-          if (_markAsPaid) {
-            try {
-              const now = new Date();
-              const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-              const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
-              
-              const { error } = await supabase
-                .from("transactions")
-                .update({ status: "paid", receipt_url: submitData.boleto_url } as any)
-                .eq("description", submitData.description)
-                .eq("type", submitData.type)
-                .gte("date", monthStart)
-                .lte("date", monthEnd);
-              
-              if (!error) {
-                toast.success("Transações do mês marcadas como pagas!");
-              }
-            } catch {
-              // silent fail - main update already succeeded
+          try {
+            if (editing) {
+              await syncCurrentMonthTransaction(editing, submitData, nextStatus);
             }
+            if (user) {
+              setMonthTxMap(await loadCurrentMonthStatusMap(user.id));
+            }
+          } catch (error: any) {
+            toast.error(error.message || "Recorrente salvo, mas o status do mês não foi sincronizado.");
+          } finally {
+            setEditing(null);
+            setFormOpen(false);
           }
-          setEditing(null);
-          setFormOpen(false);
         },
       });
     } else {
@@ -381,6 +529,9 @@ const Recurring = () => {
       });
       if (!resp.ok) throw new Error("Erro ao processar");
       const result = await resp.json();
+      if (user) {
+        setMonthTxMap(await loadCurrentMonthStatusMap(user.id));
+      }
       toast.success(`${result.created} transação(ões) gerada(s), ${result.skipped} já existia(m).`);
     } catch (e: any) {
       toast.error(e.message || "Erro ao processar recorrentes");
@@ -416,7 +567,6 @@ const Recurring = () => {
         </div>
       </div>
 
-      {/* Summary */}
       <div className="glass-card p-4 flex items-center justify-between">
         <div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Impacto mensal líquido</p>
@@ -437,7 +587,6 @@ const Recurring = () => {
         </p>
       </div>
 
-      {/* List */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : recurrings.length === 0 ? (
@@ -451,6 +600,8 @@ const Recurring = () => {
           {recurrings.map((rec, i) => {
             const cat = catMap.get(rec.category_id || "");
             const acc = accMap.get(rec.account_id || "");
+            const status = getRecurringStatus(rec);
+
             return (
               <motion.div
                 key={rec.id}
@@ -474,14 +625,9 @@ const Recurring = () => {
                   <p className={`text-sm font-bold tabular-nums ${rec.type === "income" ? "text-success" : "text-foreground"}`}>
                     {rec.type === "income" ? "+" : "-"} R$ {Number(rec.amount).toLocaleString("pt-BR")}
                   </p>
-                  {(() => {
-                    const status = rec.active ? getRecurringStatus(rec) : "pending";
-                    return (
-                      <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${statusStyles[status] || statusStyles.pending}`}>
-                        {statusLabels[status] || "Pendente"}
-                      </Badge>
-                    );
-                  })()}
+                  <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${statusStyles[status]}`}>
+                    {statusLabels[status]}
+                  </Badge>
                   {rec.last_generated && (
                     <p className="text-[10px] text-muted-foreground">
                       Último: {new Date(rec.last_generated).toLocaleDateString("pt-BR")}
@@ -515,6 +661,7 @@ const Recurring = () => {
         onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
         onSubmit={handleSubmit}
         initialData={editing}
+        currentStatus={editing ? getRecurringStatus(editing) : "pending"}
         loading={insertMutation.isPending || updateMutation.isPending}
       />
     </div>
