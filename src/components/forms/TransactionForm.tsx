@@ -36,19 +36,21 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const boletoRef = useRef<HTMLInputElement>(null);
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
-  const [type, setType] = useState(initialData?.type || "expense");
-  const [status, setStatus] = useState(initialData?.status || "pending");
-  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split("T")[0]);
-  const [categoryId, setCategoryId] = useState(initialData?.category_id || "none");
-  const [accountId, setAccountId] = useState(initialData?.account_id || "none");
+  // Store the editing ID in a ref so it survives re-renders during async submit
+  const editingIdRef = useRef<string | null>(null);
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
+  const [status, setStatus] = useState("pending");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [categoryId, setCategoryId] = useState("none");
+  const [accountId, setAccountId] = useState("none");
   const [newCatName, setNewCatName] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(initialData?.receipt_url || null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
-  const [boletoPreview, setBoletoPreview] = useState<string | null>(initialData?.boleto_url || null);
+  const [boletoPreview, setBoletoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggested, setAiSuggested] = useState<string | null>(null);
@@ -56,10 +58,13 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const [installments, setInstallments] = useState("1");
   const [isInstallment, setIsInstallment] = useState(false);
 
-  // Sync form state when initialData changes (edit mode)
+  // Sync form state when initialData changes or dialog opens (edit mode)
   useEffect(() => {
-    setDescription(initialData?.description || "");
-    setAmount(initialData?.amount?.toString() || "");
+    if (!open) return;
+    // Capture the editing ID in ref so it persists through async operations
+    editingIdRef.current = initialData?.id || null;
+    setDescription(initialData?.description ?? "");
+    setAmount(initialData?.amount != null ? String(initialData.amount) : "");
     setType(initialData?.type || "expense");
     setStatus(initialData?.status || "pending");
     setDate(initialData?.date || new Date().toISOString().split("T")[0]);
