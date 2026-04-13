@@ -627,7 +627,7 @@ const Recurring = () => {
       });
     } else {
       insertMutation.mutate(submitData, {
-        onSuccess: async (createdRecurring: RecurringTransaction) => {
+        onSuccess: async (createdRecurring: any) => {
           try {
             if (user && (nextStatus !== "pending" || Boolean(_receipt_url))) {
               await syncCurrentMonthTransaction(createdRecurring, syncPayload, nextStatus);
