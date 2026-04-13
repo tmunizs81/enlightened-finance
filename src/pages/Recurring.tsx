@@ -470,10 +470,18 @@ const Recurring = () => {
                     Dia {rec.day_of_month}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className={`text-sm font-bold tabular-nums ${rec.type === "income" ? "text-success" : "text-foreground"}`}>
                     {rec.type === "income" ? "+" : "-"} R$ {Number(rec.amount).toLocaleString("pt-BR")}
                   </p>
+                  {(() => {
+                    const status = rec.active ? getRecurringStatus(rec) : "pending";
+                    return (
+                      <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${statusStyles[status] || statusStyles.pending}`}>
+                        {statusLabels[status] || "Pendente"}
+                      </Badge>
+                    );
+                  })()}
                   {rec.last_generated && (
                     <p className="text-[10px] text-muted-foreground">
                       Último: {new Date(rec.last_generated).toLocaleDateString("pt-BR")}
