@@ -23,6 +23,9 @@ serve(async (req) => {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const today = now.toISOString().split("T")[0];
+    const monthStart = `${currentMonth}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const monthEnd = `${currentMonth}-${String(lastDay).padStart(2, "0")}`;
 
     const { data: recurrings, error: fetchErr } = await supabase
       .from("recurring_transactions")
@@ -36,41 +39,33 @@ serve(async (req) => {
     let errors = 0;
 
     for (const rec of recurrings || []) {
+      const lastGen = rec.last_generated;
+      const alreadyGeneratedThisMonth = Boolean(lastGen && lastGen.substring(0, 7) >= currentMonth);
+
       if (!force) {
-        const lastGen = rec.last_generated;
-        if (lastGen) {
-          const lastGenMonth = lastGen.substring(0, 7);
-          if (lastGenMonth >= currentMonth) {
-            skipped++;
-            continue;
-          }
-        }
-      }
-
-      // When forcing, check if transaction already exists this month to avoid duplicates
-      if (force) {
-        const monthStart = `${currentMonth}-01`;
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const monthEnd = `${currentMonth}-${String(lastDay).padStart(2, "0")}`;
-        const { data: existing } = await supabase
-          .from("transactions")
-          .select("id")
-          .eq("user_id", rec.user_id)
-          .eq("description", rec.description)
-          .eq("type", rec.type)
-          .gte("date", monthStart)
-          .lte("date", monthEnd)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          console.log(`Force mode: transaction already exists for "${rec.description}" this month, skipping`);
-          // Fix last_generated if it wasn't set
-          if (!rec.last_generated || rec.last_generated.substring(0, 7) < currentMonth) {
-            await supabase.from("recurring_transactions").update({ last_generated: today }).eq("id", rec.id);
-          }
+        if (alreadyGeneratedThisMonth) {
           skipped++;
           continue;
         }
+      }
+
+      const { data: existing } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("user_id", rec.user_id)
+        .eq("description", rec.description)
+        .eq("type", rec.type)
+        .gte("date", monthStart)
+        .lte("date", monthEnd)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        console.log(`Transaction already exists for "${rec.description}" this month, skipping duplicate generation`);
+        if (!alreadyGeneratedThisMonth) {
+          await supabase.from("recurring_transactions").update({ last_generated: today }).eq("id", rec.id);
+        }
+        skipped++;
+        continue;
       }
 
       const day = Math.min(rec.day_of_month, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
