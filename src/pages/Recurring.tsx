@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Repeat, Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
