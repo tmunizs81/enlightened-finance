@@ -527,6 +527,7 @@ const Recurring = () => {
       category_id: nextData.category_id,
       account_id: nextData.account_id,
       boleto_url: nextData.boleto_url,
+      receipt_url: (nextData as any).receipt_url,
     };
 
     if (existingTransactions && existingTransactions.length > 0) {
