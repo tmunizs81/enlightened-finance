@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
   Calendar,
   FileText,
+  Paperclip,
   X,
   Loader2,
 } from "lucide-react";
@@ -416,7 +417,40 @@ function RecurringForm({
             )}
           </div>
 
-          <DialogFooter>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">📎 Comprovante</Label>
+            <input ref={receiptRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleReceiptChange} />
+            {!receiptFile && !receiptPreview ? (
+              <button
+                type="button"
+                onClick={() => receiptRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+              >
+                <Paperclip className="h-4 w-4" />
+                <span className="text-xs">Anexar comprovante (JPG, PNG, PDF — máx 10MB)</span>
+              </button>
+            ) : (
+              <div className="relative rounded-lg border border-border bg-secondary/50 p-3">
+                <button
+                  type="button"
+                  onClick={removeReceipt}
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {receiptPreview && receiptPreview.startsWith("blob:") ? (
+                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md mx-auto object-contain" />
+                ) : receiptPreview ? (
+                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Paperclip className="h-5 w-5" />
+                    <span className="text-xs">{receiptFile?.name || "Comprovante anexado"}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
               {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Enviando...</> : loading ? "Salvando..." : "Salvar"}
