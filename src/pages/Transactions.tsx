@@ -324,7 +324,7 @@ const Transactions = () => {
                   />
                 </div>
               </div>
-              <Badge variant="outline" className={`text-[10px] hidden sm:flex ${statusStyles[t.status]}`}>{statusLabels[t.status]}</Badge>
+              <Badge variant="outline" className={`text-[10px] flex-shrink-0 ${statusStyles[t.status]}`}>{statusLabels[t.status]}</Badge>
               <p className={`text-sm font-bold tabular-nums ${t.type === "income" ? "text-success" : "text-foreground"}`}>
                 {t.type === "income" ? "+" : "-"} R$ {Number(t.amount).toLocaleString("pt-BR")}
               </p>
