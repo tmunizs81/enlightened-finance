@@ -211,6 +211,32 @@ function RecurringForm({
     if (boletoRef.current) boletoRef.current.value = "";
   };
 
+  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Formato não suportado."); return; }
+    setReceiptFile(file);
+    if (file.type.startsWith("image/")) { setReceiptPreview(URL.createObjectURL(file)); } else { setReceiptPreview(null); }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    if (receiptRef.current) receiptRef.current.value = "";
+  };
+
+  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop() || "pdf";
+    const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentEditingId = editingIdRef.current;
@@ -218,21 +244,19 @@ function RecurringForm({
     let boletoUrl = initialData?.boleto_url || null;
     if (!boletoFile && !boletoPreview) boletoUrl = null;
 
-    if (boletoFile && user) {
-      setUploading(true);
-      try {
-        const ext = boletoFile.name.split(".").pop() || "pdf";
-        const path = `${user.id}/boletos/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from("receipts").upload(path, boletoFile, { upsert: true });
-        if (error) throw error;
-        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-        boletoUrl = urlData.publicUrl;
-      } catch (err: any) {
-        toast.error("Erro ao enviar boleto: " + err.message);
-      } finally {
-        setUploading(false);
-      }
+    let receiptUrl = (initialData as any)?.receipt_url || null;
+    if (!receiptFile && !receiptPreview) receiptUrl = null;
+
+    setUploading(true);
+    try {
+      if (boletoFile) boletoUrl = await uploadFile(boletoFile, "boletos");
+      if (receiptFile) receiptUrl = await uploadFile(receiptFile, "comprovantes");
+    } catch (err: any) {
+      toast.error("Erro ao enviar arquivo: " + err.message);
+      setUploading(false);
+      return;
     }
+    setUploading(false);
 
     onSubmit({
       ...(currentEditingId ? { id: currentEditingId } : {}),
@@ -244,6 +268,7 @@ function RecurringForm({
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
       boleto_url: boletoUrl,
+      receipt_url: receiptUrl,
       _status: status,
     });
 
@@ -256,6 +281,7 @@ function RecurringForm({
       setCategoryId("none");
       setAccountId("none");
       removeBoleto();
+      removeReceipt();
     }
   };
 
