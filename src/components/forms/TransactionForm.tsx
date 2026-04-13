@@ -206,6 +206,9 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Capture editing ID from ref BEFORE any async operations
+    const currentEditingId = editingIdRef.current;
+
     let receiptUrl = initialData?.receipt_url || null;
     let boletoUrl = initialData?.boleto_url || null;
 
@@ -227,7 +230,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
         : description;
 
       onSubmit({
-        ...(i === 0 && initialData?.id ? { id: initialData.id } : {}),
+        ...(i === 0 && currentEditingId ? { id: currentEditingId } : {}),
         description: desc,
         amount: installmentAmount,
         type,
@@ -240,7 +243,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       });
     }
 
-    if (!initialData) {
+    if (!currentEditingId) {
       setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
       setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
       removeReceipt(); removeBoleto();
