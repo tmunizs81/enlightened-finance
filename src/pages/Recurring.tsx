@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Repeat, Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight,
@@ -54,15 +54,32 @@ function RecurringForm({
 }) {
   const { user } = useAuth();
   const boletoRef = useRef<HTMLInputElement>(null);
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
-  const [type, setType] = useState(initialData?.type || "expense");
-  const [dayOfMonth, setDayOfMonth] = useState(initialData?.day_of_month?.toString() || "1");
-  const [categoryId, setCategoryId] = useState(initialData?.category_id || "none");
-  const [accountId, setAccountId] = useState(initialData?.account_id || "none");
+  const editingIdRef = useRef<string | null>(null);
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
+  const [dayOfMonth, setDayOfMonth] = useState("1");
+  const [categoryId, setCategoryId] = useState("none");
+  const [accountId, setAccountId] = useState("none");
   const [boletoFile, setBoletoFile] = useState<File | null>(null);
-  const [boletoPreview, setBoletoPreview] = useState<string | null>(initialData?.boleto_url || null);
+  const [boletoPreview, setBoletoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [markAsPaid, setMarkAsPaid] = useState(false);
+
+  // Sync form when initialData or open changes
+  useEffect(() => {
+    if (!open) return;
+    editingIdRef.current = initialData?.id || null;
+    setDescription(initialData?.description ?? "");
+    setAmount(initialData?.amount != null ? String(initialData.amount) : "");
+    setType(initialData?.type || "expense");
+    setDayOfMonth(initialData?.day_of_month != null ? String(initialData.day_of_month) : "1");
+    setCategoryId(initialData?.category_id || "none");
+    setAccountId(initialData?.account_id || "none");
+    setBoletoFile(null);
+    setBoletoPreview(initialData?.boleto_url || null);
+    setMarkAsPaid(false);
+  }, [initialData, open]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -86,6 +103,7 @@ function RecurringForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const currentEditingId = editingIdRef.current;
 
     let boletoUrl = initialData?.boleto_url || null;
     if (!boletoFile && !boletoPreview) boletoUrl = null;
@@ -107,7 +125,7 @@ function RecurringForm({
     }
 
     onSubmit({
-      ...(initialData?.id ? { id: initialData.id } : {}),
+      ...(currentEditingId ? { id: currentEditingId } : {}),
       description,
       amount: parseFloat(amount),
       type,
@@ -116,10 +134,11 @@ function RecurringForm({
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
       boleto_url: boletoUrl,
+      _markAsPaid: markAsPaid,
     });
-    if (!initialData) {
+    if (!currentEditingId) {
       setDescription(""); setAmount(""); setType("expense"); setDayOfMonth("1"); setCategoryId("none"); setAccountId("none");
-      removeBoleto();
+      removeBoleto(); setMarkAsPaid(false);
     }
   };
 
@@ -209,6 +228,22 @@ function RecurringForm({
             )}
           </div>
 
+          {/* Mark as paid option - shown when editing and attaching a receipt */}
+          {editingIdRef.current && (boletoFile || boletoPreview) && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
+              <input
+                type="checkbox"
+                id="mark-as-paid"
+                checked={markAsPaid}
+                onChange={(e) => setMarkAsPaid(e.target.checked)}
+                className="rounded border-border accent-success"
+              />
+              <Label htmlFor="mark-as-paid" className="text-xs text-success cursor-pointer font-medium">
+                Marcar transações deste mês como pagas
+              </Label>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
             <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
@@ -237,11 +272,40 @@ const Recurring = () => {
   const catMap = new Map(categories.map((c) => [c.id, c]));
   const accMap = new Map(accounts.map((a) => [a.id, a]));
 
-  const handleSubmit = (data: any) => {
-    if (data.id) {
-      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+  const handleSubmit = async (data: any) => {
+    const { _markAsPaid, ...submitData } = data;
+    
+    if (submitData.id) {
+      updateMutation.mutate(submitData, {
+        onSuccess: async () => {
+          // If user wants to mark related transactions as paid
+          if (_markAsPaid) {
+            try {
+              const now = new Date();
+              const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+              const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
+              
+              const { error } = await supabase
+                .from("transactions")
+                .update({ status: "paid", receipt_url: submitData.boleto_url } as any)
+                .eq("description", submitData.description)
+                .eq("type", submitData.type)
+                .gte("date", monthStart)
+                .lte("date", monthEnd);
+              
+              if (!error) {
+                toast.success("Transações do mês marcadas como pagas!");
+              }
+            } catch {
+              // silent fail - main update already succeeded
+            }
+          }
+          setEditing(null);
+          setFormOpen(false);
+        },
+      });
     } else {
-      insertMutation.mutate(data, { onSuccess: () => setFormOpen(false) });
+      insertMutation.mutate(submitData, { onSuccess: () => setFormOpen(false) });
     }
   };
 
