@@ -39,6 +39,21 @@ interface RecurringTransaction {
   boleto_url: string | null;
 }
 
+interface CurrentMonthTransaction {
+  id: string;
+  description: string;
+  type: string;
+  status: string;
+  account_id: string | null;
+  category_id: string | null;
+  receipt_url: string | null;
+}
+
+interface CurrentMonthTransactionState {
+  status: RecurringStatus;
+  receipt_url: string | null;
+}
+
 interface Category {
   id: string;
   name: string;
@@ -62,6 +77,10 @@ interface MonthTransaction {
   category_id: string | null;
 }
 
+type RecurringSubmitPayload = Omit<RecurringTransaction, "last_generated" | "user_id"> & {
+  receipt_url?: string | null;
+};
+
 const statusStyles: Record<RecurringStatus, string> = {
   paid: "bg-success/15 text-success border-success/20",
   pending: "bg-warning/15 text-warning border-warning/20",
@@ -72,6 +91,16 @@ const statusLabels: Record<RecurringStatus, string> = {
   paid: "Pago",
   pending: "Pendente",
   overdue: "Atrasado",
+};
+
+const normalizeRecurringStatus = (status?: string | null): RecurringStatus => {
+  if (status === "paid" || status === "overdue") return status;
+  return "pending";
+};
+
+const isImagePreview = (value: string | null) => {
+  if (!value) return false;
+  return value.startsWith("blob:") || /\.(png|jpe?g|webp|gif|bmp|svg)(\?|$)/i.test(value);
 };
 
 const buildRecurringKey = (
@@ -97,18 +126,20 @@ const loadCurrentMonthStatusMap = async (userId: string) => {
   const { monthStart, monthEnd } = getCurrentMonthRange();
   const { data, error } = await supabase
     .from("transactions")
-    .select("description, type, status, account_id, category_id")
+    .select("id, description, type, status, account_id, category_id, receipt_url")
     .eq("user_id", userId)
     .gte("date", monthStart)
     .lte("date", monthEnd);
 
   if (error) throw error;
 
-  const map = new Map<string, RecurringStatus>();
-  (data || []).forEach((tx: MonthTransaction) => {
+  const map = new Map<string, CurrentMonthTransactionState>();
+  (data || []).forEach((tx: CurrentMonthTransaction) => {
     const key = buildRecurringKey(tx.description, tx.type, tx.account_id, tx.category_id);
-    const status = (tx.status || "pending") as RecurringStatus;
-    map.set(key, status);
+    map.set(key, {
+      status: normalizeRecurringStatus(tx.status),
+      receipt_url: tx.receipt_url || null,
+    });
   });
 
   return map;
@@ -141,6 +172,7 @@ function RecurringForm({
   initialData,
   loading,
   currentStatus = "pending",
+  currentReceiptUrl = null,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -148,6 +180,7 @@ function RecurringForm({
   initialData?: RecurringTransaction | null;
   loading: boolean;
   currentStatus?: RecurringStatus;
+  currentReceiptUrl?: string | null;
 }) {
   const { user } = useAuth();
   const boletoRef = useRef<HTMLInputElement>(null);
@@ -179,8 +212,8 @@ function RecurringForm({
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
     setReceiptFile(null);
-    setReceiptPreview((initialData as any)?.receipt_url || null);
-  }, [initialData, open, currentStatus]);
+    setReceiptPreview(currentReceiptUrl || null);
+  }, [initialData, open, currentStatus, currentReceiptUrl]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -269,7 +302,7 @@ function RecurringForm({
       account_id: accountId === "none" ? null : accountId,
       active: initialData?.active ?? true,
       boleto_url: boletoUrl,
-      receipt_url: receiptUrl,
+      _receipt_url: receiptUrl,
       _status: status,
     });
 
@@ -403,10 +436,13 @@ function RecurringForm({
                 >
                   <X className="h-3 w-3" />
                 </button>
-                {boletoPreview && boletoPreview.startsWith("blob:") ? (
+                {isImagePreview(boletoPreview) ? (
                   <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md mx-auto object-contain" />
                 ) : boletoPreview ? (
-                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md object-contain" />
+                  <a href={boletoPreview} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                    <FileText className="h-5 w-5" />
+                    <span className="text-xs">Boleto anexado</span>
+                  </a>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <FileText className="h-5 w-5" />
@@ -438,10 +474,13 @@ function RecurringForm({
                 >
                   <X className="h-3 w-3" />
                 </button>
-                {receiptPreview && receiptPreview.startsWith("blob:") ? (
+                {isImagePreview(receiptPreview) ? (
                   <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md mx-auto object-contain" />
                 ) : receiptPreview ? (
-                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md object-contain" />
+                  <a href={receiptPreview} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Paperclip className="h-5 w-5" />
+                    <span className="text-xs">Comprovante anexado</span>
+                  </a>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Paperclip className="h-5 w-5" />
@@ -468,7 +507,7 @@ const Recurring = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [monthTxMap, setMonthTxMap] = useState<Map<string, RecurringStatus>>(new Map());
+  const [monthTxMap, setMonthTxMap] = useState<Map<string, CurrentMonthTransactionState>>(new Map());
   const { user } = useAuth();
 
   const { data: recurrings = [], isLoading } = useSupabaseQuery<RecurringTransaction>("recurring_transactions" as any, "description", true);
@@ -488,12 +527,17 @@ const Recurring = () => {
 
   const getRecurringStatus = (rec: RecurringTransaction): RecurringStatus => {
     const key = buildRecurringKey(rec.description, rec.type, rec.account_id, rec.category_id);
-    const txStatus = monthTxMap.get(key);
-    if (txStatus) return txStatus;
+    const txState = monthTxMap.get(key);
+    if (txState) return txState.status;
 
     const now = new Date();
     if (rec.day_of_month <= now.getDate()) return "overdue";
     return "pending";
+  };
+
+  const getCurrentMonthTransactionState = (rec: RecurringTransaction) => {
+    const key = buildRecurringKey(rec.description, rec.type, rec.account_id, rec.category_id);
+    return monthTxMap.get(key);
   };
 
   const insertMutation = useSupabaseInsert("recurring_transactions" as any);
@@ -505,7 +549,7 @@ const Recurring = () => {
 
   const syncCurrentMonthTransaction = async (
     previousData: RecurringTransaction,
-    nextData: Omit<RecurringTransaction, "last_generated" | "user_id">,
+    nextData: RecurringSubmitPayload,
     nextStatus: RecurringStatus,
   ) => {
     if (!user) return;
@@ -527,7 +571,7 @@ const Recurring = () => {
       category_id: nextData.category_id,
       account_id: nextData.account_id,
       boleto_url: nextData.boleto_url,
-      receipt_url: (nextData as any).receipt_url,
+      receipt_url: nextData.receipt_url ?? null,
     };
 
     if (existingTransactions && existingTransactions.length > 0) {
@@ -556,15 +600,19 @@ const Recurring = () => {
   };
 
   const handleSubmit = async (data: any) => {
-    const { _status, ...submitData } = data;
+    const { _status, _receipt_url, ...submitData } = data;
     const nextStatus = (_status || "pending") as RecurringStatus;
+    const syncPayload: RecurringSubmitPayload = {
+      ...submitData,
+      receipt_url: _receipt_url ?? null,
+    };
 
     if (submitData.id) {
       updateMutation.mutate(submitData, {
         onSuccess: async () => {
           try {
             if (editing) {
-              await syncCurrentMonthTransaction(editing, submitData, nextStatus);
+              await syncCurrentMonthTransaction(editing, syncPayload, nextStatus);
             }
             if (user) {
               setMonthTxMap(await loadCurrentMonthStatusMap(user.id));
@@ -578,7 +626,20 @@ const Recurring = () => {
         },
       });
     } else {
-      insertMutation.mutate(submitData, { onSuccess: () => setFormOpen(false) });
+      insertMutation.mutate(submitData, {
+        onSuccess: async (createdRecurring: RecurringTransaction) => {
+          try {
+            if (user && (nextStatus !== "pending" || Boolean(_receipt_url))) {
+              await syncCurrentMonthTransaction(createdRecurring, syncPayload, nextStatus);
+              setMonthTxMap(await loadCurrentMonthStatusMap(user.id));
+            }
+          } catch (error: any) {
+            toast.error(error.message || "Recorrente criado, mas o lançamento do mês não foi sincronizado.");
+          } finally {
+            setFormOpen(false);
+          }
+        },
+      });
     }
   };
 
@@ -672,6 +733,7 @@ const Recurring = () => {
             const cat = catMap.get(rec.category_id || "");
             const acc = accMap.get(rec.account_id || "");
             const status = getRecurringStatus(rec);
+            const currentMonthTransaction = getCurrentMonthTransactionState(rec);
 
             return (
               <motion.div
@@ -713,8 +775,8 @@ const Recurring = () => {
                       </Button>
                     </a>
                   )}
-                  {(rec as any).receipt_url && (
-                    <a href={(rec as any).receipt_url} target="_blank" rel="noopener noreferrer">
+                  {currentMonthTransaction?.receipt_url && (
+                    <a href={currentMonthTransaction.receipt_url} target="_blank" rel="noopener noreferrer">
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-success hover:text-success/80" title="Ver comprovante">
                         <Paperclip className="h-3 w-3" />
                       </Button>
@@ -740,6 +802,7 @@ const Recurring = () => {
         onSubmit={handleSubmit}
         initialData={editing}
         currentStatus={editing ? getRecurringStatus(editing) : "pending"}
+        currentReceiptUrl={editing ? getCurrentMonthTransactionState(editing)?.receipt_url ?? null : null}
         loading={insertMutation.isPending || updateMutation.isPending}
       />
     </div>
