@@ -184,6 +184,80 @@ const Transactions = () => {
 
   const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (acc, t) => {
+        const amt = Number(t.amount);
+        if (t.type === "income") acc.income += amt;
+        else acc.expense += amt;
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+  }, [filtered]);
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add some styling to the PDF
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Relatório de Transações", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 30);
+    
+    const accountName = advFilters.accountId ? accounts.find(a => a.id === advFilters.accountId)?.name : "Todas as Contas";
+    doc.text(`Conta: ${accountName}`, 14, 35);
+
+    // Summary section in PDF
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Resumo do Período", 14, 45);
+    
+    doc.setFontSize(10);
+    doc.text(`Total Receitas: R$ ${totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 52);
+    doc.text(`Total Despesas: R$ ${totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 58);
+    
+    const balance = totals.income - totals.expense;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Saldo: R$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 65);
+    doc.setFont("helvetica", "normal");
+
+    const tableData = filtered.map(t => [
+      new Date(t.date).toLocaleDateString("pt-BR"),
+      t.description,
+      t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)!.name : "-",
+      statusLabels[t.status] || t.status,
+      t.type === "income" ? "Receita" : "Despesa",
+      `R$ ${Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    ]);
+
+    autoTable(doc, {
+      startY: 72,
+      head: [["Data", "Descrição", "Categoria", "Status", "Tipo", "Valor"]],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        halign: 'center'
+      },
+      columnStyles: {
+        5: { halign: 'right' }
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3
+      }
+    });
+
+    doc.save(`transacoes_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success("PDF gerado com sucesso!");
+  };
+
   // Clear selection when filters change
   useEffect(() => { setSelected(new Set()); }, [debouncedSearch, filter, advFilters]);
 
