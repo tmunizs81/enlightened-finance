@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
+import logoImage from "@/assets/logo.png";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
