@@ -201,35 +201,45 @@ const Transactions = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
+    // Header Configuration
+    const margin = 14;
+    const logoSize = 12;
+    const headerY = 20;
+    
     // Add Logo
     try {
-      doc.addImage(logoImage, 'PNG', 14, 15, 12, 12);
+      doc.addImage(logoImage, 'PNG', margin, headerY - 5, logoSize, logoSize);
     } catch (e) {
-      // Fallback if image fails to load
       doc.setFillColor(59, 130, 246);
-      doc.roundedRect(14, 15, 12, 12, 2, 2, 'F');
+      doc.roundedRect(margin, headerY - 5, logoSize, logoSize, 2, 2, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.text("S", 18, 23.5);
+      doc.setFontSize(10);
+      doc.text("SF", margin + 2, headerY + 2);
     }
     
-    // System Title
+    // System Title - Aligned with logo
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("SimplyFin", 30, 24);
+    doc.text("SimplyFin", margin + logoSize + 4, headerY + 3);
     
-    doc.setFontSize(14);
-    doc.setTextColor(60, 60, 60);
-    doc.text("Relatório de Transações", 14, 40);
-    
-    doc.setFontSize(9);
+    // Report Title - Right aligned
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 46);
+    const reportTitle = "Relatório de Transações";
+    const titleWidth = doc.getTextWidth(reportTitle);
+    doc.text(reportTitle, pageWidth - margin - titleWidth, headerY + 2);
+    
+    // Metadata - Under titles
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    const dateText = `Gerado em: ${new Date().toLocaleString("pt-BR")}`;
+    const dateWidth = doc.getTextWidth(dateText);
+    doc.text(dateText, pageWidth - margin - dateWidth, headerY + 8);
     
     const accountName = advFilters.accountId ? accounts.find(a => a.id === advFilters.accountId)?.name : "Todas as Contas";
-    doc.text(`Conta: ${accountName}`, 14, 51);
+    doc.text(`Filtro: ${accountName}`, margin, headerY + 12);
 
     // Summary Section with visual elements
     doc.setDrawColor(240, 240, 240);
