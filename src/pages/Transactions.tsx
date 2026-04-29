@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag, FileText } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag, FileText, Printer } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { CSVImport } from "@/components/import/CSVImport";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -182,6 +184,80 @@ const Transactions = () => {
 
   const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (acc, t) => {
+        const amt = Number(t.amount);
+        if (t.type === "income") acc.income += amt;
+        else acc.expense += amt;
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+  }, [filtered]);
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Add some styling to the PDF
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Relatório de Transações", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 30);
+    
+    const accountName = advFilters.accountId ? accounts.find(a => a.id === advFilters.accountId)?.name : "Todas as Contas";
+    doc.text(`Conta: ${accountName}`, 14, 35);
+
+    // Summary section in PDF
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Resumo do Período", 14, 45);
+    
+    doc.setFontSize(10);
+    doc.text(`Total Receitas: R$ ${totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 52);
+    doc.text(`Total Despesas: R$ ${totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 58);
+    
+    const balance = totals.income - totals.expense;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Saldo: R$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 65);
+    doc.setFont("helvetica", "normal");
+
+    const tableData = filtered.map(t => [
+      new Date(t.date).toLocaleDateString("pt-BR"),
+      t.description,
+      t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)!.name : "-",
+      statusLabels[t.status] || t.status,
+      t.type === "income" ? "Receita" : "Despesa",
+      `R$ ${Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    ]);
+
+    autoTable(doc, {
+      startY: 72,
+      head: [["Data", "Descrição", "Categoria", "Status", "Tipo", "Valor"]],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { 
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        halign: 'center'
+      },
+      columnStyles: {
+        5: { halign: 'right' }
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3
+      }
+    });
+
+    doc.save(`transacoes_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success("PDF gerado com sucesso!");
+  };
+
   // Clear selection when filters change
   useEffect(() => { setSelected(new Set()); }, [debouncedSearch, filter, advFilters]);
 
@@ -270,6 +346,44 @@ const Transactions = () => {
         categories={categories}
         accounts={accounts}
       />
+
+      {filtered.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }} 
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 glass-card bg-primary/5 border-primary/10"
+        >
+          <div className="flex gap-8 w-full md:w-auto justify-center md:justify-start">
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Receitas</p>
+              <p className="text-base font-bold text-success">
+                R$ {totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Despesas</p>
+              <p className="text-base font-bold text-destructive">
+                R$ {totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Saldo</p>
+              <p className={`text-base font-bold ${totals.income - totals.expense >= 0 ? "text-primary" : "text-destructive"}`}>
+                R$ {(totals.income - totals.expense).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportPDF}
+            className="w-full md:w-auto gap-2 bg-background hover:bg-secondary border-border"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir PDF
+          </Button>
+        </motion.div>
+      )}
 
       {isLoading ? (
         <SkeletonList count={6} />
