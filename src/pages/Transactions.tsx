@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag, FileText, Printer } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, Plus, Pencil, Trash2, Paperclip, X, Download, Split, Tag, FileText, Printer, PieChart } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { CSVImport } from "@/components/import/CSVImport";
@@ -196,34 +196,96 @@ const Transactions = () => {
     );
   }, [filtered]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Add some styling to the PDF
-    doc.setFontSize(20);
+    // Add Logo or Header Icon
+    doc.setFillColor(59, 130, 246); // Primary blue
+    doc.roundedRect(14, 15, 12, 12, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.text("L", 18, 23.5);
+    
+    // System Title
     doc.setTextColor(40, 40, 40);
-    doc.text("Relatório de Transações", 14, 22);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Lovable Finance", 30, 24);
     
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 30);
+    doc.setFontSize(14);
+    doc.setTextColor(60, 60, 60);
+    doc.text("Relatório de Transações", 14, 40);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 46);
     
     const accountName = advFilters.accountId ? accounts.find(a => a.id === advFilters.accountId)?.name : "Todas as Contas";
-    doc.text(`Conta: ${accountName}`, 14, 35);
+    doc.text(`Conta: ${accountName}`, 14, 51);
 
-    // Summary section in PDF
+    // Summary Section with visual elements
+    doc.setDrawColor(240, 240, 240);
+    doc.line(14, 58, pageWidth - 14, 58);
+
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text("Resumo do Período", 14, 45);
-    
-    doc.setFontSize(10);
-    doc.text(`Total Receitas: R$ ${totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 52);
-    doc.text(`Total Despesas: R$ ${totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 58);
-    
-    const balance = totals.income - totals.expense;
+    doc.setTextColor(40, 40, 40);
     doc.setFont("helvetica", "bold");
-    doc.text(`Saldo: R$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 14, 65);
-    doc.setFont("helvetica", "normal");
+    doc.text("Resumo Financeiro", 14, 68);
+    
+    // Data for mini-charts or stats boxes
+    const balance = totals.income - totals.expense;
+    
+    // Statistics Boxes
+    autoTable(doc, {
+      startY: 75,
+      body: [
+        [
+          { content: `RECEITAS\nR$ ${totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, styles: { textColor: [34, 197, 94], fontStyle: 'bold' } },
+          { content: `DESPESAS\nR$ ${totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, styles: { textColor: [239, 68, 68], fontStyle: 'bold' } },
+          { content: `SALDO\nR$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, styles: { textColor: balance >= 0 ? [59, 130, 246] : [239, 68, 68], fontStyle: 'bold' } }
+        ]
+      ],
+      theme: 'plain',
+      styles: { cellPadding: 5, fontSize: 10, halign: 'center', cellWidth: (pageWidth - 28) / 3 },
+    });
+
+    // Simple textual "chart" for Category distribution if filtered by many
+    if (filtered.length > 0) {
+      doc.setFontSize(11);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Distribuição por Categoria (Top 5)", 14, 105);
+      
+      const catTotals: Record<string, number> = {};
+      filtered.forEach(t => {
+        const catName = t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)!.name : "Sem Categoria";
+        catTotals[catName] = (catTotals[catName] || 0) + Number(t.amount);
+      });
+
+      const sortedCats = Object.entries(catTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      const maxCatVal = sortedCats[0]?.[1] || 1;
+      
+      let chartY = 115;
+      sortedCats.forEach(([name, val]) => {
+        const barWidth = (val / maxCatVal) * 100;
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(name, 14, chartY);
+        
+        doc.setFillColor(240, 240, 240);
+        doc.rect(50, chartY - 3, 100, 4, 'F');
+        doc.setFillColor(59, 130, 246);
+        doc.rect(50, chartY - 3, Math.max(2, barWidth), 4, 'F');
+        
+        doc.setTextColor(60, 60, 60);
+        doc.text(`R$ ${val.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, 155, chartY);
+        chartY += 8;
+      });
+    }
 
     const tableData = filtered.map(t => [
       new Date(t.date).toLocaleDateString("pt-BR"),
@@ -235,7 +297,7 @@ const Transactions = () => {
     ]);
 
     autoTable(doc, {
-      startY: 72,
+      startY: filtered.length > 0 ? 165 : 105,
       head: [["Data", "Descrição", "Categoria", "Status", "Tipo", "Valor"]],
       body: tableData,
       theme: 'striped',
@@ -251,11 +313,20 @@ const Transactions = () => {
       styles: {
         fontSize: 8,
         cellPadding: 3
-      }
+      },
+      margin: { top: 20 }
     });
 
-    doc.save(`transacoes_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success("PDF gerado com sucesso!");
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth - 30, doc.internal.pageSize.getHeight() - 10);
+    }
+
+    doc.save(`relatorio_financeiro_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success("Relatório personalizado gerado com sucesso!");
   };
 
   // Clear selection when filters change
