@@ -347,6 +347,44 @@ const Transactions = () => {
         accounts={accounts}
       />
 
+      {filtered.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }} 
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 glass-card bg-primary/5 border-primary/10"
+        >
+          <div className="flex gap-8 w-full md:w-auto justify-center md:justify-start">
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Receitas</p>
+              <p className="text-base font-bold text-success">
+                R$ {totals.income.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Despesas</p>
+              <p className="text-base font-bold text-destructive">
+                R$ {totals.expense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Saldo</p>
+              <p className={`text-base font-bold ${totals.income - totals.expense >= 0 ? "text-primary" : "text-destructive"}`}>
+                R$ {(totals.income - totals.expense).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportPDF}
+            className="w-full md:w-auto gap-2 bg-background hover:bg-secondary border-border"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir PDF
+          </Button>
+        </motion.div>
+      )}
+
       {isLoading ? (
         <SkeletonList count={6} />
       ) : filtered.length === 0 ? (
