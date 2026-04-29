@@ -201,18 +201,23 @@ const Transactions = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
-    // Add Logo or Header Icon
-    doc.setFillColor(59, 130, 246); // Primary blue
-    doc.roundedRect(14, 15, 12, 12, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
-    doc.text("L", 18, 23.5);
+    // Add Logo
+    try {
+      doc.addImage(logoImage, 'PNG', 14, 15, 12, 12);
+    } catch (e) {
+      // Fallback if image fails to load
+      doc.setFillColor(59, 130, 246);
+      doc.roundedRect(14, 15, 12, 12, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.text("S", 18, 23.5);
+    }
     
     // System Title
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("Lovable Finance", 30, 24);
+    doc.text("SimplyFin", 30, 24);
     
     doc.setFontSize(14);
     doc.setTextColor(60, 60, 60);
