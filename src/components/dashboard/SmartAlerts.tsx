@@ -82,7 +82,7 @@ export function SmartAlerts() {
                 <p className={`text-xs font-medium ${severityText[alert.severity]}`}>{alert.title}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{alert.message}</p>
               </div>
-              <button onClick={() => setDismissed((p) => new Set(p).add(alert.type + alert.title))} className="text-muted-foreground hover:text-foreground shrink-0">
+              <button onClick={() => handleDismiss(alert.type + alert.title)} className="text-muted-foreground hover:text-foreground shrink-0">
                 <X className="h-3 w-3" />
               </button>
             </motion.div>
