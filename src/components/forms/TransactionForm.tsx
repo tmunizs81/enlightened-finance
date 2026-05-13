@@ -71,7 +71,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     setCategoryId(initialData?.category_id || "none");
     setAccountId(initialData?.account_id || "none");
     setReceiptFile(null);
-    // When editing or creating, ensure the receipt preview is strictly bound to the specific transaction
+    // Bind receipt preview strictly to the provided transaction ID instance
     setReceiptPreview(initialData?.receipt_url || null);
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
@@ -191,7 +191,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${folder}/${Date.now()}.${ext}`;
+      // Ensure the path is globally unique to avoid reuse collisions
+      const path = `${user.id}/${folder}/${crypto.randomUUID()}_${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
