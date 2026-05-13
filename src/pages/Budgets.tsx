@@ -203,7 +203,12 @@ const Budgets = () => {
                     )}
                     {isWarning && (
                       <Badge variant="outline" className="text-[10px] bg-warning/15 text-warning border-warning/20">
-                        Quase no limite
+                        {pct >= 100 ? "Limite Excedido" : `Acima de ${threshold}%`}
+                      </Badge>
+                    )}
+                    {!budget.notification_enabled && (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">
+                        Alertas off
                       </Badge>
                     )}
                   </div>
