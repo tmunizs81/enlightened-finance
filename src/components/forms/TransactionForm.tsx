@@ -71,6 +71,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     setCategoryId(initialData?.category_id || "none");
     setAccountId(initialData?.account_id || "none");
     setReceiptFile(null);
+    // When editing or creating, ensure the receipt preview is strictly bound to the specific transaction
     setReceiptPreview(initialData?.receipt_url || null);
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);

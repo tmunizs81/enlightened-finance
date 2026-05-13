@@ -81,6 +81,7 @@ serve(async (req) => {
         date: txDate,
         status: "pending",
         notes: "Transação recorrente gerada automaticamente",
+        receipt_url: null, // Always start without receipt
         boleto_url: rec.boleto_url || null,
       };
 
