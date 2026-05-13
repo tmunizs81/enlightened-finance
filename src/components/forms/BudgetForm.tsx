@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 
 interface Category {
@@ -26,6 +28,17 @@ interface BudgetFormProps {
 export function BudgetForm({ open, onOpenChange, onSubmit, initialData, loading, month, year }: BudgetFormProps) {
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
+  const [alertThreshold, setAlertThreshold] = useState(initialData?.alert_threshold || 80);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(initialData?.notification_enabled ?? true);
+
+  useEffect(() => {
+    if (open) {
+      setCategoryId(initialData?.category_id || "");
+      setAmount(initialData?.amount?.toString() || "");
+      setAlertThreshold(initialData?.alert_threshold || 80);
+      setNotificationsEnabled(initialData?.notification_enabled ?? true);
+    }
+  }, [open, initialData]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const expenseCategories = useMemo(() => {
