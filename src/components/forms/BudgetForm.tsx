@@ -94,6 +94,34 @@ export function BudgetForm({ open, onOpenChange, onSubmit, initialData, loading,
               </SelectContent>
             </Select>
           </div>
+          
+          <div className="space-y-4 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium">Alertas Ativos</Label>
+                <p className="text-[10px] text-muted-foreground text-balance">Receber avisos visuais e notificações para esta categoria.</p>
+              </div>
+              <Switch checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
+            </div>
+
+            {notificationsEnabled && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-medium">Gatilho de Alerta ({alertThreshold}%)</Label>
+                  <span className="text-[10px] font-bold text-primary">R$ {((parseFloat(amount || "0") * alertThreshold) / 100).toLocaleString("pt-BR")}</span>
+                </div>
+                <Slider 
+                  value={[alertThreshold]} 
+                  onValueChange={(v) => setAlertThreshold(v[0])} 
+                  min={50} 
+                  max={100} 
+                  step={5} 
+                  className="py-2"
+                />
+                <p className="text-[10px] text-muted-foreground italic">Você será avisado quando os gastos atingirem {alertThreshold}% do limite.</p>
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Limite (R$)</Label>
             <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-secondary border-border" required />
