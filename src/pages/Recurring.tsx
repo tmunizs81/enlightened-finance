@@ -571,7 +571,7 @@ const Recurring = () => {
       category_id: nextData.category_id,
       account_id: nextData.account_id,
       boleto_url: nextData.boleto_url,
-      receipt_url: nextData.receipt_url ?? null,
+      receipt_url: nextData.receipt_url ?? null, // Sincroniza apenas o novo comprovante ou limpa o vínculo
     };
 
     if (existingTransactions && existingTransactions.length > 0) {
