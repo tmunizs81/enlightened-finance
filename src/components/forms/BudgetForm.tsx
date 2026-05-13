@@ -61,10 +61,14 @@ export function BudgetForm({ open, onOpenChange, onSubmit, initialData, loading,
       amount: parseFloat(amount),
       month,
       year,
+      alert_threshold: alertThreshold,
+      notification_enabled: notificationsEnabled,
     });
     if (!initialData) {
       setCategoryId("");
       setAmount("");
+      setAlertThreshold(80);
+      setNotificationsEnabled(true);
     }
   };
 
