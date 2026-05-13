@@ -212,8 +212,7 @@ function RecurringForm({
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
     setReceiptFile(null);
-    // Explicitly do NOT set receipt preview for next recurring instances
-    setReceiptPreview(null);
+    setReceiptPreview(null); // Explicitly reset preview when opening/switching recurring items
   }, [initialData, open, currentStatus]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
