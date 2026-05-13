@@ -29,8 +29,19 @@ export function SmartAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [dailyBudget, setDailyBudget] = useState(0);
   const [daysLeft, setDaysLeft] = useState(0);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem("dismissed_alerts");
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [loading, setLoading] = useState(true);
+
+  const handleDismiss = (id: string) => {
+    setDismissed((prev) => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem("dismissed_alerts", JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   useEffect(() => {
     supabase.functions.invoke("smart-alerts").then(({ data, error }) => {
