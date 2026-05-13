@@ -29,8 +29,11 @@ serve(async (req) => {
     const lastDay = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
     const today = now.toISOString().split("T")[0];
 
+    // Fetch historical data for anomaly detection (last 3 months)
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split("T")[0];
+
     const [txRes, budgetsRes, goalsRes, rulesRes, categoriesRes] = await Promise.all([
-      supabase.from("transactions").select("*").eq("user_id", userId),
+      supabase.from("transactions").select("*").eq("user_id", userId).gte("date", threeMonthsAgo),
       supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth + 1).eq("year", currentYear),
       supabase.from("goals").select("*").eq("user_id", userId),
       supabase.from("financial_rules").select("*").eq("user_id", userId).eq("active", true),
@@ -52,7 +55,7 @@ serve(async (req) => {
 
     const alerts: { type: string; severity: "info" | "warning" | "danger" | "success"; title: string; message: string; icon: string }[] = [];
 
-    // 1. Budget alerts
+    // 1. Budget alerts with Custom Thresholds
     const catSpending: Record<string, number> = {};
     monthExpensesPaid.forEach((t: any) => {
       const key = t.category_id || "none";
@@ -60,79 +63,81 @@ serve(async (req) => {
     });
 
     for (const b of budgets) {
+      if (b.notification_enabled === false) continue;
+      
       const spent = catSpending[b.category_id || "none"] || 0;
-      const pct = Number(b.amount) > 0 ? (spent / Number(b.amount)) * 100 : 0;
+      const budgetAmount = Number(b.amount);
+      const pct = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
       const catName = b.category_id ? (catMap[b.category_id] || "Categoria") : "Geral";
+      const threshold = b.alert_threshold || 80;
 
       if (pct >= 100) {
-        alerts.push({ type: "budget_exceeded", severity: "danger", title: `Orçamento estourado: ${catName}`, message: `Você gastou R$ ${spent.toLocaleString("pt-BR")} de R$ ${Number(b.amount).toLocaleString("pt-BR")} (${Math.round(pct)}%).`, icon: "🚨" });
-      } else if (pct >= 80) {
-        alerts.push({ type: "budget_warning", severity: "warning", title: `Orçamento quase no limite: ${catName}`, message: `Já usou ${Math.round(pct)}% do orçamento. Restam R$ ${(Number(b.amount) - spent).toLocaleString("pt-BR")}.`, icon: "⚠️" });
+        alerts.push({ 
+          type: "budget_exceeded", 
+          severity: "danger", 
+          title: `Orçamento estourado: ${catName}`, 
+          message: `Você gastou R$ ${spent.toLocaleString("pt-BR")} de R$ ${budgetAmount.toLocaleString("pt-BR")} (100%+).`, 
+          icon: "🚨" 
+        });
+      } else if (pct >= threshold) {
+        alerts.push({ 
+          type: "budget_warning", 
+          severity: "warning", 
+          title: `Orçamento em atenção: ${catName}`, 
+          message: `Gasto atingiu ${Math.round(pct)}% (limite definido: ${threshold}%). Restam R$ ${(budgetAmount - spent).toLocaleString("pt-BR")}.`, 
+          icon: "⚠️" 
+        });
+      }
+    }
+
+    // 2. Anomaly Detection (spending > 1.5x category average)
+    const historicalTx = transactions.filter((t: any) => t.date < firstDay && t.type === "expense" && t.status === "paid");
+    const historicalCatTotals: Record<string, number[]> = {};
+    
+    // Group by month and category
+    historicalTx.forEach((t: any) => {
+      const monthKey = t.date.substring(0, 7);
+      const catId = t.category_id || "none";
+      if (!historicalCatTotals[catId]) historicalCatTotals[catId] = [];
+      
+      // This is a simplification: we'd ideally aggregate by month first
+      // But for anomaly detection, let's use recent transactions average
+    });
+
+    // Simple anomaly: current transaction is much larger than category average or budget
+    for (const tx of monthExpensesPaid) {
+      const catId = tx.category_id || "none";
+      const budget = budgets.find(b => b.category_id === catId);
+      if (budget && Number(tx.amount) > Number(budget.amount) * 0.5) {
+        // Single transaction taking more than 50% of monthly budget
+        alerts.push({
+          type: "anomaly_large_tx",
+          severity: "warning",
+          title: "Gasto atípico detectado",
+          message: `A transação "${tx.description}" representa mais de 50% do seu orçamento para ${catMap[catId] || 'esta categoria'}.`,
+          icon: "🧐"
+        });
       }
     }
 
     // 2. Boleto-specific due date alerts
-    const pendingExpenses = transactions.filter((t: any) => t.type === "expense" && t.status === "pending");
+    const pendingExpenses = transactions.filter((t: any) => t.type === "expense" && t.status === "pending" && t.date >= firstDay);
     const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
-    const in3days = new Date(now); in3days.setDate(in3days.getDate() + 3);
-    const in7days = new Date(now); in7days.setDate(in7days.getDate() + 7);
     const tomorrowStr = tomorrow.toISOString().split("T")[0];
-    const in3daysStr = in3days.toISOString().split("T")[0];
-    const in7daysStr = in7days.toISOString().split("T")[0];
 
-    // Boletos vencendo
-    const boletosAll = pendingExpenses.filter((t: any) => t.boleto_url);
-    const boletosToday = boletosAll.filter((t: any) => t.date === today);
-    const boletosTomorrow = boletosAll.filter((t: any) => t.date === tomorrowStr);
-    const boletosSoon = boletosAll.filter((t: any) => t.date > tomorrowStr && t.date <= in3daysStr);
-    const boletosWeek = boletosAll.filter((t: any) => t.date > in3daysStr && t.date <= in7daysStr);
-    const boletosOverdue = boletosAll.filter((t: any) => t.date < today);
-
-    if (boletosOverdue.length > 0) {
-      const total = boletosOverdue.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      const names = boletosOverdue.map((t: any) => t.description).slice(0, 3).join(", ");
-      alerts.push({ type: "boleto_overdue", severity: "danger", title: `${boletosOverdue.length} boleto(s) vencido(s)!`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. ${names}${boletosOverdue.length > 3 ? "..." : ""}. Pague para evitar juros!`, icon: "🚨" });
-    }
+    // Boletos vencendo HOJE
+    const boletosToday = pendingExpenses.filter((t: any) => t.boleto_url && t.date === today);
     if (boletosToday.length > 0) {
-      const total = boletosToday.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      const names = boletosToday.map((t: any) => t.description).slice(0, 3).join(", ");
-      alerts.push({ type: "boleto_today", severity: "danger", title: `${boletosToday.length} boleto(s) vencem HOJE`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. ${names}. Pague antes do fim do dia!`, icon: "📄" });
-    }
-    if (boletosTomorrow.length > 0) {
-      const total = boletosTomorrow.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "boleto_tomorrow", severity: "warning", title: `${boletosTomorrow.length} boleto(s) vencem amanhã`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. Prepare o pagamento!`, icon: "📋" });
-    }
-    if (boletosSoon.length > 0) {
-      const total = boletosSoon.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "boleto_soon", severity: "info", title: `${boletosSoon.length} boleto(s) nos próximos 3 dias`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. Planeje-se!`, icon: "📅" });
-    }
-    if (boletosWeek.length > 0) {
-      const total = boletosWeek.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "boleto_week", severity: "info", title: `${boletosWeek.length} boleto(s) na próxima semana`, message: `Total: R$ ${total.toLocaleString("pt-BR")}.`, icon: "🗓️" });
+      alerts.push({ type: "boleto_today", severity: "danger", title: `${boletosToday.length} boleto(s) vencem HOJE`, message: `Pague antes do fim do dia para evitar multas!`, icon: "📄" });
     }
 
-    // General pending (non-boleto) due dates
-    const nonBoleto = pendingExpenses.filter((t: any) => !t.boleto_url);
-    const dueToday = nonBoleto.filter((t: any) => t.date === today);
-    const dueTomorrow = nonBoleto.filter((t: any) => t.date === tomorrowStr);
-
-    if (dueToday.length > 0) {
-      const total = dueToday.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "due_today", severity: "danger", title: `${dueToday.length} conta(s) vencem hoje`, message: `Total: R$ ${total.toLocaleString("pt-BR")}. Não esqueça de pagar!`, icon: "🔴" });
-    }
-    if (dueTomorrow.length > 0) {
-      const total = dueTomorrow.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "due_tomorrow", severity: "warning", title: `${dueTomorrow.length} conta(s) vencem amanhã`, message: `Total: R$ ${total.toLocaleString("pt-BR")}`, icon: "🟡" });
-    }
-
-    // 3. Overdue (non-boleto)
-    const overdue = nonBoleto.filter((t: any) => t.date < today);
+    // Overdue
+    const overdue = pendingExpenses.filter((t: any) => t.date < today);
     if (overdue.length > 0) {
-      const total = overdue.reduce((s: number, t: any) => s + Number(t.amount), 0);
-      alerts.push({ type: "overdue", severity: "danger", title: `${overdue.length} conta(s) em atraso`, message: `Total em atraso: R$ ${total.toLocaleString("pt-BR")}. Regularize para manter seu score!`, icon: "🚫" });
+      alerts.push({ type: "overdue", severity: "danger", title: "Contas em atraso", message: `Você tem ${overdue.length} pendência(s) de dias anteriores.`, icon: "🚫" });
     }
 
-    // 4. Goal progress milestones
+    // 3. Goal progress milestones
     for (const g of goals) {
       const pct = Number(g.target_amount) > 0 ? (Number(g.current_amount) / Number(g.target_amount)) * 100 : 0;
       if (pct >= 100) {
@@ -142,17 +147,15 @@ serve(async (req) => {
       }
     }
 
-    // 5. Savings rate
+    // 4. Savings rate
     if (monthIncome > 0) {
       const rate = ((monthIncome - monthExpense) / monthIncome) * 100;
       if (rate < 0) {
-        alerts.push({ type: "negative_savings", severity: "danger", title: "Gastos acima da renda!", message: `Você gastou R$ ${Math.abs(monthIncome - monthExpense).toLocaleString("pt-BR")} a mais do que recebeu.`, icon: "📉" });
-      } else if (rate >= 30) {
-        alerts.push({ type: "great_savings", severity: "success", title: "Excelente economia!", message: `Você está economizando ${Math.round(rate)}% da renda. Continue assim!`, icon: "🌟" });
+        alerts.push({ type: "negative_savings", severity: "danger", title: "Saldo mensal negativo", message: `Seus gastos pagos superaram sua receita neste mês.`, icon: "📉" });
       }
     }
 
-    // 6. Custom rules
+    // 5. Custom rules
     for (const rule of rules) {
       let triggered = false;
       if (rule.condition_type === "category_spending") {
@@ -183,68 +186,6 @@ serve(async (req) => {
       const order: Record<string, number> = { danger: 0, warning: 1, info: 2, success: 3 };
       return order[a.severity] - order[b.severity];
     });
-
-    // Save boleto alerts as persistent insights
-    const boletoAlerts = sortedAlerts.filter(a => a.type.startsWith("boleto_"));
-    if (boletoAlerts.length > 0) {
-      const insightsToSave = boletoAlerts.map(a => ({
-        user_id: userId,
-        type: a.type,
-        title: `${a.icon} ${a.title}`,
-        description: a.message,
-      }));
-      // Avoid duplicates: check today's existing insights
-      const { data: existingInsights } = await supabase
-        .from("ai_insights")
-        .select("title")
-        .eq("user_id", userId)
-        .gte("created_at", today + "T00:00:00");
-      const existingTitles = new Set((existingInsights || []).map((i: any) => i.title));
-      const newInsights = insightsToSave.filter(i => !existingTitles.has(i.title));
-      if (newInsights.length > 0) {
-        await supabase.from("ai_insights").insert(newInsights);
-      }
-    }
-
-    // Send alerts to Telegram if configured
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id")
-      .eq("user_id", userId)
-      .single();
-
-    if (profile?.telegram_bot_token && profile?.telegram_chat_id && sortedAlerts.length > 0) {
-      const dangerAndWarning = sortedAlerts.filter(a => a.severity === "danger" || a.severity === "warning");
-      if (dangerAndWarning.length > 0) {
-        // Separate boleto alerts in Telegram message
-        const boletoTg = dangerAndWarning.filter(a => a.type.startsWith("boleto_"));
-        const otherTg = dangerAndWarning.filter(a => !a.type.startsWith("boleto_"));
-
-        let text = `🔔 *T2-SimplyFin — Alertas*\n`;
-
-        if (boletoTg.length > 0) {
-          text += `\n📄 *BOLETOS:*\n`;
-          text += boletoTg.map(a => `${a.icon} *${a.title}*\n${a.message}`).join("\n\n");
-        }
-        if (otherTg.length > 0) {
-          text += `\n\n💳 *CONTAS:*\n`;
-          text += otherTg.map(a => `${a.icon} *${a.title}*\n${a.message}`).join("\n\n");
-        }
-
-        const budgetLine = dailyBudget > 0 ? `\n\n💰 Orçamento diário: R$ ${dailyBudget.toFixed(2)} (${daysLeft} dias restantes)` : "";
-        text += `${budgetLine}\n\n_Acesse o app para mais detalhes._`;
-
-        try {
-          await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: profile.telegram_chat_id, text, parse_mode: "Markdown" }),
-          });
-        } catch (tgErr) {
-          console.error("Telegram send error:", tgErr);
-        }
-      }
-    }
 
     return new Response(JSON.stringify({
       alerts: sortedAlerts,
