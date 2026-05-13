@@ -155,7 +155,7 @@ const Index = () => {
         percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0
       })).sort((a, b) => b.amount - a.amount);
 
-      const reportTransactions = thisMonthTx.map((t: any) => ({
+      const reportTransactions = thisMonthTx.filter((t: any) => t.status === "paid" || t.type === "expense").map((t: any) => ({
         date: t.date,
         description: t.description,
         category: t.category_id ? catMap.get(t.category_id) || "-" : "-",
