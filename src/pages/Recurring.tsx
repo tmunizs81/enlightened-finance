@@ -212,8 +212,9 @@ function RecurringForm({
     setBoletoFile(null);
     setBoletoPreview(initialData?.boleto_url || null);
     setReceiptFile(null);
-    setReceiptPreview(currentReceiptUrl || null);
-  }, [initialData, open, currentStatus, currentReceiptUrl]);
+    // Explicitly do NOT set receipt preview for next recurring instances
+    setReceiptPreview(null);
+  }, [initialData, open, currentStatus]);
 
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts", "name", true);
@@ -278,8 +279,8 @@ function RecurringForm({
     let boletoUrl = initialData?.boleto_url || null;
     if (!boletoFile && !boletoPreview) boletoUrl = null;
 
-    let receiptUrl = (initialData as any)?.receipt_url || null;
-    if (!receiptFile && !receiptPreview) receiptUrl = null;
+    // Receipt URL is only for the current month's transaction, not stored in recurring_transactions table
+    let receiptUrl = null;
 
     setUploading(true);
     try {
@@ -602,6 +603,8 @@ const Recurring = () => {
   const handleSubmit = async (data: any) => {
     const { _status, _receipt_url, ...submitData } = data;
     const nextStatus = (_status || "pending") as RecurringStatus;
+    
+    // Create payload for syncing the current month's transaction
     const syncPayload: RecurringSubmitPayload = {
       ...submitData,
       receipt_url: _receipt_url ?? null,
