@@ -115,6 +115,74 @@ const Index = () => {
   );
 
   const { widgets, onDragEnd, toggleVisibility, resetLayout } = useDashboardWidgets(defaultWidgets);
+  const [generating, setGenerating] = useState(false);
+
+  const { data: transactions = [] } = useSupabaseQuery<any>("transactions");
+  const { data: categories = [] } = useSupabaseQuery<any>("categories");
+
+  const handleDownloadReport = async () => {
+    setGenerating(true);
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+      const thisMonthTx = transactions.filter((t: any) => {
+        const d = new Date(t.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+
+      if (thisMonthTx.length === 0) {
+        toast.error("Nenhuma transação encontrada para este mês.");
+        return;
+      }
+
+      const totalIncome = thisMonthTx.filter((t: any) => t.type === "income" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const totalExpense = thisMonthTx.filter((t: any) => t.type === "expense" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
+
+      const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
+      const categorySpendingMap = new Map<string, number>();
+      
+      thisMonthTx.filter((t: any) => t.type === "expense" && t.status === "paid").forEach((t: any) => {
+        const catName = t.category_id ? catMap.get(t.category_id) || "Sem Categoria" : "Sem Categoria";
+        categorySpendingMap.set(catName, (categorySpendingMap.get(catName) || 0) + Number(t.amount));
+      });
+
+      const categorySpendingArray = Array.from(categorySpendingMap.entries()).map(([name, amount]) => ({
+        name,
+        amount,
+        percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0
+      })).sort((a, b) => b.amount - a.amount);
+
+      const reportTransactions = thisMonthTx.map((t: any) => ({
+        date: t.date,
+        description: t.description,
+        category: t.category_id ? catMap.get(t.category_id) || "-" : "-",
+        amount: Number(t.amount),
+        type: t.type
+      })).sort((a: any, b: any) => b.date.localeCompare(a.date));
+
+      await generateMonthlyReport(
+        {
+          totalIncome,
+          totalExpense,
+          balance: totalIncome - totalExpense,
+          monthName: monthNames[currentMonth],
+          year: currentYear
+        },
+        categorySpendingArray,
+        reportTransactions
+      );
+
+      toast.success("Relatório mensal gerado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      toast.error("Erro ao gerar relatório mensal.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -124,6 +192,16 @@ const Index = () => {
           <p className="text-sm text-muted-foreground">Visão geral das suas finanças</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadReport}
+            disabled={generating}
+            className="hidden sm:flex gap-1.5 text-xs border-primary/20 hover:bg-primary/5"
+          >
+            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {generating ? "Gerando..." : "Relatório Mensal"}
+          </Button>
           <DashboardWidgetManager
             widgets={widgets}
             toggleVisibility={toggleVisibility}
