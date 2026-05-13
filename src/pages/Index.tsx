@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import {
   DraggableDashboard,
@@ -6,6 +6,11 @@ import {
   useDashboardWidgets,
   DashboardWidget,
 } from "@/components/dashboard/DraggableDashboard";
+import { Button } from "@/components/ui/button";
+import { Download, Loader2 } from "lucide-react";
+import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
+import { generateMonthlyReport } from "@/utils/reportGenerator";
+import { toast } from "sonner";
 
 // Lazy load heavy dashboard widgets
 const CashFlowChart = lazy(() => import("@/components/dashboard/CashFlowChart").then(m => ({ default: m.CashFlowChart })));
