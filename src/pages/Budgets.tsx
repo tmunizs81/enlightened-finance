@@ -18,6 +18,8 @@ interface Budget {
   month: number;
   year: number;
   user_id: string;
+  alert_threshold?: number;
+  notification_enabled?: boolean;
 }
 
 interface Category {
@@ -177,9 +179,10 @@ const Budgets = () => {
             const cat = catMap.get(budget.category_id || "");
             const spent = spending[budget.category_id || "none"] || 0;
             const limit = Number(budget.amount);
-            const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+            const pct = limit > 0 ? (spent / limit) * 100 : 0;
+            const threshold = budget.alert_threshold || 80;
             const isOver = spent > limit;
-            const isWarning = pct >= 80 && !isOver;
+            const isWarning = pct >= threshold && !isOver;
 
             return (
               <motion.div
@@ -200,7 +203,12 @@ const Budgets = () => {
                     )}
                     {isWarning && (
                       <Badge variant="outline" className="text-[10px] bg-warning/15 text-warning border-warning/20">
-                        Quase no limite
+                        {pct >= 100 ? "Limite Excedido" : `Acima de ${threshold}%`}
+                      </Badge>
+                    )}
+                    {!budget.notification_enabled && (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">
+                        Alertas off
                       </Badge>
                     )}
                   </div>

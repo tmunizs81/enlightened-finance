@@ -132,6 +132,21 @@ export function DashboardWidgetManager({
         ))}
         <DropdownMenuSeparator />
         <div className="p-1">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full text-xs gap-1.5 text-muted-foreground" 
+            onClick={() => {
+              localStorage.removeItem("dismissed_alerts");
+              window.location.reload();
+            }}
+          >
+            <RotateCcw className="h-3 w-3" />
+            Limpar alertas ignorados
+          </Button>
+        </div>
+        <DropdownMenuSeparator />
+        <div className="p-1">
           <Button variant="ghost" size="sm" className="w-full text-xs gap-1.5" onClick={resetLayout}>
             <RotateCcw className="h-3 w-3" />
             Restaurar padrão

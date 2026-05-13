@@ -29,8 +29,19 @@ export function SmartAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [dailyBudget, setDailyBudget] = useState(0);
   const [daysLeft, setDaysLeft] = useState(0);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem("dismissed_alerts");
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [loading, setLoading] = useState(true);
+
+  const handleDismiss = (id: string) => {
+    setDismissed((prev) => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem("dismissed_alerts", JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   useEffect(() => {
     supabase.functions.invoke("smart-alerts").then(({ data, error }) => {
@@ -71,7 +82,7 @@ export function SmartAlerts() {
                 <p className={`text-xs font-medium ${severityText[alert.severity]}`}>{alert.title}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{alert.message}</p>
               </div>
-              <button onClick={() => setDismissed((p) => new Set(p).add(alert.type + alert.title))} className="text-muted-foreground hover:text-foreground shrink-0">
+              <button onClick={() => handleDismiss(alert.type + alert.title)} className="text-muted-foreground hover:text-foreground shrink-0">
                 <X className="h-3 w-3" />
               </button>
             </motion.div>

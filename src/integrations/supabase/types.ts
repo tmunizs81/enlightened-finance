@@ -109,31 +109,37 @@ export type Database = {
       }
       budgets: {
         Row: {
+          alert_threshold: number | null
           amount: number
           category_id: string | null
           created_at: string
           id: string
           month: number
+          notification_enabled: boolean | null
           updated_at: string
           user_id: string
           year: number
         }
         Insert: {
+          alert_threshold?: number | null
           amount: number
           category_id?: string | null
           created_at?: string
           id?: string
           month: number
+          notification_enabled?: boolean | null
           updated_at?: string
           user_id: string
           year: number
         }
         Update: {
+          alert_threshold?: number | null
           amount?: number
           category_id?: string | null
           created_at?: string
           id?: string
           month?: number
+          notification_enabled?: boolean | null
           updated_at?: string
           user_id?: string
           year?: number
