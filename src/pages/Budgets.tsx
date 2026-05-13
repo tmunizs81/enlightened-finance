@@ -18,6 +18,8 @@ interface Budget {
   month: number;
   year: number;
   user_id: string;
+  alert_threshold?: number;
+  notification_enabled?: boolean;
 }
 
 interface Category {
