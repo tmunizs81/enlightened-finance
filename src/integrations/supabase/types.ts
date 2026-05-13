@@ -758,6 +758,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      cleanup_orphaned_receipts: { Args: never; Returns: number }
       generate_license_key: { Args: never; Returns: string }
       has_role: {
         Args: {
