@@ -179,9 +179,10 @@ const Budgets = () => {
             const cat = catMap.get(budget.category_id || "");
             const spent = spending[budget.category_id || "none"] || 0;
             const limit = Number(budget.amount);
-            const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+            const pct = limit > 0 ? (spent / limit) * 100 : 0;
+            const threshold = budget.alert_threshold || 80;
             const isOver = spent > limit;
-            const isWarning = pct >= 80 && !isOver;
+            const isWarning = pct >= threshold && !isOver;
 
             return (
               <motion.div
