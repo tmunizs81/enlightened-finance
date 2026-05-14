@@ -26,7 +26,7 @@ import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
-import { getSignedReceiptUrl } from "@/utils/storageUrls";
+import { getSignedReceiptUrl, prefetchSignedUrl } from "@/utils/storageUrls";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -500,7 +500,17 @@ const Transactions = () => {
           </div>
 
           {visibleItems.map((t, i) => (
-            <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} className={`glass-card-hover p-4 flex items-center gap-4 ${selected.has(t.id) ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}>
+            <motion.div 
+              key={t.id} 
+              initial={{ opacity: 0, y: 8 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: Math.min(i, 10) * 0.03 }} 
+              className={`glass-card-hover p-4 flex items-center gap-4 ${selected.has(t.id) ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}
+              onMouseEnter={() => {
+                if (t.receipt_url) prefetchSignedUrl(t.receipt_url);
+                if (t.boleto_url) prefetchSignedUrl(t.boleto_url);
+              }}
+            >
               <Checkbox
                 checked={selected.has(t.id)}
                 onCheckedChange={() => toggleSelect(t.id)}
@@ -545,9 +555,11 @@ const Transactions = () => {
                     title="Comprovante" 
                     disabled={isSigning === t.id + '-receipt'}
                     onClick={async () => { 
-                      setIsSigning(t.id + '-receipt');
+                      const requestId = t.id + '-receipt';
+                      setIsSigning(requestId);
                       try {
                         const u = await getSignedReceiptUrl(t.receipt_url); 
+                        // Only update state if this is still the active request
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Comprovante"); 
@@ -555,7 +567,7 @@ const Transactions = () => {
                           toast.error("Não foi possível abrir o comprovante."); 
                         } 
                       } finally {
-                        setIsSigning(null);
+                        setIsSigning(prev => prev === requestId ? null : prev);
                       }
                     }}
                   >
@@ -571,7 +583,8 @@ const Transactions = () => {
                     title="Boleto" 
                     disabled={isSigning === t.id + '-boleto'}
                     onClick={async () => { 
-                      setIsSigning(t.id + '-boleto');
+                      const requestId = t.id + '-boleto';
+                      setIsSigning(requestId);
                       try {
                         const u = await getSignedReceiptUrl(t.boleto_url); 
                         if (u) { 
@@ -581,7 +594,7 @@ const Transactions = () => {
                           toast.error("Não foi possível abrir o boleto."); 
                         } 
                       } finally {
-                        setIsSigning(null);
+                        setIsSigning(prev => prev === requestId ? null : prev);
                       }
                     }}
                   >
