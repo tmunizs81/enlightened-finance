@@ -95,6 +95,8 @@ const Transactions = () => {
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isSigning, setIsSigning] = useState<string | null>(null); // path or id being signed
+  const prefetchTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const abortControllersRef = useRef<Record<string, AbortController>>({});
 
   // Batch selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -401,6 +403,18 @@ const Transactions = () => {
     }
   };
 
+  const handlePrefetch = (t: Transaction) => {
+    const prefetchId = t.id;
+    if (prefetchTimeoutRef.current[prefetchId]) {
+      clearTimeout(prefetchTimeoutRef.current[prefetchId]);
+    }
+    prefetchTimeoutRef.current[prefetchId] = setTimeout(() => {
+      if (t.receipt_url) prefetchSignedUrl(t.receipt_url);
+      if (t.boleto_url) prefetchSignedUrl(t.boleto_url);
+      delete prefetchTimeoutRef.current[prefetchId];
+    }, 200);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -506,10 +520,9 @@ const Transactions = () => {
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: Math.min(i, 10) * 0.03 }} 
               className={`glass-card-hover p-4 flex items-center gap-4 ${selected.has(t.id) ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}
-              onMouseEnter={() => {
-                if (t.receipt_url) prefetchSignedUrl(t.receipt_url);
-                if (t.boleto_url) prefetchSignedUrl(t.boleto_url);
-              }}
+              onMouseEnter={() => handlePrefetch(t)}
+              onFocus={() => handlePrefetch(t)}
+              tabIndex={0}
             >
               <Checkbox
                 checked={selected.has(t.id)}
@@ -556,18 +569,28 @@ const Transactions = () => {
                     disabled={isSigning === t.id + '-receipt'}
                     onClick={async () => { 
                       const requestId = t.id + '-receipt';
+                      
+                      // Cancel previous signing if any
+                      if (abortControllersRef.current[requestId]) {
+                        abortControllersRef.current[requestId].abort();
+                      }
+                      const controller = new AbortController();
+                      abortControllersRef.current[requestId] = controller;
+
                       setIsSigning(requestId);
                       try {
-                        const u = await getSignedReceiptUrl(t.receipt_url); 
-                        // Only update state if this is still the active request
+                        const u = await getSignedReceiptUrl(t.receipt_url, controller.signal); 
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Comprovante"); 
-                        } else { 
+                        } else if (!controller.signal.aborted) { 
                           toast.error("Não foi possível abrir o comprovante."); 
                         } 
                       } finally {
-                        setIsSigning(prev => prev === requestId ? null : prev);
+                        if (abortControllersRef.current[requestId] === controller) {
+                          delete abortControllersRef.current[requestId];
+                          setIsSigning(prev => prev === requestId ? null : prev);
+                        }
                       }
                     }}
                   >
@@ -584,17 +607,27 @@ const Transactions = () => {
                     disabled={isSigning === t.id + '-boleto'}
                     onClick={async () => { 
                       const requestId = t.id + '-boleto';
+
+                      if (abortControllersRef.current[requestId]) {
+                        abortControllersRef.current[requestId].abort();
+                      }
+                      const controller = new AbortController();
+                      abortControllersRef.current[requestId] = controller;
+
                       setIsSigning(requestId);
                       try {
-                        const u = await getSignedReceiptUrl(t.boleto_url); 
+                        const u = await getSignedReceiptUrl(t.boleto_url, controller.signal); 
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Boleto"); 
-                        } else { 
+                        } else if (!controller.signal.aborted) { 
                           toast.error("Não foi possível abrir o boleto."); 
                         } 
                       } finally {
-                        setIsSigning(prev => prev === requestId ? null : prev);
+                        if (abortControllersRef.current[requestId] === controller) {
+                          delete abortControllersRef.current[requestId];
+                          setIsSigning(prev => prev === requestId ? null : prev);
+                        }
                       }
                     }}
                   >
