@@ -538,9 +538,9 @@ const Transactions = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 text-warning hover:text-warning/80" 
+              className={`h-7 w-7 transition-all ${cachedState.boleto ? "text-success" : cachedState.pendingBoleto ? "text-warning animate-pulse" : "text-warning"} hover:text-warning/80`} 
               type="button" 
-              title="Boleto" 
+              title={cachedState.boleto ? "Boleto (em cache)" : "Boleto"} 
               disabled={isSigning === t.id + '-boleto'}
               onClick={async () => { 
                 const requestId = t.id + '-boleto';
