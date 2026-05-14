@@ -509,9 +509,9 @@ const Transactions = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 text-primary hover:text-primary/80" 
+              className={`h-7 w-7 transition-all ${cachedState.receipt ? "text-success" : cachedState.pendingReceipt ? "text-primary animate-pulse" : "text-primary"} hover:text-primary/80`} 
               type="button" 
-              title="Comprovante" 
+              title={cachedState.receipt ? "Comprovante (em cache)" : "Comprovante"} 
               disabled={isSigning === t.id + '-receipt'}
               onClick={async () => { 
                 const requestId = t.id + '-receipt';
