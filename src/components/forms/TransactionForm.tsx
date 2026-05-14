@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Plus, Paperclip, X, FileImage, Loader2, Sparkles, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { getSignedReceiptUrl } from "@/utils/storageUrls";
 
 interface Account {
   id: string;
