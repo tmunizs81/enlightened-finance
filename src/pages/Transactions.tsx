@@ -555,9 +555,11 @@ const Transactions = () => {
                     title="Comprovante" 
                     disabled={isSigning === t.id + '-receipt'}
                     onClick={async () => { 
-                      setIsSigning(t.id + '-receipt');
+                      const requestId = t.id + '-receipt';
+                      setIsSigning(requestId);
                       try {
                         const u = await getSignedReceiptUrl(t.receipt_url); 
+                        // Only update state if this is still the active request
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Comprovante"); 
@@ -565,7 +567,7 @@ const Transactions = () => {
                           toast.error("Não foi possível abrir o comprovante."); 
                         } 
                       } finally {
-                        setIsSigning(null);
+                        setIsSigning(prev => prev === requestId ? null : prev);
                       }
                     }}
                   >
@@ -581,7 +583,8 @@ const Transactions = () => {
                     title="Boleto" 
                     disabled={isSigning === t.id + '-boleto'}
                     onClick={async () => { 
-                      setIsSigning(t.id + '-boleto');
+                      const requestId = t.id + '-boleto';
+                      setIsSigning(requestId);
                       try {
                         const u = await getSignedReceiptUrl(t.boleto_url); 
                         if (u) { 
@@ -591,7 +594,7 @@ const Transactions = () => {
                           toast.error("Não foi possível abrir o boleto."); 
                         } 
                       } finally {
-                        setIsSigning(null);
+                        setIsSigning(prev => prev === requestId ? null : prev);
                       }
                     }}
                   >
