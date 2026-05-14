@@ -417,6 +417,12 @@ const Transactions = () => {
 
   const TransactionRow = ({ t, i }: { t: Transaction, i: number }) => {
     const rowRef = useRef<HTMLDivElement>(null);
+    const [cachedState, setCachedState] = useState({ 
+      receipt: isUrlCached(t.receipt_url), 
+      boleto: isUrlCached(t.boleto_url),
+      pendingReceipt: isUrlPending(t.receipt_url),
+      pendingBoleto: isUrlPending(t.boleto_url)
+    });
 
     useEffect(() => {
       if (!rowRef.current) return;
@@ -424,16 +430,32 @@ const Transactions = () => {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            // Warm up cache when visible
             if (t.receipt_url || t.boleto_url) {
               handlePrefetch(t);
             }
+          } else {
+            // Cancel prefetch if it hasn't completed and row is no longer visible
+            if (t.receipt_url) cancelSignedUrlRequest(t.receipt_url);
+            if (t.boleto_url) cancelSignedUrlRequest(t.boleto_url);
           }
         });
       }, { threshold: 0.1, rootMargin: '50px' });
 
       observer.observe(rowRef.current);
       return () => observer.disconnect();
+    }, [t]);
+
+    // Update local cache indicators periodically or on interaction
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setCachedState({
+          receipt: isUrlCached(t.receipt_url),
+          boleto: isUrlCached(t.boleto_url),
+          pendingReceipt: isUrlPending(t.receipt_url),
+          pendingBoleto: isUrlPending(t.boleto_url)
+        });
+      }, 2000);
+      return () => clearInterval(interval);
     }, [t]);
 
     return (
