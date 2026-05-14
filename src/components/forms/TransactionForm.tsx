@@ -195,8 +195,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       const path = `${user.id}/${folder}/${crypto.randomUUID()}_${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-      return urlData.publicUrl;
+      // Store only the storage path; signed URLs are generated on-demand for viewing.
+      return path;
     } catch (err: any) {
       toast.error("Erro ao enviar arquivo: " + err.message);
       return null;
