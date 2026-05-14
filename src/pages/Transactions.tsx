@@ -93,6 +93,7 @@ const Transactions = () => {
   const [txSplits, setTxSplits] = useState<Set<string>>(new Set());
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [isSigning, setIsSigning] = useState<string | null>(null); // path or id being signed
 
   // Batch selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
