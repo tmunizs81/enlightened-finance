@@ -26,7 +26,7 @@ import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
-import { getSignedReceiptUrl } from "@/utils/storageUrls";
+import { getSignedReceiptUrl, prefetchSignedUrl } from "@/utils/storageUrls";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
