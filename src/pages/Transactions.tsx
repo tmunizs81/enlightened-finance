@@ -95,6 +95,8 @@ const Transactions = () => {
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isSigning, setIsSigning] = useState<string | null>(null); // path or id being signed
+  const prefetchTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const abortControllersRef = useRef<Record<string, AbortController>>({});
 
   // Batch selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
