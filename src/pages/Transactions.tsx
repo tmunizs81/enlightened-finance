@@ -403,6 +403,18 @@ const Transactions = () => {
     }
   };
 
+  const handlePrefetch = (t: Transaction) => {
+    const prefetchId = t.id;
+    if (prefetchTimeoutRef.current[prefetchId]) {
+      clearTimeout(prefetchTimeoutRef.current[prefetchId]);
+    }
+    prefetchTimeoutRef.current[prefetchId] = setTimeout(() => {
+      if (t.receipt_url) prefetchSignedUrl(t.receipt_url);
+      if (t.boleto_url) prefetchSignedUrl(t.boleto_url);
+      delete prefetchTimeoutRef.current[prefetchId];
+    }, 200);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
