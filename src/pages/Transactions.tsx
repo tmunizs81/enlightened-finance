@@ -775,17 +775,24 @@ const Transactions = () => {
           </div>
           {receiptUrl && (
             receiptUrl.toLowerCase().includes(".pdf") ? (
-              <object data={receiptUrl} type="application/pdf" className="w-full h-[80vh]">
+              loadingPdf ? (
+                <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Carregando PDF...</p>
+                </div>
+              ) : receiptBlobUrl ? (
+                <iframe src={receiptBlobUrl} title={receiptLabel} className="w-full h-[80vh] border-0" />
+              ) : (
                 <div className="flex flex-col items-center justify-center p-8 space-y-4">
                   <FileText className="h-16 w-16 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Não foi possível exibir o PDF embutido neste navegador.</p>
+                  <p className="text-sm text-muted-foreground">Não foi possível carregar o PDF.</p>
                   <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="gap-2">
                       <Download className="h-4 w-4" /> Abrir / Baixar PDF
                     </Button>
                   </a>
                 </div>
-              </object>
+              )
             ) : (
               <img src={receiptUrl} alt={receiptLabel} className="w-full max-h-[80vh] object-contain p-4" loading="lazy" />
             )
