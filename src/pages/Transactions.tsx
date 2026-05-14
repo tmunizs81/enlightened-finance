@@ -26,7 +26,7 @@ import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
-import { getSignedReceiptUrl, prefetchSignedUrl } from "@/utils/storageUrls";
+import { getSignedReceiptUrl, prefetchSignedUrl, cancelSignedUrlRequest, isUrlCached, isUrlPending } from "@/utils/storageUrls";
 
 const statusStyles: Record<string, string> = {
   paid: "bg-success/15 text-success border-success/20",
@@ -417,6 +417,12 @@ const Transactions = () => {
 
   const TransactionRow = ({ t, i }: { t: Transaction, i: number }) => {
     const rowRef = useRef<HTMLDivElement>(null);
+    const [cachedState, setCachedState] = useState({ 
+      receipt: isUrlCached(t.receipt_url), 
+      boleto: isUrlCached(t.boleto_url),
+      pendingReceipt: isUrlPending(t.receipt_url),
+      pendingBoleto: isUrlPending(t.boleto_url)
+    });
 
     useEffect(() => {
       if (!rowRef.current) return;
@@ -424,16 +430,32 @@ const Transactions = () => {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            // Warm up cache when visible
             if (t.receipt_url || t.boleto_url) {
               handlePrefetch(t);
             }
+          } else {
+            // Cancel prefetch if it hasn't completed and row is no longer visible
+            if (t.receipt_url) cancelSignedUrlRequest(t.receipt_url);
+            if (t.boleto_url) cancelSignedUrlRequest(t.boleto_url);
           }
         });
       }, { threshold: 0.1, rootMargin: '50px' });
 
       observer.observe(rowRef.current);
       return () => observer.disconnect();
+    }, [t]);
+
+    // Update local cache indicators periodically or on interaction
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setCachedState({
+          receipt: isUrlCached(t.receipt_url),
+          boleto: isUrlCached(t.boleto_url),
+          pendingReceipt: isUrlPending(t.receipt_url),
+          pendingBoleto: isUrlPending(t.boleto_url)
+        });
+      }, 2000);
+      return () => clearInterval(interval);
     }, [t]);
 
     return (
@@ -487,9 +509,9 @@ const Transactions = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 text-primary hover:text-primary/80" 
+              className={`h-7 w-7 transition-all ${cachedState.receipt ? "text-success" : cachedState.pendingReceipt ? "text-primary animate-pulse" : "text-primary"} hover:text-primary/80`} 
               type="button" 
-              title="Comprovante" 
+              title={cachedState.receipt ? "Comprovante (em cache)" : "Comprovante"} 
               disabled={isSigning === t.id + '-receipt'}
               onClick={async () => { 
                 const requestId = t.id + '-receipt';
@@ -516,9 +538,9 @@ const Transactions = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-7 w-7 text-warning hover:text-warning/80" 
+              className={`h-7 w-7 transition-all ${cachedState.boleto ? "text-success" : cachedState.pendingBoleto ? "text-warning animate-pulse" : "text-warning"} hover:text-warning/80`} 
               type="button" 
-              title="Boleto" 
+              title={cachedState.boleto ? "Boleto (em cache)" : "Boleto"} 
               disabled={isSigning === t.id + '-boleto'}
               onClick={async () => { 
                 const requestId = t.id + '-boleto';

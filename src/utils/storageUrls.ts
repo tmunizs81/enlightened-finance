@@ -5,14 +5,20 @@ const SIGNED_TTL = 60 * 60; // 1 hour (validity on server)
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (validity in memory)
 const CLEANUP_INTERVAL = 60 * 1000; // 1 minute
 const STORAGE_KEY_PREFIX = "sf_signed_url_cache_";
-const MAX_CONCURRENT_SIGNING = 2;
+
+// Adaptive concurrency parameters
+let maxConcurrent = 2;
+const MIN_CONCURRENT = 1;
+const MAX_CONCURRENT = 4;
+const LATENCY_THRESHOLD_LOW = 300; // ms
+const LATENCY_THRESHOLD_HIGH = 800; // ms
 
 interface CachedUrl {
   url: string;
   expiresAt: number;
 }
 
-// Memory cache structured by userId to avoid multi-session conflicts
+// Memory cache structured by userId
 const urlCache: Record<string, Record<string, CachedUrl>> = {};
 const pendingRequests: Record<string, { promise: Promise<string | null>, controller: AbortController }> = {};
 
@@ -20,7 +26,7 @@ const pendingRequests: Record<string, { promise: Promise<string | null>, control
 let activeRequestsCount = 0;
 const requestQueue: (() => void)[] = [];
 
-// Background cleanup of expired entries
+// Background cleanup
 setInterval(() => {
   const now = Date.now();
   Object.keys(urlCache).forEach(userId => {
@@ -33,11 +39,8 @@ setInterval(() => {
   });
 }, CLEANUP_INTERVAL);
 
-/**
- * Process the queue based on concurrency limit
- */
 async function processQueue() {
-  if (activeRequestsCount >= MAX_CONCURRENT_SIGNING || requestQueue.length === 0) return;
+  if (activeRequestsCount >= maxConcurrent || requestQueue.length === 0) return;
   const next = requestQueue.shift();
   if (next) {
     activeRequestsCount++;
@@ -45,9 +48,18 @@ async function processQueue() {
   }
 }
 
-/**
- * Loads cache from sessionStorage for a specific user
- */
+function adjustConcurrency(latency: number, success: boolean) {
+  if (!success) {
+    maxConcurrent = Math.max(MIN_CONCURRENT, maxConcurrent - 1);
+    return;
+  }
+  if (latency < LATENCY_THRESHOLD_LOW) {
+    maxConcurrent = Math.min(MAX_CONCURRENT, maxConcurrent + 1);
+  } else if (latency > LATENCY_THRESHOLD_HIGH) {
+    maxConcurrent = Math.max(MIN_CONCURRENT, maxConcurrent - 1);
+  }
+}
+
 function loadFromSessionStorage(userId: string) {
   try {
     const key = STORAGE_KEY_PREFIX + userId;
@@ -57,34 +69,20 @@ function loadFromSessionStorage(userId: string) {
       const now = Date.now();
       const valid: Record<string, CachedUrl> = {};
       Object.keys(parsed).forEach(path => {
-        if (parsed[path].expiresAt > now) {
-          valid[path] = parsed[path];
-        }
+        if (parsed[path].expiresAt > now) valid[path] = parsed[path];
       });
       urlCache[userId] = valid;
     }
-  } catch (e) {
-    console.error("Error loading signed URL cache from sessionStorage", e);
-  }
+  } catch (e) {}
 }
 
-/**
- * Saves cache to sessionStorage for a specific user
- */
 function saveToSessionStorage(userId: string) {
   try {
     const key = STORAGE_KEY_PREFIX + userId;
-    if (urlCache[userId]) {
-      sessionStorage.setItem(key, JSON.stringify(urlCache[userId]));
-    }
-  } catch (e) {
-    console.error("Error saving signed URL cache to sessionStorage", e);
-  }
+    if (urlCache[userId]) sessionStorage.setItem(key, JSON.stringify(urlCache[userId]));
+  } catch (e) {}
 }
 
-/**
- * Extracts the storage path from a stored receipt/boleto value.
- */
 export function extractStoragePath(value: string): string {
   if (!value) return value;
   const m = value.match(/\/object\/(?:public|sign)\/receipts\/([^?]+)/);
@@ -92,10 +90,23 @@ export function extractStoragePath(value: string): string {
   return value;
 }
 
-/**
- * Returns a short-lived signed URL for viewing a private receipt/boleto file.
- * Implements cache, deduplication, AbortController, and concurrency limiting.
- */
+export function isUrlCached(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const path = extractStoragePath(value);
+  const userId = 'current'; // Approximation for sync check
+  // Try to find in any user cache for simple UI indicator
+  return Object.values(urlCache).some(userCache => {
+    const cached = userCache[path];
+    return cached && cached.expiresAt > Date.now();
+  });
+}
+
+export function isUrlPending(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const path = extractStoragePath(value);
+  return Object.keys(pendingRequests).some(key => key.endsWith(`:${path}`));
+}
+
 export async function getSignedReceiptUrl(
   value: string | null | undefined, 
   signal?: AbortSignal
@@ -112,19 +123,17 @@ export async function getSignedReceiptUrl(
   }
   
   const cached = urlCache[userId][path];
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.url;
-  }
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
 
   const requestKey = `${userId}:${path}`;
-  if (pendingRequests[requestKey]) {
-    return pendingRequests[requestKey].promise;
-  }
+  if (pendingRequests[requestKey]) return pendingRequests[requestKey].promise;
 
   const controller = new AbortController();
   
   const signPromise = new Promise<string | null>((resolve) => {
     const executeSigning = async () => {
+      const startTime = Date.now();
+      let success = false;
       try {
         if (signal) {
           signal.addEventListener('abort', () => controller.abort(), { once: true });
@@ -133,7 +142,6 @@ export async function getSignedReceiptUrl(
         const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_TTL);
         
         if (error || !data?.signedUrl) {
-          console.error("Failed to sign receipt URL:", error?.message);
           resolve(null);
           return;
         }
@@ -149,10 +157,13 @@ export async function getSignedReceiptUrl(
         };
         
         saveToSessionStorage(userId);
+        success = true;
         resolve(data.signedUrl);
       } catch (e) {
         resolve(null);
       } finally {
+        const latency = Date.now() - startTime;
+        adjustConcurrency(latency, success);
         activeRequestsCount--;
         delete pendingRequests[requestKey];
         processQueue();
@@ -167,10 +178,18 @@ export async function getSignedReceiptUrl(
   return signPromise;
 }
 
-/**
- * Prefetches a signed URL without returning it, warming up the cache.
- */
+export function cancelSignedUrlRequest(value: string | null | undefined) {
+  if (!value) return;
+  const path = extractStoragePath(value);
+  Object.keys(pendingRequests).forEach(key => {
+    if (key.endsWith(`:${path}`)) {
+      pendingRequests[key].controller.abort();
+      delete pendingRequests[key];
+    }
+  });
+}
+
 export function prefetchSignedUrl(value: string | null | undefined) {
   if (!value) return;
-  getSignedReceiptUrl(value).catch(() => { /* ignore prefetch errors */ });
+  getSignedReceiptUrl(value).catch(() => {});
 }
