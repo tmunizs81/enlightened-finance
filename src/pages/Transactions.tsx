@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { getSignedReceiptUrl } from "@/utils/storageUrls";
 
@@ -93,6 +94,7 @@ const Transactions = () => {
   const [txSplits, setTxSplits] = useState<Set<string>>(new Set());
   const [tagsVersion, setTagsVersion] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [isSigning, setIsSigning] = useState<string | null>(null); // path or id being signed
 
   // Batch selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -535,13 +537,55 @@ const Transactions = () => {
                   <Split className="h-3 w-3" />
                 </Button>
                 {t.receipt_url && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary/80" type="button" title="Comprovante" onClick={async () => { const u = await getSignedReceiptUrl(t.receipt_url); if (u) { setReceiptUrl(u); setReceiptLabel("Comprovante"); } else { toast.error("Não foi possível abrir o comprovante."); } }}>
-                    <Paperclip className="h-3 w-3" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 text-primary hover:text-primary/80" 
+                    type="button" 
+                    title="Comprovante" 
+                    disabled={isSigning === t.id + '-receipt'}
+                    onClick={async () => { 
+                      setIsSigning(t.id + '-receipt');
+                      try {
+                        const u = await getSignedReceiptUrl(t.receipt_url); 
+                        if (u) { 
+                          setReceiptUrl(u); 
+                          setReceiptLabel("Comprovante"); 
+                        } else { 
+                          toast.error("Não foi possível abrir o comprovante."); 
+                        } 
+                      } finally {
+                        setIsSigning(null);
+                      }
+                    }}
+                  >
+                    {isSigning === t.id + '-receipt' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
                   </Button>
                 )}
                 {t.boleto_url && (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning/80" type="button" title="Boleto" onClick={async () => { const u = await getSignedReceiptUrl(t.boleto_url); if (u) { setReceiptUrl(u); setReceiptLabel("Boleto"); } else { toast.error("Não foi possível abrir o boleto."); } }}>
-                    <FileText className="h-3 w-3" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 text-warning hover:text-warning/80" 
+                    type="button" 
+                    title="Boleto" 
+                    disabled={isSigning === t.id + '-boleto'}
+                    onClick={async () => { 
+                      setIsSigning(t.id + '-boleto');
+                      try {
+                        const u = await getSignedReceiptUrl(t.boleto_url); 
+                        if (u) { 
+                          setReceiptUrl(u); 
+                          setReceiptLabel("Boleto"); 
+                        } else { 
+                          toast.error("Não foi possível abrir o boleto."); 
+                        } 
+                      } finally {
+                        setIsSigning(null);
+                      }
+                    }}
+                  >
+                    {isSigning === t.id + '-boleto' ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setFormOpen(true); }}>
