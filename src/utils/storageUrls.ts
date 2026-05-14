@@ -13,7 +13,7 @@ interface CachedUrl {
 
 // Memory cache structured by userId to avoid multi-session conflicts
 const urlCache: Record<string, Record<string, CachedUrl>> = {};
-const pendingRequests: Record<string, Promise<string | null>> = {};
+const pendingRequests: Record<string, { promise: Promise<string | null>, controller: AbortController }> = {};
 
 // Background cleanup of expired entries
 setInterval(() => {
@@ -38,7 +38,6 @@ function loadFromSessionStorage(userId: string) {
     if (stored) {
       const parsed = JSON.parse(stored);
       const now = Date.now();
-      // Filter expired
       const valid: Record<string, CachedUrl> = {};
       Object.keys(parsed).forEach(path => {
         if (parsed[path].expiresAt > now) {
@@ -78,9 +77,12 @@ export function extractStoragePath(value: string): string {
 
 /**
  * Returns a short-lived signed URL for viewing a private receipt/boleto file.
- * Implements an in-memory and session-persistent cache with request deduplication.
+ * Implements an in-memory and session-persistent cache with request deduplication and AbortController support.
  */
-export async function getSignedReceiptUrl(value: string | null | undefined): Promise<string | null> {
+export async function getSignedReceiptUrl(
+  value: string | null | undefined, 
+  signal?: AbortSignal
+): Promise<string | null> {
   if (!value) return null;
   const path = extractStoragePath(value);
 
@@ -103,17 +105,26 @@ export async function getSignedReceiptUrl(value: string | null | undefined): Pro
   // Deduplicate inflight requests for the same path
   const requestKey = `${userId}:${path}`;
   if (pendingRequests[requestKey]) {
-    return pendingRequests[requestKey];
+    return pendingRequests[requestKey].promise;
   }
 
+  const controller = new AbortController();
+  
   const signPromise = (async () => {
     try {
+      // If an external signal is provided, abort our internal controller if it aborts
+      if (signal) {
+        signal.addEventListener('abort', () => controller.abort(), { once: true });
+      }
+
       const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_TTL);
       
       if (error || !data?.signedUrl) {
         console.error("Failed to sign receipt URL:", error?.message);
         return null;
       }
+
+      if (controller.signal.aborted) return null;
 
       // Update cache
       urlCache[userId][path] = {
@@ -130,7 +141,7 @@ export async function getSignedReceiptUrl(value: string | null | undefined): Pro
     }
   })();
 
-  pendingRequests[requestKey] = signPromise;
+  pendingRequests[requestKey] = { promise: signPromise, controller };
   return signPromise;
 }
 
