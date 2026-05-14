@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Plus, Paperclip, X, FileImage, Loader2, Sparkles, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { getSignedReceiptUrl } from "@/utils/storageUrls";
 
 interface Account {
   id: string;
@@ -71,10 +72,19 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     setCategoryId(initialData?.category_id || "none");
     setAccountId(initialData?.account_id || "none");
     setReceiptFile(null);
-    // Bind receipt preview strictly to the provided transaction ID instance
-    setReceiptPreview(initialData?.receipt_url || null);
+    // Bind receipt preview strictly to the provided transaction ID instance.
+    // Stored value may be a path; resolve to a signed URL for preview rendering.
+    if (initialData?.receipt_url) {
+      getSignedReceiptUrl(initialData.receipt_url).then((u) => setReceiptPreview(u));
+    } else {
+      setReceiptPreview(null);
+    }
     setBoletoFile(null);
-    setBoletoPreview(initialData?.boleto_url || null);
+    if (initialData?.boleto_url) {
+      getSignedReceiptUrl(initialData.boleto_url).then((u) => setBoletoPreview(u));
+    } else {
+      setBoletoPreview(null);
+    }
     setAiSuggested(null);
     setIsInstallment(false);
     setInstallments("1");
@@ -195,8 +205,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       const path = `${user.id}/${folder}/${crypto.randomUUID()}_${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-      return urlData.publicUrl;
+      // Store only the storage path; signed URLs are generated on-demand for viewing.
+      return path;
     } catch (err: any) {
       toast.error("Erro ao enviar arquivo: " + err.message);
       return null;
