@@ -569,18 +569,28 @@ const Transactions = () => {
                     disabled={isSigning === t.id + '-receipt'}
                     onClick={async () => { 
                       const requestId = t.id + '-receipt';
+                      
+                      // Cancel previous signing if any
+                      if (abortControllersRef.current[requestId]) {
+                        abortControllersRef.current[requestId].abort();
+                      }
+                      const controller = new AbortController();
+                      abortControllersRef.current[requestId] = controller;
+
                       setIsSigning(requestId);
                       try {
-                        const u = await getSignedReceiptUrl(t.receipt_url); 
-                        // Only update state if this is still the active request
+                        const u = await getSignedReceiptUrl(t.receipt_url, controller.signal); 
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Comprovante"); 
-                        } else { 
+                        } else if (!controller.signal.aborted) { 
                           toast.error("Não foi possível abrir o comprovante."); 
                         } 
                       } finally {
-                        setIsSigning(prev => prev === requestId ? null : prev);
+                        if (abortControllersRef.current[requestId] === controller) {
+                          delete abortControllersRef.current[requestId];
+                          setIsSigning(prev => prev === requestId ? null : prev);
+                        }
                       }
                     }}
                   >
@@ -597,17 +607,27 @@ const Transactions = () => {
                     disabled={isSigning === t.id + '-boleto'}
                     onClick={async () => { 
                       const requestId = t.id + '-boleto';
+
+                      if (abortControllersRef.current[requestId]) {
+                        abortControllersRef.current[requestId].abort();
+                      }
+                      const controller = new AbortController();
+                      abortControllersRef.current[requestId] = controller;
+
                       setIsSigning(requestId);
                       try {
-                        const u = await getSignedReceiptUrl(t.boleto_url); 
+                        const u = await getSignedReceiptUrl(t.boleto_url, controller.signal); 
                         if (u) { 
                           setReceiptUrl(u); 
                           setReceiptLabel("Boleto"); 
-                        } else { 
+                        } else if (!controller.signal.aborted) { 
                           toast.error("Não foi possível abrir o boleto."); 
                         } 
                       } finally {
-                        setIsSigning(prev => prev === requestId ? null : prev);
+                        if (abortControllersRef.current[requestId] === controller) {
+                          delete abortControllersRef.current[requestId];
+                          setIsSigning(prev => prev === requestId ? null : prev);
+                        }
                       }
                     }}
                   >
