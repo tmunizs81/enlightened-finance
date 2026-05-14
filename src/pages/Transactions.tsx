@@ -88,6 +88,8 @@ const Transactions = () => {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptLabel, setReceiptLabel] = useState<string>("Comprovante");
+  const [receiptBlobUrl, setReceiptBlobUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
   const [splitTx, setSplitTx] = useState<Transaction | null>(null);
   const [allTags, setAllTags] = useState<TagData[]>([]);
   const [txTags, setTxTags] = useState<Record<string, TagData[]>>({});
@@ -162,6 +164,32 @@ const Transactions = () => {
   useEffect(() => { loadTags(); }, [loadTags]);
   useEffect(() => { loadTxTags(); }, [loadTxTags, tagsVersion]);
   useEffect(() => { loadSplitInfo(); }, [loadSplitInfo]);
+
+  // Fetch PDF as blob to bypass Content-Disposition: attachment from signed URLs
+  useEffect(() => {
+    if (!receiptUrl || !receiptUrl.toLowerCase().includes(".pdf")) {
+      setReceiptBlobUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    setLoadingPdf(true);
+    fetch(receiptUrl)
+      .then((r) => r.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        // Force inline-friendly mime type
+        const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+        createdUrl = URL.createObjectURL(pdfBlob);
+        setReceiptBlobUrl(createdUrl);
+      })
+      .catch(() => { if (!cancelled) setReceiptBlobUrl(null); })
+      .finally(() => { if (!cancelled) setLoadingPdf(false); });
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [receiptUrl]);
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
@@ -747,17 +775,24 @@ const Transactions = () => {
           </div>
           {receiptUrl && (
             receiptUrl.toLowerCase().includes(".pdf") ? (
-              <object data={receiptUrl} type="application/pdf" className="w-full h-[80vh]">
+              loadingPdf ? (
+                <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Carregando PDF...</p>
+                </div>
+              ) : receiptBlobUrl ? (
+                <iframe src={receiptBlobUrl} title={receiptLabel} className="w-full h-[80vh] border-0" />
+              ) : (
                 <div className="flex flex-col items-center justify-center p-8 space-y-4">
                   <FileText className="h-16 w-16 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Não foi possível exibir o PDF embutido neste navegador.</p>
+                  <p className="text-sm text-muted-foreground">Não foi possível carregar o PDF.</p>
                   <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="gap-2">
                       <Download className="h-4 w-4" /> Abrir / Baixar PDF
                     </Button>
                   </a>
                 </div>
-              </object>
+              )
             ) : (
               <img src={receiptUrl} alt={receiptLabel} className="w-full max-h-[80vh] object-contain p-4" loading="lazy" />
             )
