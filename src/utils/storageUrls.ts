@@ -22,6 +22,18 @@ interface CachedUrl {
 const urlCache: Record<string, Record<string, CachedUrl>> = {};
 const pendingRequests: Record<string, { promise: Promise<string | null>, controller: AbortController }> = {};
 
+// Current authenticated user ID tracker for sync helper functions
+let currentUserId: string | null = null;
+
+// Initial user fetch and listener for auth changes
+supabase.auth.getUser().then(({ data }) => {
+  currentUserId = data.user?.id || null;
+});
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  currentUserId = session?.user?.id || null;
+});
+
 // Queue for concurrency limiting
 let activeRequestsCount = 0;
 const requestQueue: (() => void)[] = [];
@@ -90,21 +102,26 @@ export function extractStoragePath(value: string): string {
   return value;
 }
 
+/**
+ * Checks if a URL is cached for the current user.
+ */
 export function isUrlCached(value: string | null | undefined): boolean {
-  if (!value) return false;
+  if (!value || !currentUserId) return false;
   const path = extractStoragePath(value);
-  const userId = 'current'; // Approximation for sync check
-  // Try to find in any user cache for simple UI indicator
-  return Object.values(urlCache).some(userCache => {
-    const cached = userCache[path];
-    return cached && cached.expiresAt > Date.now();
-  });
+  const userCache = urlCache[currentUserId];
+  if (!userCache) return false;
+  const cached = userCache[path];
+  return !!(cached && cached.expiresAt > Date.now());
 }
 
+/**
+ * Checks if a URL is currently being signed for the current user.
+ */
 export function isUrlPending(value: string | null | undefined): boolean {
-  if (!value) return false;
+  if (!value || !currentUserId) return false;
   const path = extractStoragePath(value);
-  return Object.keys(pendingRequests).some(key => key.endsWith(`:${path}`));
+  const requestKey = `${currentUserId}:${path}`;
+  return !!pendingRequests[requestKey];
 }
 
 export async function getSignedReceiptUrl(
@@ -116,6 +133,7 @@ export async function getSignedReceiptUrl(
 
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user?.id || 'anonymous';
+  currentUserId = userId; // Update shared state
 
   if (!urlCache[userId]) {
     urlCache[userId] = {};
@@ -179,14 +197,13 @@ export async function getSignedReceiptUrl(
 }
 
 export function cancelSignedUrlRequest(value: string | null | undefined) {
-  if (!value) return;
+  if (!value || !currentUserId) return;
   const path = extractStoragePath(value);
-  Object.keys(pendingRequests).forEach(key => {
-    if (key.endsWith(`:${path}`)) {
-      pendingRequests[key].controller.abort();
-      delete pendingRequests[key];
-    }
-  });
+  const requestKey = `${currentUserId}:${path}`;
+  if (pendingRequests[requestKey]) {
+    pendingRequests[requestKey].controller.abort();
+    delete pendingRequests[requestKey];
+  }
 }
 
 export function prefetchSignedUrl(value: string | null | undefined) {
