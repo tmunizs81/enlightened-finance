@@ -520,10 +520,9 @@ const Transactions = () => {
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: Math.min(i, 10) * 0.03 }} 
               className={`glass-card-hover p-4 flex items-center gap-4 ${selected.has(t.id) ? "ring-1 ring-primary/40 bg-primary/5" : ""}`}
-              onMouseEnter={() => {
-                if (t.receipt_url) prefetchSignedUrl(t.receipt_url);
-                if (t.boleto_url) prefetchSignedUrl(t.boleto_url);
-              }}
+              onMouseEnter={() => handlePrefetch(t)}
+              onFocus={() => handlePrefetch(t)}
+              tabIndex={0}
             >
               <Checkbox
                 checked={selected.has(t.id)}
