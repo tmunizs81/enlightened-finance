@@ -25,13 +25,22 @@ const pendingRequests: Record<string, { promise: Promise<string | null>, control
 // Current authenticated user ID tracker for sync helper functions
 let currentUserId: string | null = null;
 
-// Initial user fetch and listener for auth changes
-supabase.auth.getUser().then(({ data }) => {
-  currentUserId = data.user?.id || null;
-});
+// Use session storage for user info if available (faster than async getUser)
+try {
+  const authKey = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
+  if (authKey) {
+    const session = JSON.parse(localStorage.getItem(authKey) || '{}');
+    currentUserId = session?.user?.id || null;
+  }
+} catch (e) {}
 
+// Subscribe to auth changes to keep currentUserId updated
 supabase.auth.onAuthStateChange((_event, session) => {
   currentUserId = session?.user?.id || null;
+  if (currentUserId && !urlCache[currentUserId]) {
+    urlCache[currentUserId] = {};
+    loadFromSessionStorage(currentUserId);
+  }
 });
 
 // Queue for concurrency limiting
@@ -131,9 +140,13 @@ export async function getSignedReceiptUrl(
   if (!value) return null;
   const path = extractStoragePath(value);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user?.id || 'anonymous';
-  currentUserId = userId; // Update shared state
+  // Use currentUserId if available, otherwise fallback to session
+  let userId = currentUserId;
+  if (!userId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    userId = session?.user?.id || 'anonymous';
+    currentUserId = userId;
+  }
 
   if (!urlCache[userId]) {
     urlCache[userId] = {};
