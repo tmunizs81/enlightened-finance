@@ -611,31 +611,33 @@ const Transactions = () => {
       )}
 
       <Dialog open={!!receiptUrl} onOpenChange={(v) => { if (!v) setReceiptUrl(null); }}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-background border-border">
           <DialogTitle className="sr-only">{receiptLabel}</DialogTitle>
           <div className="flex items-center justify-between p-3 border-b border-border">
             <p className="text-sm font-medium text-foreground">{receiptLabel}</p>
             <div className="flex gap-1">
-              <a href={receiptUrl || ""} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+              <a href={receiptUrl || ""} target="_blank" rel="noopener noreferrer" download>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Baixar">
                   <Download className="h-3.5 w-3.5" />
                 </Button>
               </a>
             </div>
           </div>
           {receiptUrl && (
-            receiptUrl.toLowerCase().endsWith(".pdf") ? (
-              <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                <FileText className="h-16 w-16 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Arquivo PDF</p>
-                <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="gap-2">
-                    <Download className="h-4 w-4" /> Abrir / Baixar PDF
-                  </Button>
-                </a>
-              </div>
+            receiptUrl.toLowerCase().includes(".pdf") ? (
+              <object data={receiptUrl} type="application/pdf" className="w-full h-[80vh]">
+                <div className="flex flex-col items-center justify-center p-8 space-y-4">
+                  <FileText className="h-16 w-16 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Não foi possível exibir o PDF embutido neste navegador.</p>
+                  <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="gap-2">
+                      <Download className="h-4 w-4" /> Abrir / Baixar PDF
+                    </Button>
+                  </a>
+                </div>
+              </object>
             ) : (
-              <img src={receiptUrl} alt={receiptLabel} className="w-full max-h-[70vh] object-contain p-4" loading="lazy" />
+              <img src={receiptUrl} alt={receiptLabel} className="w-full max-h-[80vh] object-contain p-4" loading="lazy" />
             )
           )}
         </DialogContent>
