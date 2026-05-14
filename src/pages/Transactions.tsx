@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { getSignedReceiptUrl } from "@/utils/storageUrls";
 
