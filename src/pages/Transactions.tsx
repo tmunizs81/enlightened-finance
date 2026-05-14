@@ -165,6 +165,32 @@ const Transactions = () => {
   useEffect(() => { loadTxTags(); }, [loadTxTags, tagsVersion]);
   useEffect(() => { loadSplitInfo(); }, [loadSplitInfo]);
 
+  // Fetch PDF as blob to bypass Content-Disposition: attachment from signed URLs
+  useEffect(() => {
+    if (!receiptUrl || !receiptUrl.toLowerCase().includes(".pdf")) {
+      setReceiptBlobUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    setLoadingPdf(true);
+    fetch(receiptUrl)
+      .then((r) => r.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        // Force inline-friendly mime type
+        const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+        createdUrl = URL.createObjectURL(pdfBlob);
+        setReceiptBlobUrl(createdUrl);
+      })
+      .catch(() => { if (!cancelled) setReceiptBlobUrl(null); })
+      .finally(() => { if (!cancelled) setLoadingPdf(false); });
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [receiptUrl]);
+
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   const filtered = useMemo(() => {
