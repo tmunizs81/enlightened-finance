@@ -88,6 +88,8 @@ const Transactions = () => {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptLabel, setReceiptLabel] = useState<string>("Comprovante");
+  const [receiptBlobUrl, setReceiptBlobUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
   const [splitTx, setSplitTx] = useState<Transaction | null>(null);
   const [allTags, setAllTags] = useState<TagData[]>([]);
   const [txTags, setTxTags] = useState<Record<string, TagData[]>>({});
