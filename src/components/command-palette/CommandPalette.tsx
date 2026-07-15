@@ -10,7 +10,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import {
-  LayoutDashboard, ArrowLeftRight, Target, Wallet, PiggyBank, Repeat,
+  LayoutDashboard, ArrowLeftRight, Target, Wallet, PiggyBank,
   FileText, Brain, Settings, Trophy, Zap, Key, Download, Plus, Search,
   DollarSign,
 } from "lucide-react";
@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 const pages = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Transações", path: "/transactions", icon: ArrowLeftRight },
-  { name: "Recorrentes", path: "/recurring", icon: Repeat },
+  
   { name: "Orçamentos", path: "/budgets", icon: PiggyBank },
   { name: "Metas", path: "/goals", icon: Target },
   { name: "Contas", path: "/accounts", icon: Wallet },
