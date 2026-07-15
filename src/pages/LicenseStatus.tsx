@@ -14,17 +14,17 @@ export default function LicenseStatus() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (!license) {
     return (
-      <div className="container mx-auto py-8 max-w-2xl">
+      <div className="container mx-auto max-w-2xl py-8">
         <Card className="border-destructive/30">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
               <ShieldX className="h-8 w-8 text-destructive" />
             </div>
             <CardTitle className="text-2xl">Sem Licença</CardTitle>
@@ -43,13 +43,14 @@ export default function LicenseStatus() {
   const daysRemaining = differenceInDays(expiresAt, now);
   const totalDays = differenceInDays(expiresAt, createdAt);
   const daysUsed = differenceInDays(now, createdAt);
-  const progressPercent = totalDays > 0 ? Math.min(100, Math.max(0, (daysUsed / totalDays) * 100)) : 100;
+  const progressPercent =
+    totalDays > 0 ? Math.min(100, Math.max(0, (daysUsed / totalDays) * 100)) : 100;
   const isExpired = expiresAt < now;
   const isBlocked = license.status === "blocked";
   const isExpiringSoon = daysRemaining <= 7 && daysRemaining > 0;
 
   return (
-    <div className="container mx-auto py-8 max-w-2xl space-y-6">
+    <div className="container mx-auto max-w-2xl space-y-6 py-8">
       <div className="flex items-center gap-3">
         <Key className="h-8 w-8 text-primary" />
         <div>
@@ -60,10 +61,12 @@ export default function LicenseStatus() {
 
       {/* Status Card */}
       <Card className={isValid ? "border-primary/30" : "border-destructive/30"}>
-        <CardHeader className="text-center pb-2">
-          <div className={`mx-auto mb-4 h-20 w-20 rounded-full flex items-center justify-center ${
-            isValid ? "bg-primary/10" : "bg-destructive/10"
-          }`}>
+        <CardHeader className="pb-2 text-center">
+          <div
+            className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full ${
+              isValid ? "bg-primary/10" : "bg-destructive/10"
+            }`}
+          >
             {isValid ? (
               <ShieldCheck className="h-10 w-10 text-primary" />
             ) : (
@@ -73,17 +76,26 @@ export default function LicenseStatus() {
           <CardTitle className="text-2xl">
             {isBlocked ? "Licença Bloqueada" : isExpired ? "Licença Expirada" : "Licença Ativa"}
           </CardTitle>
-          <div className="flex justify-center mt-2">
+          <div className="mt-2 flex justify-center">
             {isBlocked ? (
-              <Badge variant="secondary" className="text-sm px-4 py-1">Bloqueada</Badge>
+              <Badge variant="secondary" className="px-4 py-1 text-sm">
+                Bloqueada
+              </Badge>
             ) : isExpired ? (
-              <Badge variant="destructive" className="text-sm px-4 py-1">Expirada</Badge>
+              <Badge variant="destructive" className="px-4 py-1 text-sm">
+                Expirada
+              </Badge>
             ) : isExpiringSoon ? (
-              <Badge variant="outline" className="text-sm px-4 py-1 border-amber-500 text-amber-600">
+              <Badge
+                variant="outline"
+                className="border-amber-500 px-4 py-1 text-sm text-amber-600"
+              >
                 Expira em breve
               </Badge>
             ) : (
-              <Badge variant="default" className="text-sm px-4 py-1">Ativa</Badge>
+              <Badge variant="default" className="px-4 py-1 text-sm">
+                Ativa
+              </Badge>
             )}
           </div>
         </CardHeader>
@@ -105,9 +117,9 @@ export default function LicenseStatus() {
           )}
 
           {/* Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-              <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <Calendar className="mt-0.5 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Data de Início</p>
                 <p className="text-sm text-muted-foreground">
@@ -116,28 +128,30 @@ export default function LicenseStatus() {
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-              <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
+              <Clock className="mt-0.5 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Expira em</p>
                 <p className="text-sm text-muted-foreground">
                   {format(expiresAt, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
                 {!isExpired && !isBlocked && (
-                  <p className={`text-xs mt-1 font-medium ${
-                    isExpiringSoon ? "text-amber-600" : "text-primary"
-                  }`}>
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      isExpiringSoon ? "text-amber-600" : "text-primary"
+                    }`}
+                  >
                     {daysRemaining} {daysRemaining === 1 ? "dia restante" : "dias restantes"}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 sm:col-span-2">
-              <Key className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4 sm:col-span-2">
+              <Key className="mt-0.5 h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Chave de Licença</p>
-                <code className="text-xs bg-muted px-2 py-1 rounded mt-1 inline-block">
+                <code className="mt-1 inline-block rounded bg-muted px-2 py-1 text-xs">
                   {license.license_key}
                 </code>
               </div>
@@ -145,8 +159,8 @@ export default function LicenseStatus() {
           </div>
 
           {(isExpired || isBlocked) && (
-            <div className="p-4 rounded-lg bg-destructive/10 text-center">
-              <p className="text-sm text-destructive font-medium">
+            <div className="rounded-lg bg-destructive/10 p-4 text-center">
+              <p className="text-sm font-medium text-destructive">
                 {isBlocked
                   ? "Sua licença foi bloqueada. Contate o administrador para mais informações."
                   : "Sua licença expirou. Contate o administrador para renovação."}
@@ -155,8 +169,8 @@ export default function LicenseStatus() {
           )}
 
           {isExpiringSoon && !isExpired && (
-            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-center">
-              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+            <div className="rounded-lg bg-amber-50 p-4 text-center dark:bg-amber-950/20">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
                 Sua licença expira em {daysRemaining} {daysRemaining === 1 ? "dia" : "dias"}.
                 Contate o administrador para renovação.
               </p>

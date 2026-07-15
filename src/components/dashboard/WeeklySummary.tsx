@@ -31,7 +31,7 @@ export function WeeklySummary() {
   if (loading) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Resumo Semanal IA</h3>
         </div>
@@ -46,13 +46,19 @@ export function WeeklySummary() {
   if (!summary) return null;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-3">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card space-y-3 p-5"
+    >
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Resumo Semanal IA</h3>
-        <span className="text-[9px] bg-primary/15 text-primary px-2 py-0.5 rounded-full ml-auto">IA</span>
+        <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-[9px] text-primary">
+          IA
+        </span>
       </div>
-      <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed text-muted-foreground [&_strong]:text-foreground [&_p]:mb-1.5">
+      <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed text-muted-foreground [&_p]:mb-1.5 [&_strong]:text-foreground">
         <ReactMarkdown>{summary}</ReactMarkdown>
       </div>
     </motion.div>

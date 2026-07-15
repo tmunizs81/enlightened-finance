@@ -26,16 +26,24 @@ export const SummaryCards = memo(function SummaryCards() {
     const currentYear = new Date().getFullYear();
     const thisMonthTx = transactions.filter((t) => {
       const d = new Date(t.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.status === "paid";
+      return (
+        d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.status === "paid"
+      );
     });
-    const monthIncome = thisMonthTx.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
-    const monthExpense = thisMonthTx.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+    const monthIncome = thisMonthTx
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const monthExpense = thisMonthTx
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + Number(t.amount), 0);
     const savings = monthIncome - monthExpense;
 
     const pendingIncome = transactions
       .filter((t) => t.type === "income" && t.status === "pending")
       .reduce((s, t) => s + Number(t.amount), 0);
-    const pendingIncomeCount = transactions.filter((t) => t.type === "income" && t.status === "pending").length;
+    const pendingIncomeCount = transactions.filter(
+      (t) => t.type === "income" && t.status === "pending",
+    ).length;
 
     return [
       {
@@ -68,12 +76,18 @@ export const SummaryCards = memo(function SummaryCards() {
   }, [accounts, transactions]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {cards.map((card, i) => (
-        <motion.div key={card.title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.4 }} className="glass-card-hover p-5">
+        <motion.div
+          key={card.title}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.08, duration: 0.4 }}
+          className="glass-card-hover p-5"
+        >
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">{card.title}</p>
+              <p className="text-xs font-medium text-muted-foreground">{card.title}</p>
               <p className="text-xl font-bold text-foreground">{card.value}</p>
               {card.subtitle && <p className="text-xs text-muted-foreground">{card.subtitle}</p>}
             </div>

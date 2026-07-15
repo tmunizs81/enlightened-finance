@@ -3,13 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -86,7 +84,7 @@ serve(async (req) => {
 
       if (cmd === "/start" || cmd === "/help" || cmd === "/ajuda") {
         await sendTg(
-`🤖 *T2-SimplyFin Bot — Comandos disponíveis:*
+          `🤖 *T2-SimplyFin Bot — Comandos disponíveis:*
 
 💰 /saldo — Saldo atual de todas as contas
 📊 /extrato — Últimas 10 transações
@@ -102,14 +100,17 @@ serve(async (req) => {
 📊 /resumo — Resumo financeiro completo
 📸 *Envie uma foto* — OCR de comprovante
 
-_Exemplo: /despesa 45.90 Almoço restaurante_`
+_Exemplo: /despesa 45.90 Almoço restaurante_`,
         );
         return new Response("ok");
       }
 
       if (cmd === "/cancelar") {
         if (pendingEdit) {
-          await supabase.from("pending_ocr_transactions").update({ status: "pending", edit_field: null }).eq("id", pendingEdit.id);
+          await supabase
+            .from("pending_ocr_transactions")
+            .update({ status: "pending", edit_field: null })
+            .eq("id", pendingEdit.id);
           await sendTg("↩️ Edição cancelada.");
         } else {
           await sendTg("Nenhuma edição em andamento.");
@@ -155,7 +156,14 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
       }
 
       // Natural language processing with AI
-      return await handleNaturalLanguage(supabase, userId, message.text.trim(), chatId, botToken, sendTg);
+      return await handleNaturalLanguage(
+        supabase,
+        userId,
+        message.text.trim(),
+        chatId,
+        botToken,
+        sendTg,
+      );
     }
 
     // --- HANDLE PHOTO ---
@@ -168,7 +176,9 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
 
     // Download image
     const fileId = photo[photo.length - 1].file_id;
-    const fileResp = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    const fileResp = await fetch(
+      `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
+    );
     const fileData = await fileResp.json();
     if (!fileData.ok || !fileData.result?.file_path) {
       await sendTg("❌ Não consegui baixar a imagem. Tente novamente.");
@@ -179,7 +189,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
     const imageResp = await fetch(imageUrl);
     const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
     // Convert to base64 in chunks to avoid stack overflow with large images
-    let binary = '';
+    let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < imageBytes.length; i += chunkSize) {
       const chunk = imageBytes.subarray(i, i + chunkSize);
@@ -198,8 +208,12 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`
     const accounts = accRes.data || [];
     const expenseCategories = categories.filter((c: any) => c.type === "expense");
 
-    const categoryList = expenseCategories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
-    const accountList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
+    const categoryList = expenseCategories
+      .map((c: any) => `- "${c.name}" (id: ${c.id})`)
+      .join("\n");
+    const accountList = accounts
+      .map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`)
+      .join("\n");
 
     // AI OCR
     const aiPrompt = `Você é um assistente financeiro que analisa comprovantes de pagamento.
@@ -221,7 +235,9 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
     // Use Groq for vision/OCR (DeepSeek doesn't support vision)
     const ocrApiKey = GROQ_API_KEY || DEEPSEEK_API_KEY;
-    const ocrUrl = GROQ_API_KEY ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+    const ocrUrl = GROQ_API_KEY
+      ? "https://api.groq.com/openai/v1/chat/completions"
+      : "https://api.deepseek.com/chat/completions";
     const ocrModel = GROQ_API_KEY ? "meta-llama/llama-4-scout-17b-16e-instruct" : "deepseek-chat";
 
     const aiResponse = await fetch(ocrUrl, {
@@ -232,13 +248,20 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
       },
       body: JSON.stringify({
         model: ocrModel,
-        messages: [{
-          role: "user",
-          content: GROQ_API_KEY ? [
-            { type: "text", text: aiPrompt },
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
-          ] : aiPrompt,
-        }],
+        messages: [
+          {
+            role: "user",
+            content: GROQ_API_KEY
+              ? [
+                  { type: "text", text: aiPrompt },
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${mimeType};base64,${base64Image}` },
+                  },
+                ]
+              : aiPrompt,
+          },
+        ],
       }),
     });
 
@@ -310,7 +333,8 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
       return new Response("ok");
     }
 
-    const catName = categories.find((c: any) => c.id === parsed.category_id)?.name || "Sem categoria";
+    const catName =
+      categories.find((c: any) => c.id === parsed.category_id)?.name || "Sem categoria";
     const accName = accounts.find((a: any) => a.id === parsed.account_id)?.name || "Sem conta";
 
     const previewMsg = `📋 *Despesa detectada — Confirme os dados:*
@@ -383,7 +407,12 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
     await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "Markdown" }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: "Markdown",
+      }),
     });
   };
 
@@ -434,9 +463,10 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       description: pending.description,
       date: pending.date,
       status: "paid",
-      notes: action === "ocr_confirm"
-        ? `Lançado via Telegram OCR (confiança: ${pending.confidence})`
-        : `Lançamento rápido via Telegram`,
+      notes:
+        action === "ocr_confirm"
+          ? `Lançado via Telegram OCR (confiança: ${pending.confidence})`
+          : `Lançamento rápido via Telegram`,
       receipt_url: pending.receipt_url,
     };
     if (pending.category_id) txData.category_id = pending.category_id;
@@ -451,8 +481,13 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
 
     const label = txType === "income" ? "Receita" : "Despesa";
     const icon = txType === "income" ? "📈" : "📉";
-    await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", pendingId);
-    await editMsg(`${icon} *${label} salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`);
+    await supabase
+      .from("pending_ocr_transactions")
+      .update({ status: "confirmed" })
+      .eq("id", pendingId);
+    await editMsg(
+      `${icon} *${label} salva!*\n\n💰 R$ ${Number(pending.amount).toFixed(2)} — ${pending.description}`,
+    );
     await answerCbq(`${label} salva com sucesso!`);
 
     // Trigger spending monitor
@@ -462,10 +497,15 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
         const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         await fetch(`${SUPABASE_URL}/functions/v1/spending-monitor`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
           body: JSON.stringify({ user_id: pending.user_id }),
         });
-      } catch (e) { console.error("Monitor trigger error:", e); }
+      } catch (e) {
+        console.error("Monitor trigger error:", e);
+      }
     }
 
     return new Response("ok");
@@ -473,7 +513,10 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
 
   // --- CANCEL ---
   if (action === "ocr_cancel") {
-    await supabase.from("pending_ocr_transactions").update({ status: "cancelled" }).eq("id", pendingId);
+    await supabase
+      .from("pending_ocr_transactions")
+      .update({ status: "cancelled" })
+      .eq("id", pendingId);
     // Clean up receipt if uploaded
     if (pending.receipt_path) {
       await supabase.storage.from("receipts").remove([pending.receipt_path]);
@@ -494,7 +537,8 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
       account: "nome da conta",
     };
 
-    await supabase.from("pending_ocr_transactions")
+    await supabase
+      .from("pending_ocr_transactions")
       .update({ status: "editing", edit_field: field })
       .eq("id", pendingId);
 
@@ -508,7 +552,13 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
 }
 
 // ---- Handle text response while in edit mode ----
-async function handleEditResponse(pending: any, text: string, supabase: any, botToken: string, chatId: string) {
+async function handleEditResponse(
+  pending: any,
+  text: string,
+  supabase: any,
+  botToken: string,
+  chatId: string,
+) {
   const sendTg = async (msg: string, extra: any = {}) => {
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
@@ -519,7 +569,10 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
 
   // Handle /cancelar command
   if (text.trim().toLowerCase() === "/cancelar") {
-    await supabase.from("pending_ocr_transactions").update({ status: "pending", edit_field: null }).eq("id", pending.id);
+    await supabase
+      .from("pending_ocr_transactions")
+      .update({ status: "pending", edit_field: null })
+      .eq("id", pending.id);
     await sendTg("↩️ Edição cancelada. Use os botões acima para continuar.");
     return new Response("ok");
   }
@@ -550,13 +603,15 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
       .eq("user_id", pending.user_id);
 
     const match = (cats || []).find((c: any) =>
-      c.name.toLowerCase().includes(text.trim().toLowerCase())
+      c.name.toLowerCase().includes(text.trim().toLowerCase()),
     );
     if (match) {
       updateData.category_id = match.id;
     } else {
       const catNames = (cats || []).map((c: any) => `• ${c.name} (${c.type})`).join("\n");
-      await sendTg(`❌ Categoria não encontrada. Opções:\n${catNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
+      await sendTg(
+        `❌ Categoria não encontrada. Opções:\n${catNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`,
+      );
       return new Response("ok");
     }
   } else if (field === "account") {
@@ -566,13 +621,15 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
       .eq("user_id", pending.user_id);
 
     const match = (accs || []).find((a: any) =>
-      a.name.toLowerCase().includes(text.trim().toLowerCase())
+      a.name.toLowerCase().includes(text.trim().toLowerCase()),
     );
     if (match) {
       updateData.account_id = match.id;
     } else {
       const accNames = (accs || []).map((a: any) => `• ${a.name}`).join("\n");
-      await sendTg(`❌ Conta não encontrada. Opções:\n${accNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`);
+      await sendTg(
+        `❌ Conta não encontrada. Opções:\n${accNames || "Nenhuma"}\n\nDigite o nome ou /cancelar:`,
+      );
       return new Response("ok");
     }
   }
@@ -595,11 +652,19 @@ async function handleEditResponse(pending: any, text: string, supabase: any, bot
   let catName = "Sem categoria";
   let accName = "Sem conta";
   if (updated.category_id) {
-    const { data: cat } = await supabase.from("categories").select("name").eq("id", updated.category_id).single();
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("name")
+      .eq("id", updated.category_id)
+      .single();
     if (cat) catName = cat.name;
   }
   if (updated.account_id) {
-    const { data: acc } = await supabase.from("accounts").select("name").eq("id", updated.account_id).single();
+    const { data: acc } = await supabase
+      .from("accounts")
+      .select("name")
+      .eq("id", updated.account_id)
+      .single();
     if (acc) accName = acc.name;
   }
 
@@ -654,7 +719,9 @@ async function handleSaldo(supabase: any, userId: string, sendTg: Function) {
   });
 
   const totalEmoji = total >= 0 ? "🟢" : "🔴";
-  await sendTg(`💰 *Saldo das Contas:*\n\n${lines.join("\n\n")}\n\n━━━━━━━━━━━━━━━\n${totalEmoji} *Total:* R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
+  await sendTg(
+    `💰 *Saldo das Contas:*\n\n${lines.join("\n\n")}\n\n━━━━━━━━━━━━━━━\n${totalEmoji} *Total:* R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+  );
   return new Response("ok");
 }
 
@@ -717,7 +784,7 @@ async function handleResumoMes(supabase: any, userId: string, type: string, send
 
   const byCategory: Record<string, number> = {};
   for (const t of txs) {
-    const catName = t.category_id ? (catMap[t.category_id] || "Outros") : "Sem categoria";
+    const catName = t.category_id ? catMap[t.category_id] || "Outros" : "Sem categoria";
     byCategory[catName] = (byCategory[catName] || 0) + Number(t.amount);
   }
 
@@ -726,20 +793,32 @@ async function handleResumoMes(supabase: any, userId: string, type: string, send
     .map(([name, val]) => `  🏷️ ${name}: R$ ${val.toFixed(2)}`)
     .join("\n");
 
-  await sendTg(`${icon} *${label} — ${monthName}*\n\n${catLines}\n\n━━━━━━━━━━━━━━━\n💰 *Total:* R$ ${total.toFixed(2)} (${txs.length} lançamentos)`);
+  await sendTg(
+    `${icon} *${label} — ${monthName}*\n\n${catLines}\n\n━━━━━━━━━━━━━━━\n💰 *Total:* R$ ${total.toFixed(2)} (${txs.length} lançamentos)`,
+  );
   return new Response("ok");
 }
 
-async function handleLancamentoRapido(supabase: any, userId: string, type: string, args: string, sendTg: Function) {
+async function handleLancamentoRapido(
+  supabase: any,
+  userId: string,
+  type: string,
+  args: string,
+  sendTg: Function,
+) {
   const label = type === "expense" ? "despesa" : "receita";
   if (!args) {
-    await sendTg(`❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço restaurante_`);
+    await sendTg(
+      `❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço restaurante_`,
+    );
     return new Response("ok");
   }
 
   const match = args.match(/^([\d.,]+)\s+(.+)/);
   if (!match) {
-    await sendTg(`❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço_`);
+    await sendTg(
+      `❌ Formato: /${type === "expense" ? "despesa" : "receita"} \`valor descrição\`\n\n_Ex: /${type === "expense" ? "despesa" : "receita"} 45.90 Almoço_`,
+    );
     return new Response("ok");
   }
 
@@ -770,16 +849,22 @@ async function handleLancamentoRapido(supabase: any, userId: string, type: strin
     if (DEEPSEEK_API_KEY) {
       try {
         const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
-        const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
+        const accList = accounts
+          .map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`)
+          .join("\n");
 
         const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             model: "deepseek-chat",
-            messages: [{
-              role: "user",
-              content: `Classifique esta ${label}: "${description}" (R$ ${amount.toFixed(2)})
+            messages: [
+              {
+                role: "user",
+                content: `Classifique esta ${label}: "${description}" (R$ ${amount.toFixed(2)})
 
 Categorias disponíveis (tipo: ${type}):
 ${catList || "Nenhuma"}
@@ -789,7 +874,8 @@ ${accList || "Nenhuma"}
 
 Responda APENAS JSON: {"category_id":"uuid-ou-null","account_id":"uuid-ou-null"}
 Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
-            }],
+              },
+            ],
           }),
         });
 
@@ -816,7 +902,9 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
   }
 
   // Save as PENDING transaction for confirmation
-  const chatId = (await supabase.from("profiles").select("telegram_chat_id").eq("user_id", userId).single()).data?.telegram_chat_id;
+  const chatId = (
+    await supabase.from("profiles").select("telegram_chat_id").eq("user_id", userId).single()
+  ).data?.telegram_chat_id;
 
   const { data: pending, error: pendingErr } = await supabase
     .from("pending_ocr_transactions")
@@ -883,9 +971,14 @@ async function handleMetas(supabase: any, userId: string, sendTg: Function) {
   }
 
   const lines = goals.map((g: any) => {
-    const pct = g.target_amount > 0 ? Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100) : 0;
+    const pct =
+      g.target_amount > 0
+        ? Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100)
+        : 0;
     const bar = "█".repeat(Math.floor(pct / 10)) + "░".repeat(10 - Math.floor(pct / 10));
-    const deadlineStr = g.deadline ? ` (até ${new Date(g.deadline + "T00:00:00").toLocaleDateString("pt-BR")})` : "";
+    const deadlineStr = g.deadline
+      ? ` (até ${new Date(g.deadline + "T00:00:00").toLocaleDateString("pt-BR")})`
+      : "";
     return `🎯 *${g.name}*${deadlineStr}\n  ${bar} ${pct}%\n  R$ ${Number(g.current_amount).toFixed(2)} / R$ ${Number(g.target_amount).toFixed(2)}`;
   });
 
@@ -941,7 +1034,14 @@ async function handleCategorias(supabase: any, userId: string, sendTg: Function)
 }
 
 // ===== NATURAL LANGUAGE HANDLER =====
-async function handleNaturalLanguage(supabase: any, userId: string, text: string, chatId: string, botToken: string, sendTg: Function) {
+async function handleNaturalLanguage(
+  supabase: any,
+  userId: string,
+  text: string,
+  chatId: string,
+  botToken: string,
+  sendTg: Function,
+) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   if (!DEEPSEEK_API_KEY) {
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
@@ -956,8 +1056,12 @@ async function handleNaturalLanguage(supabase: any, userId: string, text: string
 
   const categories = catRes.data || [];
   const accounts = accRes.data || [];
-  const catList = categories.map((c: any) => `- "${c.name}" tipo: ${c.type} (id: ${c.id})`).join("\n");
-  const accList = accounts.map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`).join("\n");
+  const catList = categories
+    .map((c: any) => `- "${c.name}" tipo: ${c.type} (id: ${c.id})`)
+    .join("\n");
+  const accList = accounts
+    .map((a: any) => `- "${a.name}" tipo: ${a.type} (id: ${a.id})`)
+    .join("\n");
 
   try {
     const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
@@ -965,9 +1069,10 @@ async function handleNaturalLanguage(supabase: any, userId: string, text: string
       headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{
-          role: "user",
-          content: `Você é um assistente financeiro que interpreta mensagens em linguagem natural para registrar transações.
+        messages: [
+          {
+            role: "user",
+            content: `Você é um assistente financeiro que interpreta mensagens em linguagem natural para registrar transações.
 
 Mensagem do usuário: "${text}"
 
@@ -990,7 +1095,8 @@ Responda APENAS JSON:
 {"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
 ou
 {"is_transaction": false, "reply": "mensagem"}`,
-        }],
+          },
+        ],
       }),
     });
 
@@ -1005,27 +1111,35 @@ ou
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
-      await sendTg("🤔 Não entendi. Tente algo como:\n_\"Gastei 50 reais no mercado\"_\n_\"Recebi 3000 de salário\"_\n\nOu digite /ajuda");
+      await sendTg(
+        '🤔 Não entendi. Tente algo como:\n_"Gastei 50 reais no mercado"_\n_"Recebi 3000 de salário"_\n\nOu digite /ajuda',
+      );
       return new Response("ok");
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
 
     if (!parsed.is_transaction) {
-      await sendTg(parsed.reply || "🤔 Não entendi. Tente _\"Gastei 50 reais no mercado\"_ ou /ajuda");
+      await sendTg(
+        parsed.reply || '🤔 Não entendi. Tente _"Gastei 50 reais no mercado"_ ou /ajuda',
+      );
       return new Response("ok");
     }
 
     const amount = Number(parsed.amount);
     if (!amount || isNaN(amount)) {
-      await sendTg("🤔 Não consegui identificar o valor. Tente: _\"Gastei 45.90 no almoço\"_");
+      await sendTg('🤔 Não consegui identificar o valor. Tente: _"Gastei 45.90 no almoço"_');
       return new Response("ok");
     }
 
     const type = parsed.type || "expense";
     const label = type === "income" ? "receita" : "despesa";
-    const catName = parsed.category_id ? (categories.find((c: any) => c.id === parsed.category_id)?.name || "Sem categoria") : "Sem categoria";
-    const accName = parsed.account_id ? (accounts.find((a: any) => a.id === parsed.account_id)?.name || "Sem conta") : "Sem conta";
+    const catName = parsed.category_id
+      ? categories.find((c: any) => c.id === parsed.category_id)?.name || "Sem categoria"
+      : "Sem categoria";
+    const accName = parsed.account_id
+      ? accounts.find((a: any) => a.id === parsed.account_id)?.name || "Sem conta"
+      : "Sem conta";
 
     // Save as pending
     const { data: pending, error: pendingErr } = await supabase
@@ -1103,9 +1217,20 @@ async function handleDicasEconomia(supabase: any, userId: string, sendTg: Functi
   const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, "0")}`;
 
   const [txRes, catRes, budgetRes] = await Promise.all([
-    supabase.from("transactions").select("*").eq("user_id", userId).eq("type", "expense").gte("date", firstDay).lte("date", lastDay),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("type", "expense")
+      .gte("date", firstDay)
+      .lte("date", lastDay),
     supabase.from("categories").select("id, name").eq("user_id", userId),
-    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("month", currentMonth)
+      .eq("year", currentYear),
   ]);
 
   const txs = txRes.data || [];
@@ -1115,12 +1240,15 @@ async function handleDicasEconomia(supabase: any, userId: string, sendTg: Functi
 
   const byCat: Record<string, number> = {};
   txs.forEach((t: any) => {
-    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
+    const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
     byCat[name] = (byCat[name] || 0) + Number(t.amount);
   });
   const total = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
 
-  const catLines = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`).join("\n");
+  const catLines = Object.entries(byCat)
+    .sort((a, b) => b[1] - a[1])
+    .map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`)
+    .join("\n");
 
   try {
     const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
@@ -1128,13 +1256,17 @@ async function handleDicasEconomia(supabase: any, userId: string, sendTg: Functi
       headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{
-          role: "system",
-          content: "Você é um consultor financeiro prático e empático. Dê exatamente 5 dicas de economia personalizadas baseadas nos gastos do usuário. Seja específico com valores e categorias. Use emojis. Formato Markdown."
-        }, {
-          role: "user",
-          content: `Gastos deste mês: R$ ${total.toFixed(2)}\n\nPor categoria:\n${catLines}\n\nOrçamentos:\n${budgets.map((b: any) => `- ${b.category_id ? catMap.get(b.category_id) || "Geral" : "Geral"}: R$ ${Number(b.amount).toFixed(2)}`).join("\n") || "Nenhum definido"}\n\nDia do mês: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}`
-        }],
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um consultor financeiro prático e empático. Dê exatamente 5 dicas de economia personalizadas baseadas nos gastos do usuário. Seja específico com valores e categorias. Use emojis. Formato Markdown.",
+          },
+          {
+            role: "user",
+            content: `Gastos deste mês: R$ ${total.toFixed(2)}\n\nPor categoria:\n${catLines}\n\nOrçamentos:\n${budgets.map((b: any) => `- ${b.category_id ? catMap.get(b.category_id) || "Geral" : "Geral"}: R$ ${Number(b.amount).toFixed(2)}`).join("\n") || "Nenhum definido"}\n\nDia do mês: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}`,
+          },
+        ],
       }),
     });
 
@@ -1174,12 +1306,27 @@ async function handleAnaliseIA(supabase: any, userId: string, sendTg: Function) 
   const prevLastDay = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(new Date(prevYear, prevMonth, 0).getDate()).padStart(2, "0")}`;
 
   const [txRes, prevTxRes, catRes, goalRes, accRes, budgetRes] = await Promise.all([
-    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).lte("date", lastDay),
-    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", prevFirstDay).lte("date", prevLastDay),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", firstDay)
+      .lte("date", lastDay),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", prevFirstDay)
+      .lte("date", prevLastDay),
     supabase.from("categories").select("id, name").eq("user_id", userId),
     supabase.from("goals").select("*").eq("user_id", userId),
     supabase.from("accounts").select("id, name, balance").eq("user_id", userId),
-    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("month", currentMonth)
+      .eq("year", currentYear),
   ]);
 
   const txs = txRes.data || [];
@@ -1190,16 +1337,24 @@ async function handleAnaliseIA(supabase: any, userId: string, sendTg: Function) 
   const budgets = budgetRes.data || [];
   const catMap = new Map(cats.map((c: any) => [c.id, c.name]));
 
-  const expenses = txs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const income = txs.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const prevExpenses = prevTxs.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const expenses = txs
+    .filter((t: any) => t.type === "expense")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const income = txs
+    .filter((t: any) => t.type === "income")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const prevExpenses = prevTxs
+    .filter((t: any) => t.type === "expense")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
   const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
 
   const byCat: Record<string, number> = {};
-  txs.filter((t: any) => t.type === "expense").forEach((t: any) => {
-    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
-  });
+  txs
+    .filter((t: any) => t.type === "expense")
+    .forEach((t: any) => {
+      const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
+      byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    });
 
   const context = `
 Dados financeiros completos:
@@ -1211,7 +1366,10 @@ Mês atual - Receitas: R$ ${income.toFixed(2)}, Despesas: R$ ${expenses.toFixed(
 Mês anterior - Despesas: R$ ${prevExpenses.toFixed(2)}
 
 Gastos por categoria:
-${Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`).join("\n")}
+${Object.entries(byCat)
+  .sort((a, b) => b[1] - a[1])
+  .map(([n, v]) => `- ${n}: R$ ${v.toFixed(2)}`)
+  .join("\n")}
 
 Metas: ${goals.map((g: any) => `${g.name}: R$ ${Number(g.current_amount).toFixed(2)}/${Number(g.target_amount).toFixed(2)} ${g.deadline ? `(prazo: ${g.deadline})` : ""}`).join("; ") || "Nenhuma"}
 
@@ -1226,9 +1384,10 @@ Dia: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}
       headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{
-          role: "system",
-          content: `Você é um consultor financeiro sênior. Faça uma análise profunda e completa incluindo:
+        messages: [
+          {
+            role: "system",
+            content: `Você é um consultor financeiro sênior. Faça uma análise profunda e completa incluindo:
 1. 📊 Diagnóstico geral da saúde financeira
 2. 📈 Comparação com mês anterior (melhorou ou piorou?)
 3. 🔍 Padrões detectados nos gastos
@@ -1237,11 +1396,13 @@ Dia: ${now.getDate()}/${new Date(currentYear, currentMonth, 0).getDate()}
 6. 💰 Quanto pode economizar e como
 7. 🏆 Nota de 0 a 10 para a gestão financeira
 
-Use emojis, seja direto e cite números. Formato Markdown.`
-        }, {
-          role: "user",
-          content: context,
-        }],
+Use emojis, seja direto e cite números. Formato Markdown.`,
+          },
+          {
+            role: "user",
+            content: context,
+          },
+        ],
       }),
     });
 
@@ -1275,11 +1436,21 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
   const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(new Date(currentYear, currentMonth, 0).getDate()).padStart(2, "0")}`;
 
   const [txRes, catRes, accRes, goalRes, budgetRes] = await Promise.all([
-    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).lte("date", lastDay),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", firstDay)
+      .lte("date", lastDay),
     supabase.from("categories").select("id, name").eq("user_id", userId),
     supabase.from("accounts").select("id, name, balance").eq("user_id", userId),
     supabase.from("goals").select("*").eq("user_id", userId),
-    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("month", currentMonth)
+      .eq("year", currentYear),
   ]);
 
   const txs = txRes.data || [];
@@ -1297,7 +1468,7 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
 
   const byCat: Record<string, number> = {};
   expenses.forEach((t: any) => {
-    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
+    const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
     byCat[name] = (byCat[name] || 0) + Number(t.amount);
   });
 
@@ -1322,10 +1493,12 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
   // Categories
   if (Object.keys(byCat).length > 0) {
     msg += `🏷️ *Gastos por categoria:*\n`;
-    Object.entries(byCat).sort((a, b) => b[1] - a[1]).forEach(([name, val]) => {
-      const pct = totalExp > 0 ? (val / totalExp * 100).toFixed(0) : "0";
-      msg += `  • ${name}: R$ ${val.toFixed(2)} (${pct}%)\n`;
-    });
+    Object.entries(byCat)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([name, val]) => {
+        const pct = totalExp > 0 ? ((val / totalExp) * 100).toFixed(0) : "0";
+        msg += `  • ${name}: R$ ${val.toFixed(2)} (${pct}%)\n`;
+      });
     msg += `\n`;
   }
 
@@ -1335,11 +1508,13 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
     for (const b of budgets) {
       const budgetAmt = Number(b.amount);
       const catId = b.category_id;
-      const catName = catId ? (catMap.get(catId) || "Categoria") : "Geral";
+      const catName = catId ? catMap.get(catId) || "Categoria" : "Geral";
       const spent = catId
-        ? expenses.filter((t: any) => t.category_id === catId).reduce((s: number, t: any) => s + Number(t.amount), 0)
+        ? expenses
+            .filter((t: any) => t.category_id === catId)
+            .reduce((s: number, t: any) => s + Number(t.amount), 0)
         : totalExp;
-      const pct = (spent / budgetAmt * 100).toFixed(0);
+      const pct = ((spent / budgetAmt) * 100).toFixed(0);
       const icon = spent > budgetAmt ? "🚨" : Number(pct) >= 80 ? "⚠️" : "✅";
       msg += `  ${icon} ${catName}: R$ ${spent.toFixed(2)} / R$ ${budgetAmt.toFixed(2)} (${pct}%)\n`;
     }
@@ -1350,7 +1525,10 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
   if (goals.length > 0) {
     msg += `🏆 *Metas:*\n`;
     goals.forEach((g: any) => {
-      const pct = Number(g.target_amount) > 0 ? Math.round(Number(g.current_amount) / Number(g.target_amount) * 100) : 0;
+      const pct =
+        Number(g.target_amount) > 0
+          ? Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100)
+          : 0;
       const bar = "█".repeat(Math.floor(pct / 10)) + "░".repeat(10 - Math.floor(pct / 10));
       msg += `  🎯 ${g.name}: ${bar} ${pct}%\n`;
     });

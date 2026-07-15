@@ -31,7 +31,13 @@ serve(async (req) => {
     let processed = 0;
     for (const p of profiles) {
       try {
-        await processUserDailySummary(supabase, DEEPSEEK_API_KEY, p.user_id, p.telegram_bot_token, p.telegram_chat_id);
+        await processUserDailySummary(
+          supabase,
+          DEEPSEEK_API_KEY,
+          p.user_id,
+          p.telegram_bot_token,
+          p.telegram_chat_id,
+        );
         processed++;
       } catch (e) {
         console.error(`Error processing user ${p.user_id}:`, e);
@@ -55,7 +61,7 @@ async function processUserDailySummary(
   deepseekKey: string,
   userId: string,
   botToken: string,
-  chatId: string
+  chatId: string,
 ) {
   const sendTg = async (text: string, extra: any = {}) => {
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -85,9 +91,24 @@ async function processUserDailySummary(
 
   // Fetch all data in parallel
   const [txRes, prevTxRes, budgetRes, goalRes, catRes, accRes, todayTxRes] = await Promise.all([
-    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).lte("date", lastDayStr),
-    supabase.from("transactions").select("*").eq("user_id", userId).gte("date", prevFirstDay).lte("date", prevLastDayStr),
-    supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", firstDay)
+      .lte("date", lastDayStr),
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .gte("date", prevFirstDay)
+      .lte("date", prevLastDayStr),
+    supabase
+      .from("budgets")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("month", currentMonth)
+      .eq("year", currentYear),
     supabase.from("goals").select("*").eq("user_id", userId),
     supabase.from("categories").select("id, name, type").eq("user_id", userId),
     supabase.from("accounts").select("id, name, balance").eq("user_id", userId),
@@ -104,20 +125,34 @@ async function processUserDailySummary(
   const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
   // Calculate metrics
-  const monthExpenses = monthTx.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const monthIncome = monthTx.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const prevExpenses = prevMonthTx.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const todayExpenses = todayTx.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const todayIncome = todayTx.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const monthExpenses = monthTx
+    .filter((t: any) => t.type === "expense")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const monthIncome = monthTx
+    .filter((t: any) => t.type === "income")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const prevExpenses = prevMonthTx
+    .filter((t: any) => t.type === "expense")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const todayExpenses = todayTx
+    .filter((t: any) => t.type === "expense")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const todayIncome = todayTx
+    .filter((t: any) => t.type === "income")
+    .reduce((s: number, t: any) => s + Number(t.amount), 0);
   const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
 
   // Spending by category
   const byCat: Record<string, number> = {};
-  monthTx.filter((t: any) => t.type === "expense").forEach((t: any) => {
-    const name = t.category_id ? (catMap.get(t.category_id) || "Outros") : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
-  });
-  const topCategories = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  monthTx
+    .filter((t: any) => t.type === "expense")
+    .forEach((t: any) => {
+      const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
+      byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    });
+  const topCategories = Object.entries(byCat)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
 
   // Budget status
   const budgetAlerts: string[] = [];
@@ -125,10 +160,12 @@ async function processUserDailySummary(
     const budgetAmt = Number(b.amount);
     const catId = b.category_id;
     const spent = catId
-      ? monthTx.filter((t: any) => t.type === "expense" && t.category_id === catId).reduce((s: number, t: any) => s + Number(t.amount), 0)
+      ? monthTx
+          .filter((t: any) => t.type === "expense" && t.category_id === catId)
+          .reduce((s: number, t: any) => s + Number(t.amount), 0)
       : monthExpenses;
     const pct = (spent / budgetAmt) * 100;
-    const catName = catId ? (catMap.get(catId) || "Categoria") : "Geral";
+    const catName = catId ? catMap.get(catId) || "Categoria" : "Geral";
 
     if (spent > budgetAmt) {
       budgetAlerts.push(`🚨 ${catName}: *estourou* (${pct.toFixed(0)}%)`);
@@ -140,7 +177,9 @@ async function processUserDailySummary(
     const dailyRate = spent / dayOfMonth;
     const projectedTotal = dailyRate * daysInMonth;
     if (projectedTotal > budgetAmt && pct < 100) {
-      budgetAlerts.push(`📊 ${catName}: projeção de R$ ${projectedTotal.toFixed(0)} (orçamento: R$ ${budgetAmt.toFixed(0)})`);
+      budgetAlerts.push(
+        `📊 ${catName}: projeção de R$ ${projectedTotal.toFixed(0)} (orçamento: R$ ${budgetAmt.toFixed(0)})`,
+      );
     }
   }
 
@@ -154,12 +193,16 @@ async function processUserDailySummary(
 
     if (g.deadline) {
       const deadline = new Date(g.deadline);
-      const daysToDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysToDeadline = Math.ceil(
+        (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
       const remaining = target - current;
 
       if (daysToDeadline > 0 && daysToDeadline <= 30 && pct < 80) {
         const dailyNeeded = remaining / daysToDeadline;
-        goalAlerts.push(`⏰ *${g.name}*: ${pct.toFixed(0)}%, faltam ${daysToDeadline} dias — precisa R$ ${dailyNeeded.toFixed(2)}/dia`);
+        goalAlerts.push(
+          `⏰ *${g.name}*: ${pct.toFixed(0)}%, faltam ${daysToDeadline} dias — precisa R$ ${dailyNeeded.toFixed(2)}/dia`,
+        );
       } else if (daysToDeadline <= 0 && pct < 100) {
         goalAlerts.push(`❌ *${g.name}*: prazo expirado com ${pct.toFixed(0)}% concluído`);
       }
@@ -173,7 +216,8 @@ async function processUserDailySummary(
   // Spending pattern comparison
   const prevDailyAvg = prevExpenses > 0 ? prevExpenses / prevLastDay.getDate() : 0;
   const currentDailyAvg = dayOfMonth > 0 ? monthExpenses / dayOfMonth : 0;
-  const spendingTrend = prevDailyAvg > 0 ? ((currentDailyAvg - prevDailyAvg) / prevDailyAvg) * 100 : 0;
+  const spendingTrend =
+    prevDailyAvg > 0 ? ((currentDailyAvg - prevDailyAvg) / prevDailyAvg) * 100 : 0;
 
   // Build context for AI analysis
   const aiContext = `
@@ -213,20 +257,23 @@ ${goalAlerts.length > 0 ? goalAlerts.join("\n") : "Nenhuma"}
       headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{
-          role: "system",
-          content: `Você é um consultor financeiro pessoal. Analise os dados e gere um resumo diário inteligente com:
+        messages: [
+          {
+            role: "system",
+            content: `Você é um consultor financeiro pessoal. Analise os dados e gere um resumo diário inteligente com:
 1. Uma frase motivacional sobre finanças
 2. Análise do dia (gastos, tendências)
 3. Uma dica personalizada de economia baseada nos padrões
 4. Alerta se alguma meta está em risco com sugestão de ação
 5. Previsão: vai estourar o orçamento? O que fazer?
 
-Seja direto, empático e prático. Use emojis. Máximo 500 caracteres.`
-        }, {
-          role: "user",
-          content: aiContext,
-        }],
+Seja direto, empático e prático. Use emojis. Máximo 500 caracteres.`,
+          },
+          {
+            role: "user",
+            content: aiContext,
+          },
+        ],
       }),
     });
 

@@ -25,7 +25,9 @@ const Install = lazy(() => import("./pages/Install"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const FinancialRules = lazy(() => import("./pages/FinancialRules"));
 const Categories = lazy(() => import("./pages/Categories"));
-const AIChatPanel = lazy(() => import("./components/chat/AIChatPanel").then(m => ({ default: m.AIChatPanel })));
+const AIChatPanel = lazy(() =>
+  import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
+);
 const DefiTracker = lazy(() => import("./pages/DefiTracker"));
 
 // Optimized QueryClient with better caching
@@ -43,7 +45,7 @@ const queryClient = new QueryClient({
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
-      <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   );
 }
@@ -53,8 +55,8 @@ function ProtectedRoutes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }

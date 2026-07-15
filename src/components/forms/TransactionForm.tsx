@@ -1,9 +1,21 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSupabaseQuery, useSupabaseInsert } from "@/hooks/use-supabase-crud";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,7 +45,13 @@ interface TransactionFormProps {
   loading?: boolean;
 }
 
-export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loading }: TransactionFormProps) {
+export function TransactionForm({
+  open,
+  onOpenChange,
+  onSubmit,
+  initialData,
+  loading,
+}: TransactionFormProps) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const boletoRef = useRef<HTMLInputElement>(null);
@@ -108,23 +126,26 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
   }, [categories, type]);
 
   // Auto-categorize with AI
-  const autoCategorize = useCallback(async (desc: string, txType: string) => {
-    if (desc.length < 3 || categoryId !== "none") return;
-    setAiSuggesting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("auto-categorize", {
-        body: { description: desc, type: txType },
-      });
-      if (!error && data?.category_id) {
-        setAiSuggested(data.category_name);
-        setCategoryId(data.category_id);
+  const autoCategorize = useCallback(
+    async (desc: string, txType: string) => {
+      if (desc.length < 3 || categoryId !== "none") return;
+      setAiSuggesting(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("auto-categorize", {
+          body: { description: desc, type: txType },
+        });
+        if (!error && data?.category_id) {
+          setAiSuggested(data.category_name);
+          setCategoryId(data.category_id);
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setAiSuggesting(false);
       }
-    } catch {
-      // silently fail
-    } finally {
-      setAiSuggesting(false);
-    }
-  }, [categoryId]);
+    },
+    [categoryId],
+  );
 
   const handleDescriptionChange = (value: string) => {
     setDescription(value);
@@ -137,16 +158,13 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
 
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
-    insertCategory.mutate(
-      { name: newCatName.trim(), type, icon: null, color: null } as any,
-      {
-        onSuccess: (data: any) => {
-          setCategoryId(data.id);
-          setNewCatName("");
-          setShowNewCat(false);
-        },
-      }
-    );
+    insertCategory.mutate({ name: newCatName.trim(), type, icon: null, color: null } as any, {
+      onSuccess: (data: any) => {
+        setCategoryId(data.id);
+        setNewCatName("");
+        setShowNewCat(false);
+      },
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,11 +195,21 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     const file = e.target.files?.[0];
     if (!file) return;
     const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) { toast.error("Arquivo muito grande. Máximo: 10MB"); return; }
+    if (file.size > maxSize) {
+      toast.error("Arquivo muito grande. Máximo: 10MB");
+      return;
+    }
     const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowed.includes(file.type)) { toast.error("Formato não suportado. Use JPG, PNG, WebP ou PDF."); return; }
+    if (!allowed.includes(file.type)) {
+      toast.error("Formato não suportado. Use JPG, PNG, WebP ou PDF.");
+      return;
+    }
     setBoletoFile(file);
-    if (file.type.startsWith("image/")) { setBoletoPreview(URL.createObjectURL(file)); } else { setBoletoPreview(null); }
+    if (file.type.startsWith("image/")) {
+      setBoletoPreview(URL.createObjectURL(file));
+    } else {
+      setBoletoPreview(null);
+    }
   };
 
   const removeReceipt = () => {
@@ -203,7 +231,9 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       const ext = file.name.split(".").pop() || "jpg";
       // Ensure the path is globally unique to avoid reuse collisions
       const path = `${user.id}/${folder}/${crypto.randomUUID()}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+      const { error } = await supabase.storage
+        .from("receipts")
+        .upload(path, file, { upsert: true });
       if (error) throw error;
       // Store only the storage path; signed URLs are generated on-demand for viewing.
       return path;
@@ -237,9 +267,8 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
       const installmentDate = new Date(date);
       installmentDate.setMonth(installmentDate.getMonth() + i);
       const dateStr = installmentDate.toISOString().split("T")[0];
-      const desc = numInstallments > 1
-        ? `${description} (${i + 1}/${numInstallments})`
-        : description;
+      const desc =
+        numInstallments > 1 ? `${description} (${i + 1}/${numInstallments})` : description;
 
       onSubmit({
         ...(i === 0 && currentEditingId ? { id: currentEditingId } : {}),
@@ -256,22 +285,36 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
     }
 
     if (!currentEditingId) {
-      setDescription(""); setAmount(""); setType("expense"); setStatus("pending");
-      setCategoryId("none"); setAccountId("none"); setIsInstallment(false); setInstallments("1");
-      removeReceipt(); removeBoleto();
+      setDescription("");
+      setAmount("");
+      setType("expense");
+      setStatus("pending");
+      setCategoryId("none");
+      setAccountId("none");
+      setIsInstallment(false);
+      setInstallments("1");
+      removeReceipt();
+      removeBoleto();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-card border-border sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="glass-card max-h-[90vh] overflow-y-auto border-border sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">{initialData ? "Editar" : "Nova"} Transação</DialogTitle>
+          <DialogTitle className="text-foreground">
+            {initialData ? "Editar" : "Nova"} Transação
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Descrição</Label>
-            <Input value={description} onChange={(e) => handleDescriptionChange(e.target.value)} className="bg-secondary border-border" required />
+            <Input
+              value={description}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
+              className="border-border bg-secondary"
+              required
+            />
             {aiSuggesting && (
               <div className="flex items-center gap-1.5 text-[10px] text-primary">
                 <Sparkles className="h-3 w-3 animate-pulse" />
@@ -281,26 +324,49 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             {aiSuggested && !aiSuggesting && (
               <div className="flex items-center gap-1.5 text-[10px] text-success">
                 <Sparkles className="h-3 w-3" />
-                <span>IA sugeriu: <strong>{aiSuggested}</strong></span>
+                <span>
+                  IA sugeriu: <strong>{aiSuggested}</strong>
+                </span>
               </div>
             )}
-            
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-secondary border-border" required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="border-border bg-secondary"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-secondary border-border" required />
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="border-border bg-secondary"
+                required
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Tipo</Label>
-              <Select value={type} onValueChange={(v) => { setType(v); setCategoryId("none"); }}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
+              <Select
+                value={type}
+                onValueChange={(v) => {
+                  setType(v);
+                  setCategoryId("none");
+                }}
+              >
+                <SelectTrigger className="border-border bg-secondary">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="expense">Despesa</SelectItem>
                   <SelectItem value="income">Receita</SelectItem>
@@ -310,7 +376,9 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Status</Label>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-border bg-secondary">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">Pendente</SelectItem>
                   <SelectItem value="paid">Pago</SelectItem>
@@ -326,17 +394,26 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
             {!showNewCat ? (
               <div className="flex gap-2">
                 <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger className="bg-secondary border-border flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectTrigger className="flex-1 border-border bg-secondary">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem categoria</SelectItem>
                     {filteredCats.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.icon ? `${c.icon} ` : ""}{c.name}
+                        {c.icon ? `${c.icon} ` : ""}
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" variant="outline" size="icon" className="shrink-0 border-border text-muted-foreground hover:text-primary" onClick={() => setShowNewCat(true)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 border-border text-muted-foreground hover:text-primary"
+                  onClick={() => setShowNewCat(true)}
+                >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
@@ -346,14 +423,34 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   placeholder={`Nova categoria de ${type === "income" ? "receita" : "despesa"}...`}
-                  className="bg-secondary border-border flex-1"
+                  className="flex-1 border-border bg-secondary"
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCategory();
+                    }
+                  }}
                 />
-                <Button type="button" size="sm" disabled={insertCategory.isPending || !newCatName.trim()} onClick={handleAddCategory} className="gradient-bg-primary text-primary-foreground text-xs">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={insertCategory.isPending || !newCatName.trim()}
+                  onClick={handleAddCategory}
+                  className="gradient-bg-primary text-xs text-primary-foreground"
+                >
                   {insertCategory.isPending ? "..." : "Criar"}
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowNewCat(false); setNewCatName(""); }} className="text-muted-foreground text-xs">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowNewCat(false);
+                    setNewCatName("");
+                  }}
+                  className="text-xs text-muted-foreground"
+                >
                   ✕
                 </Button>
               </div>
@@ -368,24 +465,39 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                   type="checkbox"
                   id="installment-check"
                   checked={isInstallment}
-                  onChange={(e) => { setIsInstallment(e.target.checked); if (!e.target.checked) setInstallments("1"); }}
+                  onChange={(e) => {
+                    setIsInstallment(e.target.checked);
+                    if (!e.target.checked) setInstallments("1");
+                  }}
                   className="rounded border-border"
                 />
-                <Label htmlFor="installment-check" className="text-xs text-muted-foreground cursor-pointer">Parcelar</Label>
+                <Label
+                  htmlFor="installment-check"
+                  className="cursor-pointer text-xs text-muted-foreground"
+                >
+                  Parcelar
+                </Label>
               </div>
               {isInstallment && (
                 <div className="flex items-center gap-2">
                   <Select value={installments} onValueChange={setInstallments}>
-                    <SelectTrigger className="bg-secondary border-border w-24"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-24 border-border bg-secondary">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                        <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>
+                        <SelectItem key={n} value={n.toString()}>
+                          {n}x
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {amount && parseFloat(amount) > 0 && (
                     <span className="text-[10px] text-muted-foreground">
-                      {parseInt(installments)}x de R$ {(parseFloat(amount) / parseInt(installments)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {parseInt(installments)}x de R${" "}
+                      {(parseFloat(amount) / parseInt(installments)).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
                     </span>
                   )}
                 </div>
@@ -397,12 +509,15 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Conta</Label>
             <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectTrigger className="border-border bg-secondary">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sem conta</SelectItem>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    {a.name}{a.institution ? ` (${a.institution})` : ""}
+                    {a.name}
+                    {a.institution ? ` (${a.institution})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -424,7 +539,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-secondary/50 p-3 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
               >
                 <Paperclip className="h-4 w-4" />
                 <span className="text-xs">Anexar comprovante (JPG, PNG, PDF — máx 10MB)</span>
@@ -434,16 +549,24 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                 <button
                   type="button"
                   onClick={removeReceipt}
-                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-destructive/80 text-destructive-foreground transition-colors hover:bg-destructive"
                 >
                   <X className="h-3 w-3" />
                 </button>
 
                 {receiptPreview && receiptPreview.startsWith("blob:") ? (
-                  <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md mx-auto object-contain" />
+                  <img
+                    src={receiptPreview}
+                    alt="Comprovante"
+                    className="mx-auto max-h-32 rounded-md object-contain"
+                  />
                 ) : receiptPreview ? (
                   <div className="flex items-center gap-2">
-                    <img src={receiptPreview} alt="Comprovante" className="max-h-32 rounded-md object-contain" />
+                    <img
+                      src={receiptPreview}
+                      alt="Comprovante"
+                      className="max-h-32 rounded-md object-contain"
+                    />
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -470,7 +593,7 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
               <button
                 type="button"
                 onClick={() => boletoRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-border bg-secondary/50 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-secondary/50 p-3 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
               >
                 <FileText className="h-4 w-4" />
                 <span className="text-xs">Anexar boleto (JPG, PNG, PDF — máx 10MB)</span>
@@ -480,14 +603,22 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
                 <button
                   type="button"
                   onClick={removeBoleto}
-                  className="absolute top-2 right-2 h-6 w-6 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors z-10"
+                  className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-destructive/80 text-destructive-foreground transition-colors hover:bg-destructive"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 {boletoPreview && boletoPreview.startsWith("blob:") ? (
-                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md mx-auto object-contain" />
+                  <img
+                    src={boletoPreview}
+                    alt="Boleto"
+                    className="mx-auto max-h-32 rounded-md object-contain"
+                  />
                 ) : boletoPreview ? (
-                  <img src={boletoPreview} alt="Boleto" className="max-h-32 rounded-md object-contain" />
+                  <img
+                    src={boletoPreview}
+                    alt="Boleto"
+                    className="max-h-32 rounded-md object-contain"
+                  />
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <FileText className="h-5 w-5" />
@@ -499,9 +630,28 @@ export function TransactionForm({ open, onOpenChange, onSubmit, initialData, loa
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
-            <Button type="submit" disabled={loading || uploading} className="gradient-bg-primary text-primary-foreground">
-              {uploading ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Enviando...</> : loading ? "Salvando..." : "Salvar"}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || uploading}
+              className="gradient-bg-primary text-primary-foreground"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Enviando...
+                </>
+              ) : loading ? (
+                "Salvando..."
+              ) : (
+                "Salvar"
+              )}
             </Button>
           </DialogFooter>
         </form>

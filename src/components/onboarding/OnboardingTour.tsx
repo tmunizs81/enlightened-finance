@@ -1,8 +1,19 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, ArrowRight, ArrowLeft, Wallet, ArrowLeftRight, Target, Brain, Sparkles,
-  Briefcase, GraduationCap, Building2, Users, CheckCircle
+  X,
+  ArrowRight,
+  ArrowLeft,
+  Wallet,
+  ArrowLeftRight,
+  Target,
+  Brain,
+  Sparkles,
+  Briefcase,
+  GraduationCap,
+  Building2,
+  Users,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +23,10 @@ import { toast } from "sonner";
 
 type Profile = "clt" | "freelancer" | "estudante" | "empresario";
 
-const PROFILE_CONFIG: Record<Profile, { label: string; icon: any; categories: { name: string; type: string; icon: string }[] }> = {
+const PROFILE_CONFIG: Record<
+  Profile,
+  { label: string; icon: any; categories: { name: string; type: string; icon: string }[] }
+> = {
   clt: {
     label: "CLT / Assalariado",
     icon: Building2,
@@ -82,13 +96,15 @@ const TOUR_STEPS = [
   {
     icon: Sparkles,
     title: "Bem-vindo ao T2-SimplyFin! 🚀",
-    description: "Seu assistente financeiro inteligente. Vamos configurar tudo para você em poucos passos.",
+    description:
+      "Seu assistente financeiro inteligente. Vamos configurar tudo para você em poucos passos.",
     color: "text-primary",
   },
   {
     icon: Wallet,
     title: "Cadastre suas Contas",
-    description: "Adicione contas bancárias, carteiras e investimentos. Suportamos múltiplas moedas!",
+    description:
+      "Adicione contas bancárias, carteiras e investimentos. Suportamos múltiplas moedas!",
     route: "/accounts",
     color: "text-success",
   },
@@ -109,7 +125,8 @@ const TOUR_STEPS = [
   {
     icon: Brain,
     title: "Tudo Pronto! 🎉",
-    description: "Use ⌘K para busca rápida, arraste widgets no dashboard e explore o chat com IA. Boas finanças!",
+    description:
+      "Use ⌘K para busca rápida, arraste widgets no dashboard e explore o chat com IA. Boas finanças!",
     color: "text-primary",
   },
 ];
@@ -186,19 +203,22 @@ export function OnboardingTour() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
       >
         {phase === "profile" ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="glass-card p-8 max-w-lg w-full text-center space-y-6 relative"
+            className="glass-card relative w-full max-w-lg space-y-6 p-8 text-center"
           >
-            <button onClick={handleClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+            <button
+              onClick={handleClose}
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+            >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="inline-flex p-4 rounded-2xl bg-primary/15">
+            <div className="inline-flex rounded-2xl bg-primary/15 p-4">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
 
@@ -210,20 +230,26 @@ export function OnboardingTour() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {(Object.entries(PROFILE_CONFIG) as [Profile, typeof PROFILE_CONFIG[Profile]][]).map(([key, config]) => {
+              {(
+                Object.entries(PROFILE_CONFIG) as [Profile, (typeof PROFILE_CONFIG)[Profile]][]
+              ).map(([key, config]) => {
                 const Icon = config.icon;
                 return (
                   <button
                     key={key}
                     onClick={() => handleProfileSelect(key)}
                     disabled={creatingCategories}
-                    className={`p-4 rounded-xl border text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
-                      selectedProfile === key ? "border-primary bg-primary/10" : "border-border bg-secondary/30"
-                    } ${creatingCategories ? "opacity-50 cursor-wait" : ""}`}
+                    className={`rounded-xl border p-4 text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
+                      selectedProfile === key
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-secondary/30"
+                    } ${creatingCategories ? "cursor-wait opacity-50" : ""}`}
                   >
-                    <Icon className="h-5 w-5 text-primary mb-2" />
+                    <Icon className="mb-2 h-5 w-5 text-primary" />
                     <p className="text-sm font-medium text-foreground">{config.label}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{config.categories.length} categorias</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {config.categories.length} categorias
+                    </p>
                   </button>
                 );
               })}
@@ -240,9 +266,12 @@ export function OnboardingTour() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="glass-card p-8 max-w-md w-full text-center space-y-5 relative"
+            className="glass-card relative w-full max-w-md space-y-5 p-8 text-center"
           >
-            <button onClick={handleClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
+            <button
+              onClick={handleClose}
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
+            >
               <X className="h-4 w-4" />
             </button>
 
@@ -250,7 +279,7 @@ export function OnboardingTour() {
               const step = TOUR_STEPS[current];
               return (
                 <>
-                  <div className={`inline-flex p-4 rounded-2xl bg-secondary ${step.color}`}>
+                  <div className={`inline-flex rounded-2xl bg-secondary p-4 ${step.color}`}>
                     <step.icon className="h-8 w-8" />
                   </div>
                   <div className="space-y-2">
@@ -263,20 +292,34 @@ export function OnboardingTour() {
 
             <div className="flex justify-center gap-1.5">
               {TOUR_STEPS.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-primary" : "w-1.5 bg-muted"}`} />
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${i === current ? "w-6 bg-primary" : "w-1.5 bg-muted"}`}
+                />
               ))}
             </div>
 
-            <div className="flex gap-2 justify-center">
+            <div className="flex justify-center gap-2">
               {current > 0 && (
-                <Button variant="ghost" onClick={handleBack} className="text-xs text-muted-foreground gap-1">
+                <Button
+                  variant="ghost"
+                  onClick={handleBack}
+                  className="gap-1 text-xs text-muted-foreground"
+                >
                   <ArrowLeft className="h-3.5 w-3.5" /> Anterior
                 </Button>
               )}
-              <Button variant="ghost" onClick={handleClose} className="text-xs text-muted-foreground">
+              <Button
+                variant="ghost"
+                onClick={handleClose}
+                className="text-xs text-muted-foreground"
+              >
                 Pular
               </Button>
-              <Button onClick={handleNext} className="gradient-bg-primary text-primary-foreground gap-1.5">
+              <Button
+                onClick={handleNext}
+                className="gradient-bg-primary gap-1.5 text-primary-foreground"
+              >
                 {current === TOUR_STEPS.length - 1 ? "Começar!" : "Próximo"}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>

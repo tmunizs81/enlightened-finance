@@ -11,12 +11,15 @@ export function useConfirmDelete() {
     setDeleteTarget(null);
   }, []);
 
-  const confirmDelete = useCallback((onDelete: (id: string) => void) => {
-    if (deleteTarget) {
-      onDelete(deleteTarget.id);
-      setDeleteTarget(null);
-    }
-  }, [deleteTarget]);
+  const confirmDelete = useCallback(
+    (onDelete: (id: string) => void) => {
+      if (deleteTarget) {
+        onDelete(deleteTarget.id);
+        setDeleteTarget(null);
+      }
+    },
+    [deleteTarget],
+  );
 
   return {
     deleteTarget,

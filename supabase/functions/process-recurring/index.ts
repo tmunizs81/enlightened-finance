@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -18,7 +19,9 @@ serve(async (req) => {
     try {
       const body = await req.json();
       force = body?.force === true;
-    } catch { /* empty body is fine */ }
+    } catch {
+      /* empty body is fine */
+    }
 
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -60,15 +63,23 @@ serve(async (req) => {
         .limit(1);
 
       if (existing && existing.length > 0) {
-        console.log(`Transaction already exists for "${rec.description}" this month, skipping duplicate generation`);
+        console.log(
+          `Transaction already exists for "${rec.description}" this month, skipping duplicate generation`,
+        );
         if (!alreadyGeneratedThisMonth) {
-          await supabase.from("recurring_transactions").update({ last_generated: today }).eq("id", rec.id);
+          await supabase
+            .from("recurring_transactions")
+            .update({ last_generated: today })
+            .eq("id", rec.id);
         }
         skipped++;
         continue;
       }
 
-      const day = Math.min(rec.day_of_month, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
+      const day = Math.min(
+        rec.day_of_month,
+        new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+      );
       const txDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
       const insertPayload = {
@@ -93,7 +104,10 @@ serve(async (req) => {
         .select("id");
 
       if (insertErr) {
-        console.error(`ERROR inserting transaction for "${rec.description}" (recurring ${rec.id}):`, JSON.stringify(insertErr));
+        console.error(
+          `ERROR inserting transaction for "${rec.description}" (recurring ${rec.id}):`,
+          JSON.stringify(insertErr),
+        );
         errors++;
         continue;
       }
@@ -106,22 +120,30 @@ serve(async (req) => {
         .eq("id", rec.id);
 
       if (updateErr) {
-        console.error(`ERROR updating last_generated for "${rec.description}":`, JSON.stringify(updateErr));
+        console.error(
+          `ERROR updating last_generated for "${rec.description}":`,
+          JSON.stringify(updateErr),
+        );
       }
 
       created++;
     }
 
-    console.log(`Process recurring: created=${created}, skipped=${skipped}, errors=${errors}, force=${force}`);
+    console.log(
+      `Process recurring: created=${created}, skipped=${skipped}, errors=${errors}, force=${force}`,
+    );
 
     return new Response(JSON.stringify({ created, skipped, errors }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("process-recurring error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

@@ -47,13 +47,16 @@ export function AIBudgetSuggestions() {
     setApplying(suggestion.catId);
     try {
       const now = new Date();
-      const { error } = await supabase.from("budgets").upsert({
-        user_id: user.id,
-        category_id: suggestion.catId === "none" ? null : suggestion.catId,
-        amount: suggestion.suggestedBudget,
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-      }, { onConflict: "user_id,category_id,month,year" });
+      const { error } = await supabase.from("budgets").upsert(
+        {
+          user_id: user.id,
+          category_id: suggestion.catId === "none" ? null : suggestion.catId,
+          amount: suggestion.suggestedBudget,
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        },
+        { onConflict: "user_id,category_id,month,year" },
+      );
 
       if (error) throw error;
       setApplied((prev) => new Set([...prev, suggestion.catId]));
@@ -67,12 +70,16 @@ export function AIBudgetSuggestions() {
 
   if (loading) {
     return (
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5">
-        <div className="flex items-center gap-2 mb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-5"
+      >
+        <div className="mb-4 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Orçamentos Sugeridos pela IA</h3>
         </div>
-        <div className="flex items-center justify-center py-8 gap-2">
+        <div className="flex items-center justify-center gap-2 py-8">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground">Analisando seus gastos...</span>
         </div>
@@ -86,7 +93,11 @@ export function AIBudgetSuggestions() {
   const savingsProjected = avgIncome - totalSuggested;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card space-y-4 p-5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -95,8 +106,9 @@ export function AIBudgetSuggestions() {
         {avgIncome > 0 && (
           <div className="flex items-center gap-1.5 text-[10px]">
             <PiggyBank className="h-3 w-3 text-success" />
-            <span className="text-success font-medium">
-              Economia projetada: R$ {savingsProjected.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+            <span className="font-medium text-success">
+              Economia projetada: R${" "}
+              {savingsProjected.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
             </span>
           </div>
         )}
@@ -108,29 +120,33 @@ export function AIBudgetSuggestions() {
           const isApplied = applied.has(s.catId);
 
           return (
-            <div key={s.catId} className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/30 border border-border/50">
-              <div className="flex-1 min-w-0">
+            <div
+              key={s.catId}
+              className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/30 p-2.5"
+            >
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium text-foreground truncate">{s.catName}</p>
+                  <p className="truncate text-xs font-medium text-foreground">{s.catName}</p>
                   {diff > 0 && (
-                    <span className="text-[10px] text-success bg-success/10 px-1.5 py-0.5 rounded-full">
+                    <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[10px] text-success">
                       -R$ {diff.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground truncate">{s.reason}</p>
-                <div className="flex gap-3 mt-1">
+                <p className="truncate text-[10px] text-muted-foreground">{s.reason}</p>
+                <div className="mt-1 flex gap-3">
                   <span className="text-[10px] text-muted-foreground">
                     Atual: R$ {s.currentAvg.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
                   </span>
-                  <span className="text-[10px] text-primary font-medium">
-                    Sugerido: R$ {s.suggestedBudget.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                  <span className="text-[10px] font-medium text-primary">
+                    Sugerido: R${" "}
+                    {s.suggestedBudget.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
                   </span>
                 </div>
               </div>
               <div>
                 {isApplied ? (
-                  <div className="h-7 w-7 rounded-md bg-success/15 flex items-center justify-center">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-success/15">
                     <Check className="h-3.5 w-3.5 text-success" />
                   </div>
                 ) : (

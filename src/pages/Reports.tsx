@@ -1,10 +1,33 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
-import { Download, FileText, TrendingDown, TrendingUp, Wallet, BarChart3, Filter, X, Search } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Download,
+  FileText,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  BarChart3,
+  Filter,
+  X,
+  Search,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -89,12 +112,18 @@ const Reports = () => {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = [
-    { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
-    { value: "3", label: "Março" }, { value: "4", label: "Abril" },
-    { value: "5", label: "Maio" }, { value: "6", label: "Junho" },
-    { value: "7", label: "Julho" }, { value: "8", label: "Agosto" },
-    { value: "9", label: "Setembro" }, { value: "10", label: "Outubro" },
-    { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
   ];
 
   const acctMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
@@ -112,10 +141,16 @@ const Reports = () => {
   }, [categories]);
 
   // Base filter by month/year
-  const periodFiltered = useMemo(() => transactions.filter((t) => {
-    const d = new Date(t.date);
-    return d.getFullYear() === parseInt(selectedYear) && d.getMonth() + 1 === parseInt(selectedMonth);
-  }), [transactions, selectedYear, selectedMonth]);
+  const periodFiltered = useMemo(
+    () =>
+      transactions.filter((t) => {
+        const d = new Date(t.date);
+        return (
+          d.getFullYear() === parseInt(selectedYear) && d.getMonth() + 1 === parseInt(selectedMonth)
+        );
+      }),
+    [transactions, selectedYear, selectedMonth],
+  );
 
   // Advanced filters
   const filtered = useMemo(() => {
@@ -126,13 +161,26 @@ const Reports = () => {
       if (filterStatus !== "all" && t.status !== filterStatus) return false;
       if (filterDateFrom && t.date < filterDateFrom) return false;
       if (filterDateTo && t.date > filterDateTo) return false;
-      if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        return false;
       return true;
     });
-  }, [periodFiltered, filterType, filterCategory, filterAccount, filterStatus, filterDateFrom, filterDateTo, searchTerm]);
+  }, [
+    periodFiltered,
+    filterType,
+    filterCategory,
+    filterAccount,
+    filterStatus,
+    filterDateFrom,
+    filterDateTo,
+    searchTerm,
+  ]);
 
-  const activeFilterCount = [filterType, filterCategory, filterAccount, filterStatus].filter((f) => f !== "all").length
-    + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount =
+    [filterType, filterCategory, filterAccount, filterStatus].filter((f) => f !== "all").length +
+    (filterDateFrom ? 1 : 0) +
+    (filterDateTo ? 1 : 0) +
+    (searchTerm ? 1 : 0);
 
   const clearFilters = () => {
     setFilterType("all");
@@ -144,8 +192,12 @@ const Reports = () => {
     setSearchTerm("");
   };
 
-  const totalIncome = filtered.filter((t) => t.type === "income" && t.status === "paid").reduce((s, t) => s + Number(t.amount), 0);
-  const totalExpense = filtered.filter((t) => t.type === "expense" && t.status === "paid").reduce((s, t) => s + Number(t.amount), 0);
+  const totalIncome = filtered
+    .filter((t) => t.type === "income" && t.status === "paid")
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const totalExpense = filtered
+    .filter((t) => t.type === "expense" && t.status === "paid")
+    .reduce((s, t) => s + Number(t.amount), 0);
   const balance = totalIncome - totalExpense;
   const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
   const pendingCount = filtered.filter((t) => t.status === "pending").length;
@@ -153,52 +205,88 @@ const Reports = () => {
 
   const categoryData = useMemo(() => {
     const seen = new Set<string>();
-    return categories.map((cat) => {
-      const catTx = filtered.filter((t) => t.category_id === cat.id && t.status === "paid");
-      const total = catTx.reduce((s, t) => s + Number(t.amount), 0);
-      return { name: cat.name, type: cat.type, total, count: catTx.length, icon: cat.icon };
-    }).filter((c) => {
-      if (c.total <= 0) return false;
-      const key = c.name.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).sort((a, b) => b.total - a.total);
+    return categories
+      .map((cat) => {
+        const catTx = filtered.filter((t) => t.category_id === cat.id && t.status === "paid");
+        const total = catTx.reduce((s, t) => s + Number(t.amount), 0);
+        return { name: cat.name, type: cat.type, total, count: catTx.length, icon: cat.icon };
+      })
+      .filter((c) => {
+        if (c.total <= 0) return false;
+        const key = c.name.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => b.total - a.total);
   }, [categories, filtered]);
 
   const expenseCategories = categoryData.filter((c) => c.type === "expense");
   const incomeCategories = categoryData.filter((c) => c.type === "income");
 
-  const topExpenses = useMemo(() =>
-    filtered.filter((t) => t.type === "expense" && t.status === "paid")
-      .sort((a, b) => Number(b.amount) - Number(a.amount))
-      .slice(0, 10),
-    [filtered]
+  const topExpenses = useMemo(
+    () =>
+      filtered
+        .filter((t) => t.type === "expense" && t.status === "paid")
+        .sort((a, b) => Number(b.amount) - Number(a.amount))
+        .slice(0, 10),
+    [filtered],
   );
 
   const budgetComparison = useMemo(() => {
-    const monthBudgets = budgets.filter((b) => b.month === parseInt(selectedMonth) && b.year === parseInt(selectedYear));
+    const monthBudgets = budgets.filter(
+      (b) => b.month === parseInt(selectedMonth) && b.year === parseInt(selectedYear),
+    );
     return monthBudgets.map((b) => {
       const cat = catMap.get(b.category_id || "");
-      const spent = filtered.filter((t) => t.category_id === b.category_id && t.type === "expense" && t.status === "paid")
+      const spent = filtered
+        .filter(
+          (t) => t.category_id === b.category_id && t.type === "expense" && t.status === "paid",
+        )
         .reduce((s, t) => s + Number(t.amount), 0);
-      return { category: cat?.name || "Geral", budget: Number(b.amount), spent, pct: Number(b.amount) > 0 ? (spent / Number(b.amount)) * 100 : 0 };
+      return {
+        category: cat?.name || "Geral",
+        budget: Number(b.amount),
+        spent,
+        pct: Number(b.amount) > 0 ? (spent / Number(b.amount)) * 100 : 0,
+      };
     });
   }, [budgets, filtered, selectedMonth, selectedYear, catMap]);
 
   // Account breakdown
   const accountBreakdown = useMemo(() => {
-    return accounts.map((acc) => {
-      const accTx = filtered.filter((t) => t.account_id === acc.id && t.status === "paid");
-      const income = accTx.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const expense = accTx.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
-      return { name: acc.name, type: acc.type, balance: Number(acc.balance), income, expense, txCount: accTx.length };
-    }).filter((a) => a.txCount > 0);
+    return accounts
+      .map((acc) => {
+        const accTx = filtered.filter((t) => t.account_id === acc.id && t.status === "paid");
+        const income = accTx
+          .filter((t) => t.type === "income")
+          .reduce((s, t) => s + Number(t.amount), 0);
+        const expense = accTx
+          .filter((t) => t.type === "expense")
+          .reduce((s, t) => s + Number(t.amount), 0);
+        return {
+          name: acc.name,
+          type: acc.type,
+          balance: Number(acc.balance),
+          income,
+          expense,
+          txCount: accTx.length,
+        };
+      })
+      .filter((a) => a.txCount > 0);
   }, [accounts, filtered]);
 
   const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
-  const drawBarChart = (doc: jsPDF, data: { label: string; value: number; color: number[] }[], x: number, y: number, w: number, h: number, title: string) => {
+  const drawBarChart = (
+    doc: jsPDF,
+    data: { label: string; value: number; color: number[] }[],
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    title: string,
+  ) => {
     if (data.length === 0) return y;
     const maxVal = Math.max(...data.map((d) => d.value));
     const barH = Math.min(12, (h - 20) / data.length);
@@ -210,7 +298,7 @@ const Reports = () => {
     y += 8;
 
     data.forEach((item, i) => {
-      const barW = maxVal > 0 ? ((item.value / maxVal) * (w - 60)) : 0;
+      const barW = maxVal > 0 ? (item.value / maxVal) * (w - 60) : 0;
       const barY = y + i * (barH + gap);
 
       doc.setFontSize(8);
@@ -247,16 +335,25 @@ const Reports = () => {
       doc.setFont("helvetica", "normal");
       doc.text(`Relatório Financeiro · ${monthLabel} ${selectedYear}`, 14, 26);
       doc.setFontSize(8);
-      doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, pageW - 14, 26, { align: "right" });
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`,
+        pageW - 14,
+        26,
+        { align: "right" },
+      );
 
       // Active filters info
       if (activeFilterCount > 0) {
         doc.setFontSize(7);
         const filtersText: string[] = [];
-        if (filterType !== "all") filtersText.push(`Tipo: ${filterType === "income" ? "Receita" : "Despesa"}`);
-        if (filterCategory !== "all") filtersText.push(`Categoria: ${catMap.get(filterCategory)?.name || filterCategory}`);
-        if (filterAccount !== "all") filtersText.push(`Conta: ${acctMap.get(filterAccount)?.name || filterAccount}`);
-        if (filterStatus !== "all") filtersText.push(`Status: ${filterStatus === "paid" ? "Pago" : "Pendente"}`);
+        if (filterType !== "all")
+          filtersText.push(`Tipo: ${filterType === "income" ? "Receita" : "Despesa"}`);
+        if (filterCategory !== "all")
+          filtersText.push(`Categoria: ${catMap.get(filterCategory)?.name || filterCategory}`);
+        if (filterAccount !== "all")
+          filtersText.push(`Conta: ${acctMap.get(filterAccount)?.name || filterAccount}`);
+        if (filterStatus !== "all")
+          filtersText.push(`Status: ${filterStatus === "paid" ? "Pago" : "Pendente"}`);
         if (searchTerm) filtersText.push(`Busca: "${searchTerm}"`);
         doc.text(`Filtros: ${filtersText.join(" | ")}`, 14, 32);
       }
@@ -269,7 +366,11 @@ const Reports = () => {
       const boxes = [
         { label: "Receitas", value: fmt(totalIncome), color: [16, 185, 129] },
         { label: "Despesas", value: fmt(totalExpense), color: [239, 68, 68] },
-        { label: "Saldo Período", value: fmt(balance), color: balance >= 0 ? [16, 185, 129] : [239, 68, 68] },
+        {
+          label: "Saldo Período",
+          value: fmt(balance),
+          color: balance >= 0 ? [16, 185, 129] : [239, 68, 68],
+        },
         { label: "Patrimônio", value: fmt(totalBalance), color: [79, 70, 229] },
       ];
       boxes.forEach((box, i) => {
@@ -291,7 +392,9 @@ const Reports = () => {
       // === EXPENSE BAR CHART ===
       if (expenseCategories.length > 0) {
         const chartData = expenseCategories.slice(0, 8).map((c, i) => ({
-          label: c.name, value: c.total, color: CHART_COLORS[i % CHART_COLORS.length],
+          label: c.name,
+          value: c.total,
+          color: CHART_COLORS[i % CHART_COLORS.length],
         }));
         y = drawBarChart(doc, chartData, 14, y, pageW / 2 - 20, 100, "Despesas por Categoria");
       }
@@ -299,10 +402,20 @@ const Reports = () => {
       // === INCOME BAR CHART ===
       if (incomeCategories.length > 0) {
         const chartData = incomeCategories.slice(0, 5).map((c, i) => ({
-          label: c.name, value: c.total, color: CHART_COLORS[(i + 3) % CHART_COLORS.length],
+          label: c.name,
+          value: c.total,
+          color: CHART_COLORS[(i + 3) % CHART_COLORS.length],
         }));
         const chartX = pageW / 2 + 5;
-        drawBarChart(doc, chartData, chartX, y - (expenseCategories.length > 0 ? expenseCategories.slice(0, 8).length * 14 + 13 : 0), pageW / 2 - 20, 100, "Receitas por Categoria");
+        drawBarChart(
+          doc,
+          chartData,
+          chartX,
+          y - (expenseCategories.length > 0 ? expenseCategories.slice(0, 8).length * 14 + 13 : 0),
+          pageW / 2 - 20,
+          100,
+          "Receitas por Categoria",
+        );
       }
 
       // === BUDGET vs ACTUAL ===
@@ -332,7 +445,10 @@ const Reports = () => {
 
       // === TOP EXPENSES ===
       if (topExpenses.length > 0) {
-        if (y > 240) { doc.addPage(); y = 20; }
+        if (y > 240) {
+          doc.addPage();
+          y = 20;
+        }
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text("Top 10 Maiores Despesas", 14, y);
@@ -358,7 +474,10 @@ const Reports = () => {
 
       // === ACCOUNT BALANCES ===
       if (accounts.length > 0) {
-        if (y > 240) { doc.addPage(); y = 20; }
+        if (y > 240) {
+          doc.addPage();
+          y = 20;
+        }
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text("Saldo por Conta", 14, y);
@@ -369,7 +488,13 @@ const Reports = () => {
           head: [["Conta", "Tipo", "Saldo"]],
           body: accounts.map((a) => [
             a.name,
-            a.type === "checking" ? "Corrente" : a.type === "savings" ? "Poupança" : a.type === "investment" ? "Investimento" : a.type,
+            a.type === "checking"
+              ? "Corrente"
+              : a.type === "savings"
+                ? "Poupança"
+                : a.type === "investment"
+                  ? "Investimento"
+                  : a.type,
             fmt(Number(a.balance)),
           ]),
           theme: "grid",
@@ -381,7 +506,10 @@ const Reports = () => {
 
       // === GOALS PROGRESS ===
       if (goals.length > 0) {
-        if (y > 240) { doc.addPage(); y = 20; }
+        if (y > 240) {
+          doc.addPage();
+          y = 20;
+        }
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text("Progresso das Metas", 14, y);
@@ -391,7 +519,10 @@ const Reports = () => {
           startY: y,
           head: [["Meta", "Atual", "Objetivo", "Progresso", "Prazo"]],
           body: goals.map((g) => {
-            const pct = Number(g.target_amount) > 0 ? (Number(g.current_amount) / Number(g.target_amount)) * 100 : 0;
+            const pct =
+              Number(g.target_amount) > 0
+                ? (Number(g.current_amount) / Number(g.target_amount)) * 100
+                : 0;
             return [
               g.name,
               fmt(Number(g.current_amount)),
@@ -409,7 +540,10 @@ const Reports = () => {
 
       // === ALL TRANSACTIONS ===
       if (filtered.length > 0) {
-        if (y > 220) { doc.addPage(); y = 20; }
+        if (y > 220) {
+          doc.addPage();
+          y = 20;
+        }
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.text(`Transações Detalhadas (${filtered.length})`, 14, y);
@@ -439,7 +573,12 @@ const Reports = () => {
         doc.setPage(i);
         doc.setFontSize(7);
         doc.setTextColor(150, 150, 150);
-        doc.text(`T2-SimplyFin · ${monthLabel} ${selectedYear} · Página ${i}/${pageCount}`, pageW / 2, doc.internal.pageSize.getHeight() - 8, { align: "center" });
+        doc.text(
+          `T2-SimplyFin · ${monthLabel} ${selectedYear} · Página ${i}/${pageCount}`,
+          pageW / 2,
+          doc.internal.pageSize.getHeight() - 8,
+          { align: "center" },
+        );
       }
 
       doc.save(`relatorio-${monthLabel}-${selectedYear}.pdf`);
@@ -450,16 +589,27 @@ const Reports = () => {
     }
   };
 
-  const acctTypeLabel = (t: string) => t === "checking" ? "Corrente" : t === "savings" ? "Poupança" : t === "investment" ? "Investimento" : t === "credit" ? "Crédito" : t;
+  const acctTypeLabel = (t: string) =>
+    t === "checking"
+      ? "Corrente"
+      : t === "savings"
+        ? "Poupança"
+        : t === "investment"
+          ? "Investimento"
+          : t === "credit"
+            ? "Crédito"
+            : t;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
-          <p className="text-sm text-muted-foreground">Visualize e exporte relatórios financeiros detalhados</p>
+          <p className="text-sm text-muted-foreground">
+            Visualize e exporte relatórios financeiros detalhados
+          </p>
         </div>
-        <Button onClick={exportToPDF} className="gap-2 gradient-bg-primary text-primary-foreground">
+        <Button onClick={exportToPDF} className="gradient-bg-primary gap-2 text-primary-foreground">
           <Download className="h-4 w-4" /> Exportar PDF
         </Button>
       </div>
@@ -469,14 +619,24 @@ const Reports = () => {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /> Período e Filtros</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <BarChart3 className="h-5 w-5 text-primary" /> Período e Filtros
+              </CardTitle>
               <CardDescription>Selecione o período e aplique filtros avançados</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2"
+            >
               <Filter className="h-4 w-4" />
               Filtros
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                <Badge
+                  variant="secondary"
+                  className="ml-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs"
+                >
                   {activeFilterCount}
                 </Badge>
               )}
@@ -486,24 +646,32 @@ const Reports = () => {
         <CardContent className="space-y-4">
           {/* Period Row */}
           <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[150px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Mês</label>
+            <div className="min-w-[150px] flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Mês</label>
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {months.map((month) => (
-                    <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Ano</label>
+            <div className="min-w-[150px] flex-1">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Ano</label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -512,20 +680,29 @@ const Reports = () => {
 
           {/* Advanced Filters */}
           {showFilters && (
-            <div className="border-t border-border pt-4 space-y-4">
+            <div className="space-y-4 border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground">Filtros Avançados</span>
                 {activeFilterCount > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-7 gap-1 text-xs"
+                  >
                     <X className="h-3 w-3" /> Limpar filtros
                   </Button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Tipo
+                  </label>
                   <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="income">Receita</SelectItem>
@@ -534,33 +711,49 @@ const Reports = () => {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Categoria</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Categoria
+                  </label>
                   <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       {uniqueCategories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.icon} {c.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Conta</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Conta
+                  </label>
                   <Select value={filterAccount} onValueChange={setFilterAccount}>
-                    <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
                       {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Status
+                  </label>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="paid">Pago</SelectItem>
@@ -569,20 +762,39 @@ const Reports = () => {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Data inicial</label>
-                  <Input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Data inicial
+                  </label>
+                  <Input
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Data final</label>
-                  <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Data final
+                  </label>
+                  <Input
+                    type="date"
+                    value={filterDateTo}
+                    onChange={(e) => setFilterDateTo(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Buscar descrição</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Buscar descrição
+                  </label>
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Pesquisar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+                    <Input
+                      placeholder="Pesquisar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
                   </div>
                 </div>
               </div>
@@ -592,34 +804,48 @@ const Reports = () => {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Receitas</CardTitle>
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
-          <CardContent><div className="text-xl font-bold text-success">{fmt(totalIncome)}</div></CardContent>
+          <CardContent>
+            <div className="text-xl font-bold text-success">{fmt(totalIncome)}</div>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Despesas</CardTitle>
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
-          <CardContent><div className="text-xl font-bold text-destructive">{fmt(totalExpense)}</div></CardContent>
+          <CardContent>
+            <div className="text-xl font-bold text-destructive">{fmt(totalExpense)}</div>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Período</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Saldo Período
+            </CardTitle>
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent><div className={`text-xl font-bold ${balance >= 0 ? "text-success" : "text-destructive"}`}>{fmt(balance)}</div></CardContent>
+          <CardContent>
+            <div
+              className={`text-xl font-bold ${balance >= 0 ? "text-success" : "text-destructive"}`}
+            >
+              {fmt(balance)}
+            </div>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Total</CardTitle>
             <Wallet className="h-4 w-4 text-primary" />
           </CardHeader>
-          <CardContent><div className="text-xl font-bold text-primary">{fmt(totalBalance)}</div></CardContent>
+          <CardContent>
+            <div className="text-xl font-bold text-primary">{fmt(totalBalance)}</div>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -628,7 +854,9 @@ const Reports = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold text-foreground">{filtered.length}</div>
-            <div className="text-xs text-muted-foreground mt-1">{paidCount} pagas · {pendingCount} pendentes</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {paidCount} pagas · {pendingCount} pendentes
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -649,7 +877,10 @@ const Reports = () => {
                     {fmt(b.spent)} / {fmt(b.budget)} ({b.pct.toFixed(0)}%)
                   </span>
                 </div>
-                <Progress value={Math.min(b.pct, 100)} className={`h-2 ${b.pct > 100 ? "[&>div]:bg-destructive" : b.pct > 80 ? "[&>div]:bg-warning" : ""}`} />
+                <Progress
+                  value={Math.min(b.pct, 100)}
+                  className={`h-2 ${b.pct > 100 ? "[&>div]:bg-destructive" : b.pct > 80 ? "[&>div]:bg-warning" : ""}`}
+                />
               </div>
             ))}
           </CardContent>
@@ -695,7 +926,9 @@ const Reports = () => {
       {/* Category Breakdown */}
       {expenseCategories.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Despesas por Categoria</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Despesas por Categoria</CardTitle>
+          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -709,10 +942,14 @@ const Reports = () => {
               <TableBody>
                 {expenseCategories.map((cat) => (
                   <TableRow key={cat.name}>
-                    <TableCell className="font-medium">{cat.icon} {cat.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {cat.icon} {cat.name}
+                    </TableCell>
                     <TableCell className="text-right">{cat.count}</TableCell>
                     <TableCell className="text-right">{fmt(cat.total)}</TableCell>
-                    <TableCell className="text-right">{totalExpense > 0 ? ((cat.total / totalExpense) * 100).toFixed(1) : 0}%</TableCell>
+                    <TableCell className="text-right">
+                      {totalExpense > 0 ? ((cat.total / totalExpense) * 100).toFixed(1) : 0}%
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -724,7 +961,9 @@ const Reports = () => {
       {/* Income Categories */}
       {incomeCategories.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Receitas por Categoria</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Receitas por Categoria</CardTitle>
+          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -738,10 +977,14 @@ const Reports = () => {
               <TableBody>
                 {incomeCategories.map((cat) => (
                   <TableRow key={cat.name}>
-                    <TableCell className="font-medium">{cat.icon} {cat.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {cat.icon} {cat.name}
+                    </TableCell>
                     <TableCell className="text-right">{cat.count}</TableCell>
                     <TableCell className="text-right">{fmt(cat.total)}</TableCell>
-                    <TableCell className="text-right">{totalIncome > 0 ? ((cat.total / totalIncome) * 100).toFixed(1) : 0}%</TableCell>
+                    <TableCell className="text-right">
+                      {totalIncome > 0 ? ((cat.total / totalIncome) * 100).toFixed(1) : 0}%
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -776,7 +1019,9 @@ const Reports = () => {
                     <TableCell className="font-medium">{t.description}</TableCell>
                     <TableCell>{catMap.get(t.category_id || "")?.name || "—"}</TableCell>
                     <TableCell>{acctMap.get(t.account_id || "")?.name || "—"}</TableCell>
-                    <TableCell className="text-right text-destructive font-medium">{fmt(Number(t.amount))}</TableCell>
+                    <TableCell className="text-right font-medium text-destructive">
+                      {fmt(Number(t.amount))}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -796,7 +1041,9 @@ const Reports = () => {
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhuma transação encontrada para os filtros selecionados</p>
+            <p className="py-8 text-center text-muted-foreground">
+              Nenhuma transação encontrada para os filtros selecionados
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -814,21 +1061,29 @@ const Reports = () => {
                 <TableBody>
                   {filtered.map((t) => (
                     <TableRow key={t.id}>
-                      <TableCell className="whitespace-nowrap">{new Date(t.date).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(t.date).toLocaleDateString("pt-BR")}
+                      </TableCell>
                       <TableCell className="font-medium">{t.description}</TableCell>
                       <TableCell>{catMap.get(t.category_id || "")?.name || "—"}</TableCell>
                       <TableCell>{acctMap.get(t.account_id || "")?.name || "—"}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${t.type === "income" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${t.type === "income" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
+                        >
                           {t.type === "income" ? "Receita" : "Despesa"}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${t.status === "paid" ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"}`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${t.status === "paid" ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"}`}
+                        >
                           {t.status === "paid" ? "Pago" : "Pendente"}
                         </span>
                       </TableCell>
-                      <TableCell className={`text-right font-medium whitespace-nowrap ${t.type === "income" ? "text-success" : "text-destructive"}`}>
+                      <TableCell
+                        className={`whitespace-nowrap text-right font-medium ${t.type === "income" ? "text-success" : "text-destructive"}`}
+                      >
                         {fmt(Number(t.amount))}
                       </TableCell>
                     </TableRow>

@@ -1,7 +1,16 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Area,
+  AreaChart,
+} from "recharts";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 
 interface Transaction {
@@ -18,7 +27,20 @@ interface Account {
   created_at: string;
 }
 
-const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTH_NAMES = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 
 export function NetWorthEvolution() {
   const { data: accounts = [] } = useSupabaseQuery<Account>("accounts");
@@ -39,8 +61,12 @@ export function NetWorthEvolution() {
         const td = new Date(t.date);
         return td.getMonth() === m && td.getFullYear() === y && t.status === "paid";
       });
-      const income = monthTx.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const expense = monthTx.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      const income = monthTx
+        .filter((t) => t.type === "income")
+        .reduce((s, t) => s + Number(t.amount), 0);
+      const expense = monthTx
+        .filter((t) => t.type === "expense")
+        .reduce((s, t) => s + Number(t.amount), 0);
       monthlyChanges.push(income - expense);
     }
 
@@ -67,11 +93,15 @@ export function NetWorthEvolution() {
   const currentValue = chartData[chartData.length - 1]?.patrimonio ?? 0;
   const previousValue = chartData[chartData.length - 2]?.patrimonio ?? 0;
   const change = currentValue - previousValue;
-  const changePercent = previousValue !== 0 ? ((change / Math.abs(previousValue)) * 100) : 0;
+  const changePercent = previousValue !== 0 ? (change / Math.abs(previousValue)) * 100 : 0;
   const isPositive = change >= 0;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card space-y-4 p-5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
@@ -83,8 +113,11 @@ export function NetWorthEvolution() {
           ) : (
             <TrendingDown className="h-3.5 w-3.5 text-destructive" />
           )}
-          <span className={`text-xs font-medium ${isPositive ? "text-success" : "text-destructive"}`}>
-            {isPositive ? "+" : ""}{changePercent.toFixed(1)}% este mês
+          <span
+            className={`text-xs font-medium ${isPositive ? "text-success" : "text-destructive"}`}
+          >
+            {isPositive ? "+" : ""}
+            {changePercent.toFixed(1)}% este mês
           </span>
         </div>
       </div>
@@ -125,7 +158,10 @@ export function NetWorthEvolution() {
                 fontSize: 11,
               }}
               labelStyle={{ color: "hsl(210, 20%, 92%)" }}
-              formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Patrimônio"]}
+              formatter={(value: number) => [
+                `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                "Patrimônio",
+              ]}
             />
             <Area
               type="monotone"

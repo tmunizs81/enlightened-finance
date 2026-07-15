@@ -5,7 +5,12 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
-import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
+import {
+  useSupabaseQuery,
+  useSupabaseInsert,
+  useSupabaseUpdate,
+  useSupabaseDelete,
+} from "@/hooks/use-supabase-crud";
 import { GoalForm } from "@/components/forms/GoalForm";
 import { GoalAIMonitor } from "@/components/dashboard/GoalAIMonitor";
 import { useConfetti } from "@/hooks/use-confetti";
@@ -33,7 +38,8 @@ const Goals = () => {
   const { fireCanon } = useConfetti();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
-  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
+  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } =
+    useConfirmDelete();
 
   const { data: goals = [], isLoading } = useSupabaseQuery<Goal>("goals");
   const insertMutation = useSupabaseInsert("goals");
@@ -42,7 +48,12 @@ const Goals = () => {
 
   const handleSubmit = (data: any) => {
     if (data.id) {
-      updateMutation.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+      updateMutation.mutate(data, {
+        onSuccess: () => {
+          setEditing(null);
+          setFormOpen(false);
+        },
+      });
     } else {
       insertMutation.mutate(data, { onSuccess: () => setFormOpen(false) });
     }
@@ -53,30 +64,52 @@ const Goals = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Metas de Economia</h1>
-          <p className="text-sm text-muted-foreground">Sistema de envelopes para suas metas financeiras</p>
+          <p className="text-sm text-muted-foreground">
+            Sistema de envelopes para suas metas financeiras
+          </p>
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gradient-bg-primary text-primary-foreground gap-2">
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setFormOpen(true);
+          }}
+          className="gradient-bg-primary gap-2 text-primary-foreground"
+        >
           <Plus className="h-4 w-4" /> Nova Meta
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} lines={2} />
+          ))}
         </div>
       ) : goals.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
+        <div className="space-y-3 py-16 text-center">
           <div className="text-4xl">🎯</div>
-          <p className="text-muted-foreground text-sm font-medium">Nenhuma meta criada</p>
-          <p className="text-muted-foreground text-xs">Clique em "Nova Meta" para começar a economizar</p>
+          <p className="text-sm font-medium text-muted-foreground">Nenhuma meta criada</p>
+          <p className="text-xs text-muted-foreground">
+            Clique em "Nova Meta" para começar a economizar
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {goals.map((goal, i) => {
-            const pct = goal.target_amount > 0 ? Math.round((Number(goal.current_amount) / Number(goal.target_amount)) * 100) : 0;
+            const pct =
+              goal.target_amount > 0
+                ? Math.round((Number(goal.current_amount) / Number(goal.target_amount)) * 100)
+                : 0;
             return (
-              <motion.div key={goal.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={`glass-card-hover p-5 space-y-4 ${pct >= 100 ? "border-success/30 ring-1 ring-success/20" : ""}`}
-                onAnimationComplete={() => { if (pct >= 100) fireCanon(); }}
+              <motion.div
+                key={goal.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className={`glass-card-hover space-y-4 p-5 ${pct >= 100 ? "border-success/30 ring-1 ring-success/20" : ""}`}
+                onAnimationComplete={() => {
+                  if (pct >= 100) fireCanon();
+                }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -84,16 +117,32 @@ const Goals = () => {
                     <div>
                       <p className="text-sm font-semibold text-foreground">{goal.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        R$ {Number(goal.current_amount).toLocaleString("pt-BR")} de R$ {Number(goal.target_amount).toLocaleString("pt-BR")}
+                        R$ {Number(goal.current_amount).toLocaleString("pt-BR")} de R${" "}
+                        {Number(goal.target_amount).toLocaleString("pt-BR")}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-lg font-bold ${colorMap[goal.color || "primary"]}`}>{pct}%</span>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(goal); setFormOpen(true); }}>
+                    <span className={`text-lg font-bold ${colorMap[goal.color || "primary"]}`}>
+                      {pct}%
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditing(goal);
+                        setFormOpen(true);
+                      }}
+                    >
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => requestDelete(goal.id, goal.name)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => requestDelete(goal.id, goal.name)}
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -102,10 +151,15 @@ const Goals = () => {
                   <Progress value={pct} className="h-2 bg-secondary" />
                   <div className="flex justify-between">
                     {goal.deadline && (
-                      <p className="text-[10px] text-muted-foreground">Prazo: {new Date(goal.deadline).toLocaleDateString("pt-BR")}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Prazo: {new Date(goal.deadline).toLocaleDateString("pt-BR")}
+                      </p>
                     )}
-                    <p className="text-[10px] text-muted-foreground ml-auto">
-                      Faltam R$ {(Number(goal.target_amount) - Number(goal.current_amount)).toLocaleString("pt-BR")}
+                    <p className="ml-auto text-[10px] text-muted-foreground">
+                      Faltam R${" "}
+                      {(Number(goal.target_amount) - Number(goal.current_amount)).toLocaleString(
+                        "pt-BR",
+                      )}
                     </p>
                   </div>
                 </div>
@@ -119,7 +173,9 @@ const Goals = () => {
 
       <ConfirmDialog
         open={isConfirmOpen}
-        onOpenChange={(open) => { if (!open) cancelDelete(); }}
+        onOpenChange={(open) => {
+          if (!open) cancelDelete();
+        }}
         title="Excluir meta"
         description={`Tem certeza que deseja excluir a meta "${deleteTarget?.name || ""}"? Esta ação não pode ser desfeita.`}
         onConfirm={() => confirmDelete((id) => deleteMutation.mutate(id))}
@@ -127,7 +183,10 @@ const Goals = () => {
 
       <GoalForm
         open={formOpen}
-        onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
+        onOpenChange={(v) => {
+          setFormOpen(v);
+          if (!v) setEditing(null);
+        }}
         onSubmit={handleSubmit}
         initialData={editing}
         loading={insertMutation.isPending || updateMutation.isPending}

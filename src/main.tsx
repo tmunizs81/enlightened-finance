@@ -25,5 +25,5 @@ if (isPreviewHost || isInIframe) {
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <App />
-  </ErrorBoundary>
+  </ErrorBoundary>,
 );

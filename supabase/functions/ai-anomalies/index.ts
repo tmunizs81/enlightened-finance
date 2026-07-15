@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,17 +15,28 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
     const userId = claimsData.claims.sub as string;
 
     const [txRes, catRes] = await Promise.all([
-      supabase.from("transactions").select("*").eq("user_id", userId).eq("type", "expense").eq("status", "paid").order("date", { ascending: false }).limit(300),
+      supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("type", "expense")
+        .eq("status", "paid")
+        .order("date", { ascending: false })
+        .limit(300),
       supabase.from("categories").select("id, name").eq("user_id", userId),
     ]);
 
@@ -64,9 +76,13 @@ serve(async (req) => {
 
     if (DEEPSEEK_API_KEY && anomalies.length > 0) {
       try {
-        const anomalyText = anomalies.slice(0, 5).map((a: any) =>
-          `"${a.description}" em ${a.category}: R$ ${a.amount} (média R$ ${a.average}, ${a.ratio}x acima)`
-        ).join("\n");
+        const anomalyText = anomalies
+          .slice(0, 5)
+          .map(
+            (a: any) =>
+              `"${a.description}" em ${a.category}: R$ ${a.amount} (média R$ ${a.average}, ${a.ratio}x acima)`,
+          )
+          .join("\n");
 
         const prompt = `Você é um consultor financeiro. Analise estas anomalias de gastos e dê conselhos curtos e práticos (max 4 frases em português):
 ${anomalyText}
@@ -74,7 +90,10 @@ Responda APENAS com a análise, sem saudações. Seja direto e prático.`;
 
         const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
@@ -90,17 +109,21 @@ Responda APENAS com a análise, sem saudações. Seja direto e prático.`;
       }
     }
 
-    return new Response(JSON.stringify({
-      anomalies: anomalies.slice(0, 5),
-      aiExplanation,
-      totalAnomalies: anomalies.length,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        anomalies: anomalies.slice(0, 5),
+        aiExplanation,
+        totalAnomalies: anomalies.length,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     console.error("ai-anomalies error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

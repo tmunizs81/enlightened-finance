@@ -33,7 +33,8 @@ export function CategoryPieChart() {
   const expenses = transactions.filter((t) => t.type === "expense");
   const categoryTotals = new Map<string, number>();
   expenses.forEach((t) => {
-    const name = t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)! : "Sem categoria";
+    const name =
+      t.category_id && catMap.has(t.category_id) ? catMap.get(t.category_id)! : "Sem categoria";
     categoryTotals.set(name, (categoryTotals.get(name) || 0) + Number(t.amount));
   });
 
@@ -46,34 +47,56 @@ export function CategoryPieChart() {
   if (data.length === 0) {
     return (
       <div className="glass-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Gastos por Categoria</h3>
-        <p className="text-xs text-muted-foreground text-center py-12">Adicione despesas para ver o gráfico</p>
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Gastos por Categoria</h3>
+        <p className="py-12 text-center text-xs text-muted-foreground">
+          Adicione despesas para ver o gráfico
+        </p>
       </div>
     );
   }
 
   return (
     <div className="glass-card p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Gastos por Categoria</h3>
-      <div className="h-[260px] flex items-center">
-        <div className="w-1/2 h-full">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Gastos por Categoria</h3>
+      <div className="flex h-[260px] items-center">
+        <div className="h-full w-1/2">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" strokeWidth={0}>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+                strokeWidth={0}
+              >
                 {data.map((entry, index) => (
                   <Cell key={index} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: "hsl(220, 18%, 12%)", border: "1px solid hsl(220, 14%, 22%)", borderRadius: "8px", color: "hsl(210, 20%, 92%)", fontSize: 12 }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR")}`, undefined]} />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(220, 18%, 12%)",
+                  border: "1px solid hsl(220, 14%, 22%)",
+                  borderRadius: "8px",
+                  color: "hsl(210, 20%, 92%)",
+                  fontSize: 12,
+                }}
+                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR")}`, undefined]}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
         <div className="w-1/2 space-y-2">
           {data.map((cat) => (
             <div key={cat.name} className="flex items-center gap-2 text-xs">
-              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: cat.fill }} />
-              <span className="text-muted-foreground flex-1 truncate">{cat.name}</span>
-              <span className="font-medium text-foreground">R$ {cat.value.toLocaleString("pt-BR")}</span>
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: cat.fill }} />
+              <span className="flex-1 truncate text-muted-foreground">{cat.name}</span>
+              <span className="font-medium text-foreground">
+                R$ {cat.value.toLocaleString("pt-BR")}
+              </span>
             </div>
           ))}
         </div>

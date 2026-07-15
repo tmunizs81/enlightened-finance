@@ -22,50 +22,50 @@ interface Category {
 // Média nacional brasileira por categoria (IBGE/POF 2024, % da renda)
 // Baseado em renda média familiar de ~R$ 5.500/mês
 const NATIONAL_AVERAGES: Record<string, number> = {
-  "Alimentação": 1100,
-  "Moradia": 1375,
-  "Transporte": 825,
-  "Saúde": 440,
-  "Educação": 275,
-  "Lazer": 165,
-  "Vestuário": 220,
-  "Comunicação": 165,
-  "Higiene": 110,
-  "Outros": 825,
+  Alimentação: 1100,
+  Moradia: 1375,
+  Transporte: 825,
+  Saúde: 440,
+  Educação: 275,
+  Lazer: 165,
+  Vestuário: 220,
+  Comunicação: 165,
+  Higiene: 110,
+  Outros: 825,
 };
 
 const CATEGORY_MAPPING: Record<string, string> = {
-  "alimentação": "Alimentação",
-  "comida": "Alimentação",
-  "mercado": "Alimentação",
-  "supermercado": "Alimentação",
-  "restaurante": "Alimentação",
-  "moradia": "Moradia",
-  "aluguel": "Moradia",
-  "casa": "Moradia",
-  "condomínio": "Moradia",
-  "transporte": "Transporte",
-  "combustível": "Transporte",
-  "uber": "Transporte",
-  "ônibus": "Transporte",
-  "saúde": "Saúde",
-  "farmácia": "Saúde",
-  "médico": "Saúde",
+  alimentação: "Alimentação",
+  comida: "Alimentação",
+  mercado: "Alimentação",
+  supermercado: "Alimentação",
+  restaurante: "Alimentação",
+  moradia: "Moradia",
+  aluguel: "Moradia",
+  casa: "Moradia",
+  condomínio: "Moradia",
+  transporte: "Transporte",
+  combustível: "Transporte",
+  uber: "Transporte",
+  ônibus: "Transporte",
+  saúde: "Saúde",
+  farmácia: "Saúde",
+  médico: "Saúde",
   "plano de saúde": "Saúde",
-  "educação": "Educação",
-  "escola": "Educação",
-  "curso": "Educação",
-  "faculdade": "Educação",
-  "lazer": "Lazer",
-  "entretenimento": "Lazer",
-  "streaming": "Lazer",
-  "vestuário": "Vestuário",
-  "roupa": "Vestuário",
-  "comunicação": "Comunicação",
-  "telefone": "Comunicação",
-  "internet": "Comunicação",
-  "higiene": "Higiene",
-  "beleza": "Higiene",
+  educação: "Educação",
+  escola: "Educação",
+  curso: "Educação",
+  faculdade: "Educação",
+  lazer: "Lazer",
+  entretenimento: "Lazer",
+  streaming: "Lazer",
+  vestuário: "Vestuário",
+  roupa: "Vestuário",
+  comunicação: "Comunicação",
+  telefone: "Comunicação",
+  internet: "Comunicação",
+  higiene: "Higiene",
+  beleza: "Higiene",
 };
 
 function mapToNationalCategory(categoryName: string): string {
@@ -90,7 +90,12 @@ export function NationalBenchmark() {
     const userSpending: Record<string, number> = {};
     const monthExpenses = transactions.filter((t) => {
       const d = new Date(t.date);
-      return t.type === "expense" && t.status === "paid" && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return (
+        t.type === "expense" &&
+        t.status === "paid" &&
+        d.getMonth() === currentMonth &&
+        d.getFullYear() === currentYear
+      );
     });
 
     for (const tx of monthExpenses) {
@@ -116,7 +121,11 @@ export function NationalBenchmark() {
   const diff = totalUser - totalAvg;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card space-y-4 p-5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-accent" />
@@ -132,7 +141,7 @@ export function NationalBenchmark() {
       </p>
 
       {chartData.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-8">
+        <p className="py-8 text-center text-xs text-muted-foreground">
           Registre transações com categorias para ver o comparativo
         </p>
       ) : (
@@ -171,8 +180,21 @@ export function NationalBenchmark() {
                 wrapperStyle={{ fontSize: 11 }}
                 formatter={(value) => (value === "voce" ? "Você" : "Média Nacional")}
               />
-              <Bar dataKey="voce" name="voce" fill="hsl(175, 80%, 50%)" radius={[0, 4, 4, 0]} barSize={12} />
-              <Bar dataKey="media" name="media" fill="hsl(265, 70%, 60%)" radius={[0, 4, 4, 0]} barSize={12} opacity={0.6} />
+              <Bar
+                dataKey="voce"
+                name="voce"
+                fill="hsl(175, 80%, 50%)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+              />
+              <Bar
+                dataKey="media"
+                name="media"
+                fill="hsl(265, 70%, 60%)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+                opacity={0.6}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

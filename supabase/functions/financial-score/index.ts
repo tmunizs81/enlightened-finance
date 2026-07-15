@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,12 +15,16 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
     const userId = claimsData.claims.sub as string;
     const now = new Date();
@@ -42,23 +47,50 @@ serve(async (req) => {
     // 1. Savings Rate (0-25 points)
     const thisMonthTx = transactions.filter((t: any) => {
       const d = new Date(t.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.status === "paid";
+      return (
+        d.getMonth() === currentMonth && d.getFullYear() === currentYear && t.status === "paid"
+      );
     });
-    const monthIncome = thisMonthTx.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-    const monthExpense = thisMonthTx.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const monthIncome = thisMonthTx
+      .filter((t: any) => t.type === "income")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const monthExpense = thisMonthTx
+      .filter((t: any) => t.type === "expense")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
     const savingsRate = monthIncome > 0 ? ((monthIncome - monthExpense) / monthIncome) * 100 : 0;
-    const savingsScore = Math.min(25, Math.max(0, savingsRate >= 30 ? 25 : savingsRate >= 20 ? 20 : savingsRate >= 10 ? 15 : savingsRate > 0 ? 8 : 0));
+    const savingsScore = Math.min(
+      25,
+      Math.max(
+        0,
+        savingsRate >= 30
+          ? 25
+          : savingsRate >= 20
+            ? 20
+            : savingsRate >= 10
+              ? 15
+              : savingsRate > 0
+                ? 8
+                : 0,
+      ),
+    );
 
     // 2. Goal Progress (0-25 points)
-    const goalProgress = goals.length > 0
-      ? goals.reduce((s: number, g: any) => s + Math.min(1, Number(g.current_amount) / Number(g.target_amount)), 0) / goals.length
-      : 0;
+    const goalProgress =
+      goals.length > 0
+        ? goals.reduce(
+            (s: number, g: any) =>
+              s + Math.min(1, Number(g.current_amount) / Number(g.target_amount)),
+            0,
+          ) / goals.length
+        : 0;
     const goalsScore = Math.round(goalProgress * 25);
 
     // 3. Budget Discipline (0-25 points)
     let budgetScore = 12; // default if no budgets
     if (budgets.length > 0) {
-      const currentBudgets = budgets.filter((b: any) => b.month === currentMonth + 1 && b.year === currentYear);
+      const currentBudgets = budgets.filter(
+        (b: any) => b.month === currentMonth + 1 && b.year === currentYear,
+      );
       if (currentBudgets.length > 0) {
         let withinBudget = 0;
         for (const b of currentBudgets) {
@@ -95,28 +127,41 @@ serve(async (req) => {
     if (!noPendingOverdue) tips.push("⚠️ Regularize suas contas em atraso.");
     if (budgets.length === 0) tips.push("📊 Crie orçamentos por categoria para controlar gastos.");
 
-    const label = totalScore >= 80 ? "Excelente" : totalScore >= 60 ? "Bom" : totalScore >= 40 ? "Regular" : "Atenção";
+    const label =
+      totalScore >= 80
+        ? "Excelente"
+        : totalScore >= 60
+          ? "Bom"
+          : totalScore >= 40
+            ? "Regular"
+            : "Atenção";
 
-    return new Response(JSON.stringify({
-      score: totalScore,
-      label,
-      breakdown: {
-        savings: { score: savingsScore, max: 25, rate: Math.round(savingsRate) },
-        goals: { score: goalsScore, max: 25, progress: Math.round(goalProgress * 100) },
-        budget: { score: budgetScore, max: 25 },
-        health: { score: healthScore, max: 25 },
+    return new Response(
+      JSON.stringify({
+        score: totalScore,
+        label,
+        breakdown: {
+          savings: { score: savingsScore, max: 25, rate: Math.round(savingsRate) },
+          goals: { score: goalsScore, max: 25, progress: Math.round(goalProgress * 100) },
+          budget: { score: budgetScore, max: 25 },
+          health: { score: healthScore, max: 25 },
+        },
+        tips,
+        monthIncome,
+        monthExpense,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
-      tips,
-      monthIncome,
-      monthExpense,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    );
   } catch (e) {
     console.error("financial-score error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

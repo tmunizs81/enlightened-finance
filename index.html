@@ -2,11 +2,17 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>T2-SimplyFin - Controle Financeiro Inteligente</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
-    <meta name="description" content="T2-SimplyFin: Sistema de controle financeiro pessoal com inteligência artificial" />
+    <meta
+      name="description"
+      content="T2-SimplyFin: Sistema de controle financeiro pessoal com inteligência artificial"
+    />
     <meta name="author" content="T2-SimplyFin" />
     <meta name="theme-color" content="#0d1117" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -15,7 +21,10 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <meta property="og:title" content="T2-SimplyFin - Controle Financeiro Inteligente" />
-    <meta property="og:description" content="Sistema de controle financeiro pessoal com inteligência artificial" />
+    <meta
+      property="og:description"
+      content="Sistema de controle financeiro pessoal com inteligência artificial"
+    />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/pwa-icon-512.png" />
 
@@ -25,11 +34,52 @@
 
   <body>
     <div id="root">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0d1117;gap:20px;">
-        <img src="/pwa-icon-192.png" alt="T2-SimplyFin" width="80" height="80" style="border-radius:18px;" />
-        <p style="color:#00d4aa;font-family:system-ui;font-size:18px;font-weight:600;margin:0;">T2-SimplyFin</p>
-        <div style="width:32px;height:32px;border:3px solid #1e293b;border-top-color:#00d4aa;border-radius:50%;animation:sp .8s linear infinite;"></div>
-        <style>@keyframes sp{to{transform:rotate(360deg)}}</style>
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #0d1117;
+          gap: 20px;
+        "
+      >
+        <img
+          src="/pwa-icon-192.png"
+          alt="T2-SimplyFin"
+          width="80"
+          height="80"
+          style="border-radius: 18px"
+        />
+        <p
+          style="
+            color: #00d4aa;
+            font-family: system-ui;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+          "
+        >
+          T2-SimplyFin
+        </p>
+        <div
+          style="
+            width: 32px;
+            height: 32px;
+            border: 3px solid #1e293b;
+            border-top-color: #00d4aa;
+            border-radius: 50%;
+            animation: sp 0.8s linear infinite;
+          "
+        ></div>
+        <style>
+          @keyframes sp {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+        </style>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,21 +15,39 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
     const userId = claimsData.claims.sub as string;
     const now = new Date();
 
     const [txRes, catRes, budgetRes, goalsRes] = await Promise.all([
-      supabase.from("transactions").select("amount, type, status, date, category_id").eq("user_id", userId).eq("status", "paid").order("date", { ascending: false }).limit(500),
+      supabase
+        .from("transactions")
+        .select("amount, type, status, date, category_id")
+        .eq("user_id", userId)
+        .eq("status", "paid")
+        .order("date", { ascending: false })
+        .limit(500),
       supabase.from("categories").select("id, name, type").eq("user_id", userId),
-      supabase.from("budgets").select("*").eq("user_id", userId).eq("month", now.getMonth() + 1).eq("year", now.getFullYear()),
-      supabase.from("goals").select("name, target_amount, current_amount, deadline").eq("user_id", userId),
+      supabase
+        .from("budgets")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("month", now.getMonth() + 1)
+        .eq("year", now.getFullYear()),
+      supabase
+        .from("goals")
+        .select("name, target_amount, current_amount, deadline")
+        .eq("user_id", userId),
     ]);
 
     const transactions = txRes.data || [];
@@ -44,7 +63,9 @@ serve(async (req) => {
       const mStart = m.toISOString().split("T")[0];
       const mEndStr = mEnd.toISOString().split("T")[0];
 
-      const mTx = transactions.filter((t: any) => t.date >= mStart && t.date <= mEndStr && t.type === "expense");
+      const mTx = transactions.filter(
+        (t: any) => t.date >= mStart && t.date <= mEndStr && t.type === "expense",
+      );
       const catTotals = new Map<string, number>();
       mTx.forEach((t: any) => {
         const catId = t.category_id || "none";
@@ -62,7 +83,13 @@ serve(async (req) => {
       const avg = amounts.reduce((a, b) => a + b, 0) / Math.max(amounts.length, 1);
       const catName = catMap.get(catId) || "Sem categoria";
       const hasExisting = existingBudgets.some((b: any) => b.category_id === catId);
-      spendingSummary.push({ catId, catName, avg: Math.round(avg), months: amounts.length, hasExisting });
+      spendingSummary.push({
+        catId,
+        catName,
+        avg: Math.round(avg),
+        months: amounts.length,
+        hasExisting,
+      });
     });
 
     const monthlyIncomes: number[] = [];
@@ -70,11 +97,17 @@ serve(async (req) => {
       const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       const inc = transactions
-        .filter((t: any) => t.date >= m.toISOString().split("T")[0] && t.date <= mEnd.toISOString().split("T")[0] && t.type === "income")
+        .filter(
+          (t: any) =>
+            t.date >= m.toISOString().split("T")[0] &&
+            t.date <= mEnd.toISOString().split("T")[0] &&
+            t.type === "income",
+        )
         .reduce((s: number, t: any) => s + Number(t.amount), 0);
       monthlyIncomes.push(inc);
     }
-    const avgIncome = monthlyIncomes.reduce((a, b) => a + b, 0) / Math.max(monthlyIncomes.length, 1);
+    const avgIncome =
+      monthlyIncomes.reduce((a, b) => a + b, 0) / Math.max(monthlyIncomes.length, 1);
 
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     let suggestions: any[] = [];
@@ -85,7 +118,7 @@ serve(async (req) => {
 
 Renda mensal: R$ ${avgIncome.toFixed(2)}
 Gastos por categoria (últimos 3 meses):
-${spendingSummary.map(s => `- ${s.catName}: média R$ ${s.avg.toFixed(2)}/mês (${s.months} meses de dados)`).join("\n")}
+${spendingSummary.map((s) => `- ${s.catName}: média R$ ${s.avg.toFixed(2)}/mês (${s.months} meses de dados)`).join("\n")}
 
 Regras:
 - Sugira valores realistas baseados no histórico
@@ -96,39 +129,44 @@ Regras:
 
         const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
-            tools: [{
-              type: "function",
-              function: {
-                name: "suggest_budgets",
-                description: "Return budget suggestions for each category",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    suggestions: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          catName: { type: "string" },
-                          catId: { type: "string" },
-                          currentAvg: { type: "number" },
-                          suggestedBudget: { type: "number" },
-                          reason: { type: "string" },
+            tools: [
+              {
+                type: "function",
+                function: {
+                  name: "suggest_budgets",
+                  description: "Return budget suggestions for each category",
+                  parameters: {
+                    type: "object",
+                    properties: {
+                      suggestions: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            catName: { type: "string" },
+                            catId: { type: "string" },
+                            currentAvg: { type: "number" },
+                            suggestedBudget: { type: "number" },
+                            reason: { type: "string" },
+                          },
+                          required: ["catName", "catId", "currentAvg", "suggestedBudget", "reason"],
+                          additionalProperties: false,
                         },
-                        required: ["catName", "catId", "currentAvg", "suggestedBudget", "reason"],
-                        additionalProperties: false,
                       },
                     },
+                    required: ["suggestions"],
+                    additionalProperties: false,
                   },
-                  required: ["suggestions"],
-                  additionalProperties: false,
                 },
               },
-            }],
+            ],
             tool_choice: { type: "function", function: { name: "suggest_budgets" } },
           }),
         });
@@ -156,18 +194,25 @@ Regras:
       }));
     }
 
-    return new Response(JSON.stringify({
-      suggestions,
-      avgIncome: Math.round(avgIncome),
-      existingBudgetsCount: existingBudgets.length,
-      totalSuggestedExpense: suggestions.reduce((s: number, sg: any) => s + sg.suggestedBudget, 0),
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        suggestions,
+        avgIncome: Math.round(avgIncome),
+        existingBudgetsCount: existingBudgets.length,
+        totalSuggestedExpense: suggestions.reduce(
+          (s: number, sg: any) => s + sg.suggestedBudget,
+          0,
+        ),
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     console.error("ai-budget-suggest error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

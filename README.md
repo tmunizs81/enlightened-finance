@@ -11,41 +11,48 @@ Aplicação web completa de gestão financeira pessoal com inteligência artific
 ## ✨ Funcionalidades Principais
 
 ### 📊 Dashboard Inteligente
+
 - Visão geral das finanças com gráficos interativos
 - Análise de fluxo de caixa
 - Previsão de saldo futuro
 - Distribuição de gastos por categoria
 
 ### 💳 Gestão de Transações
+
 - Cadastro rápido de receitas e despesas
 - Upload e OCR de recibos
 - Categorização automática
 - Filtros e busca avançada
 
 ### 🎯 Metas Financeiras
+
 - Definição de objetivos
 - Acompanhamento de progresso
 - Alertas de deadline
 - Visualização de conquistas
 
 ### 📅 Transações Recorrentes
+
 - Automação de contas fixas
 - Assinaturas e mensalidades
 - Geração automática de lançamentos
 
 ### 🤖 Assistente de IA
+
 - Chat interativo para consultas
 - Insights financeiros personalizados
 - Análise de padrões de gastos
 - Sugestões de economia
 
 ### 📱 Telegram Bot
+
 - Registro de transações via chat
 - Consultas de saldo e gastos
 - Notificações de metas
 - Resumos diários automáticos
 
 ### 🔐 Segurança e Privacidade
+
 - Autenticação segura (email + Google)
 - Dados criptografados
 - Row Level Security (RLS)
@@ -68,6 +75,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/tmunizs81/enlightened-financ
 Leia o guia detalhado: **[DEPLOY.md](DEPLOY.md)**
 
 Inclui:
+
 - ✅ Instalação passo a passo no Ubuntu 24.04
 - ✅ Configuração de domínio e SSL
 - ✅ Segurança e firewall
@@ -79,6 +87,7 @@ Inclui:
 ## 🛠️ Tecnologias Utilizadas
 
 ### Frontend
+
 - **React 18** - Interface moderna e reativa
 - **TypeScript** - Tipagem estática
 - **Tailwind CSS** - Estilização utility-first
@@ -88,17 +97,20 @@ Inclui:
 - **React Router** - Navegação SPA
 
 ### Backend
+
 - **Lovable Cloud** - Backend completo (Supabase)
 - **PostgreSQL** - Banco de dados relacional
 - **Edge Functions** - Lógica serverless
 - **Row Level Security** - Segurança de dados
 
 ### Integrações
+
 - **Lovable AI** - Modelos de IA (Gemini, GPT)
 - **Telegram API** - Bot de conversação
 - **OCR** - Extração de dados de recibos
 
 ### DevOps
+
 - **Docker** - Containerização
 - **Docker Compose** - Orquestração
 - **Nginx** - Proxy reverso
@@ -159,6 +171,7 @@ Acesse: `http://localhost:5173`
 ### Variáveis de Ambiente
 
 Já configuradas automaticamente pelo Lovable Cloud:
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_SUPABASE_PROJECT_ID`
@@ -182,6 +195,7 @@ Já configuradas automaticamente pelo Lovable Cloud:
 ### Segurança (RLS)
 
 Todas as tabelas possuem políticas RLS:
+
 - Usuários só acessam seus próprios dados
 - Validações no lado do servidor
 - Triggers para auditoria
@@ -203,6 +217,7 @@ Contribuições são bem-vindas! Por favor:
 ## 📝 Roadmap
 
 ### v1.1 (Em Breve)
+
 - [ ] App mobile nativo
 - [ ] Exportação de relatórios PDF
 - [ ] Integração com bancos (Open Banking)
@@ -210,6 +225,7 @@ Contribuições são bem-vindas! Por favor:
 - [ ] Temas personalizáveis
 
 ### v1.2 (Futuro)
+
 - [ ] Investimentos e carteiras
 - [ ] Split de despesas (grupos)
 - [ ] Planejamento tributário

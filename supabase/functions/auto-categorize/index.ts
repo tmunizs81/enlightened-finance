@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,17 +15,23 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     const user = { id: claimsData.claims.sub as string };
 
     const { description, type } = await req.json();
     if (!description || !type) {
-      return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ category_id: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { data: categories } = await supabase
@@ -34,7 +41,9 @@ serve(async (req) => {
       .eq("type", type);
 
     if (!categories || categories.length === 0) {
-      return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ category_id: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { data: recentTx } = await supabase
@@ -47,38 +56,47 @@ serve(async (req) => {
       .limit(50);
 
     const descLower = description.toLowerCase().trim();
-    const historyMatch = (recentTx || []).find((t: any) =>
-      t.description.toLowerCase().trim() === descLower
+    const historyMatch = (recentTx || []).find(
+      (t: any) => t.description.toLowerCase().trim() === descLower,
     );
     if (historyMatch?.category_id) {
       const cat = categories.find((c: any) => c.id === historyMatch.category_id);
       if (cat) {
-        return new Response(JSON.stringify({ category_id: cat.id, category_name: cat.name, source: "history" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ category_id: cat.id, category_name: cat.name, source: "history" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
     }
 
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) {
-      return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ category_id: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
 
-    const historyExamples = (recentTx || []).slice(0, 20).map((t: any) => {
-      const catName = categories.find((c: any) => c.id === t.category_id)?.name || "?";
-      return `"${t.description}" → ${catName}`;
-    }).join("\n");
+    const historyExamples = (recentTx || [])
+      .slice(0, 20)
+      .map((t: any) => {
+        const catName = categories.find((c: any) => c.id === t.category_id)?.name || "?";
+        return `"${t.description}" → ${catName}`;
+      })
+      .join("\n");
 
     const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{
-          role: "user",
-          content: `Classifique esta transação na categoria mais adequada.
+        messages: [
+          {
+            role: "user",
+            content: `Classifique esta transação na categoria mais adequada.
 
 Descrição: "${description}"
 Tipo: ${type === "expense" ? "despesa" : "receita"}
@@ -90,13 +108,16 @@ ${historyExamples ? `Exemplos do histórico do usuário:\n${historyExamples}` : 
 
 Responda APENAS com o JSON: {"category_id":"uuid-da-categoria"}
 Se nenhuma categoria se encaixar, responda: {"category_id":null}`,
-        }],
+          },
+        ],
       }),
     });
 
     if (!aiResp.ok) {
       console.error("AI error:", aiResp.status);
-      return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ category_id: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiData = await aiResp.json();
@@ -107,14 +128,19 @@ Se nenhuma categoria se encaixar, responda: {"category_id":null}`,
       if (parsed.category_id) {
         const cat = categories.find((c: any) => c.id === parsed.category_id);
         if (cat) {
-          return new Response(JSON.stringify({ category_id: cat.id, category_name: cat.name, source: "ai" }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({ category_id: cat.id, category_name: cat.name, source: "ai" }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
         }
       }
     }
 
-    return new Response(JSON.stringify({ category_id: null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ category_id: null }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("auto-categorize error:", e);
     return new Response(JSON.stringify({ category_id: null }), {

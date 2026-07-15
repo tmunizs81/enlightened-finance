@@ -32,13 +32,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: "var(--gradient-dark)" }}>
+    <div
+      className="flex min-h-screen flex-col items-center justify-center p-4"
+      style={{ background: "var(--gradient-dark)" }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-card w-full max-w-sm p-8"
       >
-        <div className="flex items-center gap-3 mb-8 justify-center">
+        <div className="mb-8 flex items-center justify-center gap-3">
           <img src={logo} alt="T2-SimplyFin" className="h-32 w-32 rounded-2xl object-contain" />
           <div>
             <h1 className="text-lg font-bold text-foreground">T2-SimplyFin</h1>
@@ -50,24 +53,44 @@ const Auth = () => {
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="pl-9 bg-secondary border-border" required />
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                className="border-border bg-secondary pl-9"
+                required
+              />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Senha</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="pl-9 bg-secondary border-border" required minLength={6} />
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="border-border bg-secondary pl-9"
+                required
+                minLength={6}
+              />
             </div>
           </div>
-          <Button type="submit" disabled={loading} className="w-full gradient-bg-primary text-primary-foreground">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="gradient-bg-primary w-full text-primary-foreground"
+          >
             {loading ? "Carregando..." : "Entrar"}
           </Button>
         </form>
       </motion.div>
-      <p className="mt-6 text-center text-[10px] text-muted-foreground/60 max-w-sm px-4">
-        Todos os direitos reservados a T2 Soluções Tecnológicas. Proibido cópia ou distribuição não autorizada.
+      <p className="mt-6 max-w-sm px-4 text-center text-[10px] text-muted-foreground/60">
+        Todos os direitos reservados a T2 Soluções Tecnológicas. Proibido cópia ou distribuição não
+        autorizada.
       </p>
     </div>
   );

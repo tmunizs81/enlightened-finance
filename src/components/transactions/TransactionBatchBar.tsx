@@ -12,7 +12,7 @@ export function TransactionBatchBar({ count, onDelete, onClear, loading }: Props
   if (count === 0) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 glass-card border border-border shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="glass-card fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 border border-border px-5 py-3 shadow-2xl duration-300 animate-in slide-in-from-bottom-4">
       <span className="text-sm font-medium text-foreground">
         {count} {count === 1 ? "selecionado" : "selecionados"}
       </span>

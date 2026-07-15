@@ -1,11 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { Bell, Check, CheckCheck, X, AlertTriangle, TrendingDown, Target, Lightbulb } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Bell,
+  Check,
+  CheckCheck,
+  X,
+  AlertTriangle,
+  TrendingDown,
+  Target,
+  Lightbulb,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,17 +74,22 @@ export function NotificationCenter() {
         },
         (payload) => {
           setNotifications((prev) => [payload.new as Notification, ...prev].slice(0, 20));
-        }
+        },
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAsRead = async (id: string) => {
-    await supabase.from("ai_insights").update({ read: true } as any).eq("id", id);
+    await supabase
+      .from("ai_insights")
+      .update({ read: true } as any)
+      .eq("id", id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
@@ -87,7 +97,10 @@ export function NotificationCenter() {
     if (!user) return;
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length === 0) return;
-    await supabase.from("ai_insights").update({ read: true } as any).in("id", unreadIds);
+    await supabase
+      .from("ai_insights")
+      .update({ read: true } as any)
+      .in("id", unreadIds);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
@@ -108,17 +121,17 @@ export function NotificationCenter() {
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground flex items-center justify-center animate-pulse">
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 animate-pulse items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between p-3 border-b border-border">
+        <div className="flex items-center justify-between border-b border-border p-3">
           <h4 className="text-sm font-semibold text-foreground">Notificações</h4>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={markAllRead}>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={markAllRead}>
               <CheckCheck className="h-3 w-3" />
               Ler todas
             </Button>
@@ -127,7 +140,7 @@ export function NotificationCenter() {
         <ScrollArea className="max-h-80">
           {notifications.length === 0 ? (
             <div className="p-6 text-center">
-              <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <Bell className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">Nenhuma notificação</p>
             </div>
           ) : (
@@ -138,21 +151,29 @@ export function NotificationCenter() {
                 return (
                   <div
                     key={n.id}
-                    className={`p-3 flex gap-3 hover:bg-muted/50 transition-colors cursor-pointer ${!n.read ? "bg-primary/5" : ""}`}
+                    className={`flex cursor-pointer gap-3 p-3 transition-colors hover:bg-muted/50 ${!n.read ? "bg-primary/5" : ""}`}
                     onClick={() => markAsRead(n.id)}
                   >
                     <div className={`mt-0.5 ${color}`}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className={`text-xs font-medium truncate ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
+                        <p
+                          className={`truncate text-xs font-medium ${!n.read ? "text-foreground" : "text-muted-foreground"}`}
+                        >
                           {n.title}
                         </p>
-                        {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />}
+                        {!n.read && (
+                          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                        )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{n.description}</p>
-                      <p className="text-[10px] text-muted-foreground/70 mt-1">{formatTime(n.created_at)}</p>
+                      <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                        {n.description}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground/70">
+                        {formatTime(n.created_at)}
+                      </p>
                     </div>
                   </div>
                 );
