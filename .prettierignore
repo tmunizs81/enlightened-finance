@@ -1,0 +1,11 @@
+dist
+build
+node_modules
+coverage
+.lovable
+public
+src/integrations/supabase/types.ts
+*.lock
+*.lockb
+package-lock.json
+bun.lock
