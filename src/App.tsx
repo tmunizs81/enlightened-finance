@@ -26,6 +26,7 @@ const Achievements = lazy(() => import("./pages/Achievements"));
 const FinancialRules = lazy(() => import("./pages/FinancialRules"));
 const Categories = lazy(() => import("./pages/Categories"));
 const AIChatPanel = lazy(() => import("./components/chat/AIChatPanel").then(m => ({ default: m.AIChatPanel })));
+const DefiTracker = lazy(() => import("./pages/DefiTracker"));
 
 // Optimized QueryClient with better caching
 const queryClient = new QueryClient({
@@ -79,6 +80,7 @@ function ProtectedRoutes() {
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/rules" element={<FinancialRules />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/defi" element={<DefiTracker />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
