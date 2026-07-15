@@ -46,10 +46,14 @@ export default function InstallPage() {
         <p className="text-sm text-muted-foreground">Instale o T2-SimplyFin no seu celular</p>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-8 max-w-lg mx-auto text-center space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card mx-auto max-w-lg space-y-6 p-8 text-center"
+      >
         {installed ? (
           <>
-            <div className="inline-flex p-4 rounded-2xl bg-success/15">
+            <div className="inline-flex rounded-2xl bg-success/15 p-4">
               <CheckCircle className="h-10 w-10 text-success" />
             </div>
             <div className="space-y-2">
@@ -61,52 +65,72 @@ export default function InstallPage() {
           </>
         ) : (
           <>
-            <div className="inline-flex p-4 rounded-2xl bg-primary/15">
+            <div className="inline-flex rounded-2xl bg-primary/15 p-4">
               <Smartphone className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
               <h2 className="text-lg font-bold text-foreground">Instale o T2-SimplyFin</h2>
               <p className="text-sm text-muted-foreground">
-                Use o T2-SimplyFin como um app nativo no seu celular. Acesso rápido, offline e sem precisar de loja de apps.
+                Use o T2-SimplyFin como um app nativo no seu celular. Acesso rápido, offline e sem
+                precisar de loja de apps.
               </p>
             </div>
 
             {deferredPrompt ? (
-              <Button onClick={handleInstall} className="gradient-bg-primary text-primary-foreground gap-2 text-base px-8 py-3 h-auto">
+              <Button
+                onClick={handleInstall}
+                className="gradient-bg-primary h-auto gap-2 px-8 py-3 text-base text-primary-foreground"
+              >
                 <Download className="h-5 w-5" /> Instalar Agora
               </Button>
             ) : isIOS ? (
-              <div className="space-y-3 text-left bg-secondary/50 rounded-lg p-4 border border-border">
+              <div className="space-y-3 rounded-lg border border-border bg-secondary/50 p-4 text-left">
                 <p className="text-xs font-semibold text-foreground">📱 Como instalar no iPhone:</p>
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                    Toque no ícone <Share className="h-3.5 w-3.5 text-primary inline" /> Compartilhar na barra do Safari
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      1
+                    </span>
+                    Toque no ícone <Share className="inline h-3.5 w-3.5 text-primary" />{" "}
+                    Compartilhar na barra do Safari
                   </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      2
+                    </span>
                     Selecione "Adicionar à Tela de Início"
                   </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      3
+                    </span>
                     Toque em "Adicionar" para confirmar
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-3 text-left bg-secondary/50 rounded-lg p-4 border border-border">
-                <p className="text-xs font-semibold text-foreground">📱 Como instalar no Android:</p>
+              <div className="space-y-3 rounded-lg border border-border bg-secondary/50 p-4 text-left">
+                <p className="text-xs font-semibold text-foreground">
+                  📱 Como instalar no Android:
+                </p>
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                    Toque no menu <MoreVertical className="h-3.5 w-3.5 text-primary inline" /> do navegador
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      1
+                    </span>
+                    Toque no menu <MoreVertical className="inline h-3.5 w-3.5 text-primary" /> do
+                    navegador
                   </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      2
+                    </span>
                     Selecione "Instalar app" ou "Adicionar à tela inicial"
                   </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="bg-primary/15 text-primary rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      3
+                    </span>
                     Confirme a instalação
                   </p>
                 </div>
@@ -119,7 +143,10 @@ export default function InstallPage() {
                 { label: "Rápido", desc: "Carregamento instantâneo" },
                 { label: "Seguro", desc: "Seus dados protegidos" },
               ].map((f) => (
-                <div key={f.label} className="bg-secondary/50 rounded-lg p-3 border border-border/50">
+                <div
+                  key={f.label}
+                  className="rounded-lg border border-border/50 bg-secondary/50 p-3"
+                >
                   <p className="text-xs font-medium text-foreground">{f.label}</p>
                   <p className="text-[10px] text-muted-foreground">{f.desc}</p>
                 </div>

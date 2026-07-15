@@ -31,7 +31,9 @@ export function useAutoBackup() {
 
       localStorage.setItem(STORAGE_KEY, today);
       if (data) {
-        console.log(`Auto-backup completed: ${data.totalRows} records in ${data.tables} tables → ${data.filename}`);
+        console.log(
+          `Auto-backup completed: ${data.totalRows} records in ${data.tables} tables → ${data.filename}`,
+        );
       }
     } catch (e) {
       console.error("Auto-backup error:", e);

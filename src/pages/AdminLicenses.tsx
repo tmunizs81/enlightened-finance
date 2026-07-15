@@ -6,11 +6,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Shield, UserPlus, Ban, CheckCircle, Key, Trash2, Pencil, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 
 interface License {
@@ -114,7 +128,17 @@ export default function AdminLicenses() {
 
   // Editar licença
   const editLicenseMutation = useMutation({
-    mutationFn: async ({ id, status, expires_at, user_id }: { id: string; status: string; expires_at: string; user_id: string }) => {
+    mutationFn: async ({
+      id,
+      status,
+      expires_at,
+      user_id,
+    }: {
+      id: string;
+      status: string;
+      expires_at: string;
+      user_id: string;
+    }) => {
       const { error } = await supabase
         .from("licenses")
         .update({ status, expires_at, user_id })
@@ -153,24 +177,22 @@ export default function AdminLicenses() {
 
   if (roleLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-destructive" />
               Acesso Negado
             </CardTitle>
-            <CardDescription>
-              Você não tem permissão para acessar esta área.
-            </CardDescription>
+            <CardDescription>Você não tem permissão para acessar esta área.</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -178,7 +200,7 @@ export default function AdminLicenses() {
   }
 
   const usersWithoutLicense = profiles.filter(
-    (profile) => !licenses.some((license) => license.user_id === profile.user_id)
+    (profile) => !licenses.some((license) => license.user_id === profile.user_id),
   );
 
   const licensesWithProfiles = licenses.map((license) => {
@@ -187,14 +209,14 @@ export default function AdminLicenses() {
   });
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
+    <div className="container mx-auto space-y-8 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-3xl font-bold">
             <Key className="h-8 w-8 text-primary" />
             Gerenciar Licenças
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-muted-foreground">
             Controle de acesso e licenciamento de usuários
           </p>
         </div>
@@ -262,15 +284,15 @@ export default function AdminLicenses() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Licença</DialogTitle>
-            <DialogDescription>
-              Altere os dados da licença selecionada.
-            </DialogDescription>
+            <DialogDescription>Altere os dados da licença selecionada.</DialogDescription>
           </DialogHeader>
           {editingLicense && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Chave</Label>
-                <code className="block text-xs bg-muted px-3 py-2 rounded">{editingLicense.license_key}</code>
+                <code className="block rounded bg-muted px-3 py-2 text-xs">
+                  {editingLicense.license_key}
+                </code>
               </div>
 
               <div className="space-y-2">
@@ -324,7 +346,9 @@ export default function AdminLicenses() {
                 disabled={editLicenseMutation.isPending}
                 className="w-full"
               >
-                {editLicenseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {editLicenseMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 {editLicenseMutation.isPending ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </div>
@@ -335,9 +359,7 @@ export default function AdminLicenses() {
       <Card>
         <CardHeader>
           <CardTitle>Licenças Ativas</CardTitle>
-          <CardDescription>
-            Total de {licenses.length} licenças cadastradas
-          </CardDescription>
+          <CardDescription>Total de {licenses.length} licenças cadastradas</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -360,7 +382,9 @@ export default function AdminLicenses() {
                   <TableRow key={license.id}>
                     <TableCell className="font-medium">{license.display_name}</TableCell>
                     <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{license.license_key}</code>
+                      <code className="rounded bg-muted px-2 py-1 text-xs">
+                        {license.license_key}
+                      </code>
                     </TableCell>
                     <TableCell>
                       {isExpired ? (
@@ -379,20 +403,30 @@ export default function AdminLicenses() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => updateLicenseStatusMutation.mutate({ id: license.id, status: "blocked" })}
+                            onClick={() =>
+                              updateLicenseStatusMutation.mutate({
+                                id: license.id,
+                                status: "blocked",
+                              })
+                            }
                             disabled={updateLicenseStatusMutation.isPending}
                           >
-                            <Ban className="h-3 w-3 mr-1" />
+                            <Ban className="mr-1 h-3 w-3" />
                             Bloquear
                           </Button>
                         ) : (
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => updateLicenseStatusMutation.mutate({ id: license.id, status: "active" })}
+                            onClick={() =>
+                              updateLicenseStatusMutation.mutate({
+                                id: license.id,
+                                status: "active",
+                              })
+                            }
                             disabled={updateLicenseStatusMutation.isPending}
                           >
-                            <CheckCircle className="h-3 w-3 mr-1" />
+                            <CheckCircle className="mr-1 h-3 w-3" />
                             Ativar
                           </Button>
                         )}
@@ -402,7 +436,7 @@ export default function AdminLicenses() {
                           onClick={() => openEditDialog(license)}
                           className="text-muted-foreground hover:text-primary"
                         >
-                          <Pencil className="h-3 w-3 mr-1" />
+                          <Pencil className="mr-1 h-3 w-3" />
                           Editar
                         </Button>
                         <Button

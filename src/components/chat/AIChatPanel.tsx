@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, User, Loader2, Sparkles, Trash2, Baby, Brain, TrendingUp } from "lucide-react";
+import {
+  MessageCircle,
+  X,
+  Send,
+  User,
+  Loader2,
+  Sparkles,
+  Trash2,
+  Baby,
+  Brain,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
@@ -24,8 +35,20 @@ type ChatMode = "normal" | "simple" | "advisor";
 
 const MODE_LABELS: Record<ChatMode, { label: string; icon: any; desc: string; prefix: string }> = {
   normal: { label: "Normal", icon: Brain, desc: "Respostas completas", prefix: "" },
-  simple: { label: "Simples", icon: Baby, desc: "Como se eu tivesse 5 anos", prefix: "[MODO SIMPLES: Responda como se o usuário tivesse 5 anos de idade. Use linguagem ultra-simples, analogias do dia a dia, sem termos técnicos. Máximo 3 frases curtas.]\n\n" },
-  advisor: { label: "Consultor", icon: TrendingUp, desc: "Consultoria financeira profissional", prefix: "[MODO CONSULTOR: Aja como um consultor financeiro sênior. Analise profundamente, cite números específicos, sugira estratégias detalhadas com prazos e valores. Seja formal e profissional.]\n\n" },
+  simple: {
+    label: "Simples",
+    icon: Baby,
+    desc: "Como se eu tivesse 5 anos",
+    prefix:
+      "[MODO SIMPLES: Responda como se o usuário tivesse 5 anos de idade. Use linguagem ultra-simples, analogias do dia a dia, sem termos técnicos. Máximo 3 frases curtas.]\n\n",
+  },
+  advisor: {
+    label: "Consultor",
+    icon: TrendingUp,
+    desc: "Consultoria financeira profissional",
+    prefix:
+      "[MODO CONSULTOR: Aja como um consultor financeiro sênior. Analise profundamente, cite números específicos, sugira estratégias detalhadas com prazos e valores. Seja formal e profissional.]\n\n",
+  },
 };
 
 async function streamChat({
@@ -50,12 +73,21 @@ async function streamChat({
 
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({ error: "Erro na conexão" }));
-    if (resp.status === 429) { onError("Limite de requisições excedido. Tente em instantes."); return; }
-    if (resp.status === 402) { onError("Créditos insuficientes. Adicione créditos ao workspace."); return; }
+    if (resp.status === 429) {
+      onError("Limite de requisições excedido. Tente em instantes.");
+      return;
+    }
+    if (resp.status === 402) {
+      onError("Créditos insuficientes. Adicione créditos ao workspace.");
+      return;
+    }
     onError(data.error || `Erro ${resp.status}`);
     return;
   }
-  if (!resp.body) { onError("Sem resposta"); return; }
+  if (!resp.body) {
+    onError("Sem resposta");
+    return;
+  }
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -75,7 +107,10 @@ async function streamChat({
       if (line.startsWith(":") || line.trim() === "") continue;
       if (!line.startsWith("data: ")) continue;
       const jsonStr = line.slice(6).trim();
-      if (jsonStr === "[DONE]") { streamDone = true; break; }
+      if (jsonStr === "[DONE]") {
+        streamDone = true;
+        break;
+      }
       try {
         const parsed = JSON.parse(jsonStr);
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -99,7 +134,9 @@ async function streamChat({
         const parsed = JSON.parse(jsonStr);
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
         if (content) onDelta(content);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -133,14 +170,16 @@ export function AIChatPanel() {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant") {
-          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+          return prev.map((m, i) =>
+            i === prev.length - 1 ? { ...m, content: assistantSoFar } : m,
+          );
         }
         return [...prev, { role: "assistant", content: assistantSoFar }];
       });
     };
 
     // Build full history with mode prefix only on last message
-    const historyMessages = [...messages.map(m => ({ ...m })), userMsgWithMode];
+    const historyMessages = [...messages.map((m) => ({ ...m })), userMsgWithMode];
 
     try {
       await streamChat({
@@ -169,7 +208,7 @@ export function AIChatPanel() {
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={() => setOpen(true)}
-            className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full gradient-bg-primary flex items-center justify-center shadow-lg glow-primary"
+            className="gradient-bg-primary glow-primary fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg"
           >
             <MessageCircle className="h-6 w-6 text-primary-foreground" />
           </motion.button>
@@ -183,12 +222,12 @@ export function AIChatPanel() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] h-[600px] glass-card flex flex-col overflow-hidden"
+            className="glass-card fixed bottom-6 right-6 z-50 flex h-[600px] w-[400px] max-w-[calc(100vw-48px)] flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between border-b border-border p-4">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg gradient-bg-primary flex items-center justify-center">
+                <div className="gradient-bg-primary flex h-8 w-8 items-center justify-center rounded-lg">
                   <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
@@ -208,51 +247,64 @@ export function AIChatPanel() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setOpen(false)}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
             {/* Mode Selector */}
-            <div className="flex gap-1 p-2 border-b border-border/50">
-              {(Object.entries(MODE_LABELS) as [ChatMode, typeof MODE_LABELS["normal"]][]).map(([key, val]) => {
-                const Icon = val.icon;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setMode(key)}
-                    className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] font-medium transition-colors ${
-                      mode === key
-                        ? "bg-primary/15 text-primary border border-primary/30"
-                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 border border-transparent"
-                    }`}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {val.label}
-                  </button>
-                );
-              })}
+            <div className="flex gap-1 border-b border-border/50 p-2">
+              {(Object.entries(MODE_LABELS) as [ChatMode, (typeof MODE_LABELS)["normal"]][]).map(
+                ([key, val]) => {
+                  const Icon = val.icon;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setMode(key)}
+                      className={`flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition-colors ${
+                        mode === key
+                          ? "border border-primary/30 bg-primary/15 text-primary"
+                          : "border border-transparent bg-secondary/30 text-muted-foreground hover:bg-secondary/50"
+                      }`}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {val.label}
+                    </button>
+                  );
+                },
+              )}
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
+            <div ref={scrollRef} className="scrollbar-thin flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 && (
                 <div className="space-y-4">
-                  <div className="text-center py-4">
-                    <div className="h-12 w-12 rounded-2xl gradient-bg-primary flex items-center justify-center mx-auto mb-3">
+                  <div className="py-4 text-center">
+                    <div className="gradient-bg-primary mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl">
                       <Sparkles className="h-6 w-6 text-primary-foreground" />
                     </div>
                     <p className="text-sm font-medium text-foreground">Assistente Financeiro IA</p>
-                    <p className="text-xs text-muted-foreground mt-1">Tenho acesso aos seus dados financeiros reais.<br />Pergunte qualquer coisa!</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Tenho acesso aos seus dados financeiros reais.
+                      <br />
+                      Pergunte qualquer coisa!
+                    </p>
                   </div>
                   <div className="space-y-1.5">
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-1">Perguntas rápidas</p>
+                    <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Perguntas rápidas
+                    </p>
                     {QUICK_QUESTIONS.map((q) => (
                       <button
                         key={q}
                         onClick={() => sendMessage(q)}
-                        className="w-full text-left px-3 py-2 rounded-lg bg-secondary/50 hover:bg-secondary text-xs text-foreground transition-colors border border-border/50 hover:border-primary/30"
+                        className="w-full rounded-lg border border-border/50 bg-secondary/50 px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-primary/30 hover:bg-secondary"
                       >
                         {q}
                       </button>
@@ -261,19 +313,24 @@ export function AIChatPanel() {
                 </div>
               )}
               {messages.map((msg, i) => (
-                <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
                   {msg.role === "assistant" && (
-                    <div className="h-6 w-6 rounded-md gradient-bg-primary flex items-center justify-center shrink-0 mt-1">
+                    <div className="gradient-bg-primary mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md">
                       <Sparkles className="h-3 w-3 text-primary-foreground" />
                     </div>
                   )}
-                  <div className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
-                    msg.role === "user"
-                      ? "gradient-bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground"
-                  }`}>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                      msg.role === "user"
+                        ? "gradient-bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground"
+                    }`}
+                  >
                     {msg.role === "assistant" ? (
-                      <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1.5 [&_p]:mt-0 [&_ul]:mb-1.5 [&_ul]:mt-0.5 [&_li]:mb-0.5 [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_code]:text-primary [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded">
+                      <div className="prose prose-sm prose-invert max-w-none [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-primary [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_li]:mb-0.5 [&_p]:mb-1.5 [&_p]:mt-0 [&_strong]:text-foreground [&_ul]:mb-1.5 [&_ul]:mt-0.5">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
@@ -281,7 +338,7 @@ export function AIChatPanel() {
                     )}
                   </div>
                   {msg.role === "user" && (
-                    <div className="h-6 w-6 rounded-md bg-secondary flex items-center justify-center shrink-0 mt-1">
+                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-secondary">
                       <User className="h-3 w-3 text-muted-foreground" />
                     </div>
                   )}
@@ -289,32 +346,46 @@ export function AIChatPanel() {
               ))}
               {loading && messages[messages.length - 1]?.role !== "assistant" && (
                 <div className="flex gap-2">
-                  <div className="h-6 w-6 rounded-md gradient-bg-primary flex items-center justify-center shrink-0">
+                  <div className="gradient-bg-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-md">
                     <Sparkles className="h-3 w-3 text-primary-foreground" />
                   </div>
-                  <div className="bg-secondary rounded-lg px-3 py-2 flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2">
                     <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                    <span className="text-[10px] text-muted-foreground">Analisando seus dados...</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Analisando seus dados...
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Input */}
-            <div className="p-3 border-t border-border">
-              <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex gap-2">
+            <div className="border-t border-border p-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send();
+                }}
+                className="flex gap-2"
+              >
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={mode === "simple" ? "Pergunta algo simples..." : mode === "advisor" ? "Consulte o especialista..." : "Quanto gastei com alimentação?..."}
-                  className="flex-1 bg-secondary border-border text-xs h-9"
+                  placeholder={
+                    mode === "simple"
+                      ? "Pergunta algo simples..."
+                      : mode === "advisor"
+                        ? "Consulte o especialista..."
+                        : "Quanto gastei com alimentação?..."
+                  }
+                  className="h-9 flex-1 border-border bg-secondary text-xs"
                   disabled={loading}
                 />
                 <Button
                   type="submit"
                   size="icon"
                   disabled={loading || !input.trim()}
-                  className="h-9 w-9 gradient-bg-primary text-primary-foreground shrink-0"
+                  className="gradient-bg-primary h-9 w-9 shrink-0 text-primary-foreground"
                 >
                   <Send className="h-3.5 w-3.5" />
                 </Button>

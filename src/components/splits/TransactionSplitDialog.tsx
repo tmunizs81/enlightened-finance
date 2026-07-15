@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,8 +46,14 @@ interface TransactionSplitDialogProps {
 }
 
 export function TransactionSplitDialog({
-  open, onOpenChange, transactionId, transactionAmount,
-  transactionType, transactionDescription, categories, onSaved,
+  open,
+  onOpenChange,
+  transactionId,
+  transactionAmount,
+  transactionType,
+  transactionDescription,
+  categories,
+  onSaved,
 }: TransactionSplitDialogProps) {
   const [splits, setSplits] = useState<Split[]>([]);
   const [saving, setSaving] = useState(false);
@@ -54,15 +72,21 @@ export function TransactionSplitDialog({
       .order("created_at", { ascending: true });
 
     if (data && (data as any[]).length > 0) {
-      setSplits((data as any[]).map((s: any) => ({
-        id: s.id,
-        category_id: s.category_id,
-        description: s.description || "",
-        amount: String(s.amount),
-      })));
+      setSplits(
+        (data as any[]).map((s: any) => ({
+          id: s.id,
+          category_id: s.category_id,
+          description: s.description || "",
+          amount: String(s.amount),
+        })),
+      );
     } else {
       setSplits([
-        { category_id: null, description: transactionDescription, amount: String(transactionAmount / 2) },
+        {
+          category_id: null,
+          description: transactionDescription,
+          amount: String(transactionAmount / 2),
+        },
         { category_id: null, description: "", amount: String(transactionAmount / 2) },
       ]);
     }
@@ -72,7 +96,10 @@ export function TransactionSplitDialog({
   const diff = transactionAmount - totalSplits;
 
   const addSplit = () => {
-    setSplits([...splits, { category_id: null, description: "", amount: diff > 0 ? String(diff) : "0" }]);
+    setSplits([
+      ...splits,
+      { category_id: null, description: "", amount: diff > 0 ? String(diff) : "0" },
+    ]);
   };
 
   const removeSplit = (idx: number) => {
@@ -88,7 +115,9 @@ export function TransactionSplitDialog({
 
   const handleSave = async () => {
     if (Math.abs(diff) > 0.01) {
-      toast.error(`A soma dos splits deve ser igual a R$ ${transactionAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`);
+      toast.error(
+        `A soma dos splits deve ser igual a R$ ${transactionAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      );
       return;
     }
 
@@ -108,9 +137,7 @@ export function TransactionSplitDialog({
         amount: parseFloat(s.amount),
       }));
 
-      const { error } = await supabase
-        .from("transaction_splits" as any)
-        .insert(inserts as any);
+      const { error } = await supabase.from("transaction_splits" as any).insert(inserts as any);
 
       if (error) throw error;
       toast.success("Splits salvos com sucesso!");
@@ -125,7 +152,7 @@ export function TransactionSplitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-card border-border sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="glass-card max-h-[90vh] overflow-y-auto border-border sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-foreground">Dividir Transação</DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -135,11 +162,16 @@ export function TransactionSplitDialog({
 
         <div className="space-y-3">
           {splits.map((split, idx) => (
-            <div key={idx} className="glass-card p-3 space-y-2">
+            <div key={idx} className="glass-card space-y-2 p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Split {idx + 1}</span>
                 {splits.length > 2 && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeSplit(idx)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeSplit(idx)}
+                  >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 )}
@@ -150,7 +182,7 @@ export function TransactionSplitDialog({
                   <Input
                     value={split.description}
                     onChange={(e) => updateSplit(idx, "description", e.target.value)}
-                    className="h-8 text-xs bg-secondary border-border"
+                    className="h-8 border-border bg-secondary text-xs"
                     placeholder="Descrição..."
                   />
                 </div>
@@ -162,21 +194,25 @@ export function TransactionSplitDialog({
                     min="0"
                     value={split.amount}
                     onChange={(e) => updateSplit(idx, "amount", e.target.value)}
-                    className="h-8 text-xs bg-secondary border-border"
+                    className="h-8 border-border bg-secondary text-xs"
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] text-muted-foreground">Categoria</Label>
-                <Select value={split.category_id || "none"} onValueChange={(v) => updateSplit(idx, "category_id", v === "none" ? "" : v)}>
-                  <SelectTrigger className="h-8 text-xs bg-secondary border-border">
+                <Select
+                  value={split.category_id || "none"}
+                  onValueChange={(v) => updateSplit(idx, "category_id", v === "none" ? "" : v)}
+                >
+                  <SelectTrigger className="h-8 border-border bg-secondary text-xs">
                     <SelectValue placeholder="Categoria..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem categoria</SelectItem>
                     {filteredCats.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.icon ? `${c.icon} ` : ""}{c.name}
+                        {c.icon ? `${c.icon} ` : ""}
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -186,19 +222,36 @@ export function TransactionSplitDialog({
           ))}
         </div>
 
-        <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-dashed border-border text-muted-foreground" onClick={addSplit}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2 border-dashed border-border text-xs text-muted-foreground"
+          onClick={addSplit}
+        >
           <Plus className="h-3 w-3" /> Adicionar split
         </Button>
 
-        <div className={`text-center text-xs font-medium ${Math.abs(diff) > 0.01 ? "text-destructive" : "text-success"}`}>
+        <div
+          className={`text-center text-xs font-medium ${Math.abs(diff) > 0.01 ? "text-destructive" : "text-success"}`}
+        >
           {Math.abs(diff) > 0.01
             ? `Diferença: R$ ${Math.abs(diff).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${diff > 0 ? "restante" : "excedente"}`
             : "✓ Valores conferem"}
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving || Math.abs(diff) > 0.01} className="gradient-bg-primary text-primary-foreground">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="text-muted-foreground"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || Math.abs(diff) > 0.01}
+            className="gradient-bg-primary text-primary-foreground"
+          >
             {saving ? "Salvando..." : "Salvar Splits"}
           </Button>
         </DialogFooter>

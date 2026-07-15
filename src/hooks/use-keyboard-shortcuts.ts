@@ -24,33 +24,37 @@ export function useKeyboardShortcuts() {
       { key: "5", alt: true, description: "Orçamentos", action: () => navigate("/budgets") },
       { key: "6", alt: true, description: "Relatórios", action: () => navigate("/reports") },
       // Quick actions
-      { key: "n", ctrl: true, shift: true, description: "Nova Transação", action: () => navigate("/transactions?new=1") },
+      {
+        key: "n",
+        ctrl: true,
+        shift: true,
+        description: "Nova Transação",
+        action: () => navigate("/transactions?new=1"),
+      },
       // Help
       { key: "?", shift: true, description: "Atalhos", action: () => showShortcutsHelp() },
     ];
 
     function showShortcutsHelp() {
-      toast.info(
-        "⌨️ Atalhos de Teclado",
-        {
-          description: [
-            "⌘K — Busca global",
-            "Alt+1~6 — Navegar páginas",
-            "Ctrl+Shift+N — Nova transação",
-            "Shift+? — Esta ajuda",
-          ].join("\n"),
-          duration: 6000,
-        }
-      );
+      toast.info("⌨️ Atalhos de Teclado", {
+        description: [
+          "⌘K — Busca global",
+          "Alt+1~6 — Navegar páginas",
+          "Ctrl+Shift+N — Nova transação",
+          "Shift+? — Esta ajuda",
+        ].join("\n"),
+        duration: 6000,
+      });
     }
 
     const handler = (e: KeyboardEvent) => {
       // Skip if typing in input/textarea
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+        return;
 
       for (const s of shortcuts) {
-        const ctrlMatch = s.ctrl ? (e.ctrlKey || e.metaKey) : !(e.ctrlKey || e.metaKey);
+        const ctrlMatch = s.ctrl ? e.ctrlKey || e.metaKey : !(e.ctrlKey || e.metaKey);
         const shiftMatch = s.shift ? e.shiftKey : !e.shiftKey;
         const altMatch = s.alt ? e.altKey : !e.altKey;
 

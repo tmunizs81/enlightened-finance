@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,12 +15,16 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
     const userId = claimsData.claims.sub as string;
     const now = new Date();
@@ -31,10 +36,25 @@ serve(async (req) => {
     const daysLeft = daysInMonth - dayOfMonth;
 
     const [txRes, budgetsRes, categoriesRes, recurringRes] = await Promise.all([
-      supabase.from("transactions").select("*").eq("user_id", userId).gte("date", firstDay).eq("type", "expense"),
-      supabase.from("budgets").select("*, categories(name, color, icon)").eq("user_id", userId).eq("month", currentMonth).eq("year", currentYear),
+      supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("date", firstDay)
+        .eq("type", "expense"),
+      supabase
+        .from("budgets")
+        .select("*, categories(name, color, icon)")
+        .eq("user_id", userId)
+        .eq("month", currentMonth)
+        .eq("year", currentYear),
       supabase.from("categories").select("*").eq("user_id", userId),
-      supabase.from("recurring_transactions").select("*").eq("user_id", userId).eq("active", true).eq("type", "expense"),
+      supabase
+        .from("recurring_transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("active", true)
+        .eq("type", "expense"),
     ]);
 
     const expenses = txRes.data || [];
@@ -43,7 +63,9 @@ serve(async (req) => {
     const recurring = recurringRes.data || [];
 
     const catMap: Record<string, any> = {};
-    categories.forEach((c: any) => { catMap[c.id] = c; });
+    categories.forEach((c: any) => {
+      catMap[c.id] = c;
+    });
 
     const catSpending: Record<string, number> = {};
     expenses.forEach((t: any) => {
@@ -55,10 +77,13 @@ serve(async (req) => {
 
     const totalSpentSoFar = Object.values(catSpending).reduce((a, b) => a + b, 0);
     const dailyRate = dayOfMonth > 0 ? totalSpentSoFar / dayOfMonth : 0;
-    const projectedTotal = totalSpentSoFar + (dailyRate * daysLeft);
+    const projectedTotal = totalSpentSoFar + dailyRate * daysLeft;
 
     const upcomingRecurring = recurring.filter((r: any) => r.day_of_month > dayOfMonth);
-    const upcomingRecurringTotal = upcomingRecurring.reduce((s: number, r: any) => s + Number(r.amount), 0);
+    const upcomingRecurringTotal = upcomingRecurring.reduce(
+      (s: number, r: any) => s + Number(r.amount),
+      0,
+    );
 
     const predictions: any[] = [];
 
@@ -68,12 +93,17 @@ serve(async (req) => {
       const budgetAmount = Number(budget.amount);
       const remaining = budgetAmount - spent;
       const catDailyRate = dayOfMonth > 0 ? spent / dayOfMonth : 0;
-      const projectedCatTotal = spent + (catDailyRate * daysLeft);
+      const projectedCatTotal = spent + catDailyRate * daysLeft;
       const projectedOverrun = projectedCatTotal - budgetAmount;
-      const daysUntilOverrun = catDailyRate > 0 && remaining > 0 ? Math.floor(remaining / catDailyRate) : null;
+      const daysUntilOverrun =
+        catDailyRate > 0 && remaining > 0 ? Math.floor(remaining / catDailyRate) : null;
 
-      const catName = budget.category_id ? (catMap[budget.category_id]?.name || "Categoria") : "Geral";
-      const catColor = budget.category_id ? (catMap[budget.category_id]?.color || "#6366f1") : "#6366f1";
+      const catName = budget.category_id
+        ? catMap[budget.category_id]?.name || "Categoria"
+        : "Geral";
+      const catColor = budget.category_id
+        ? catMap[budget.category_id]?.color || "#6366f1"
+        : "#6366f1";
 
       const pctSpent = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
       const pctProjected = budgetAmount > 0 ? (projectedCatTotal / budgetAmount) * 100 : 0;
@@ -109,9 +139,12 @@ serve(async (req) => {
       const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
       if (DEEPSEEK_API_KEY) {
-        const context = predictions.map((p) =>
-          `${p.categoryName}: gasto R$${p.spent.toFixed(2)} de R$${p.budget.toFixed(2)} (${p.pctSpent}%), projeção ${p.pctProjected}% ao final do mês${p.projectedOverrun > 0 ? `, estouro previsto de R$${p.projectedOverrun.toFixed(2)}` : ""}`
-        ).join("\n");
+        const context = predictions
+          .map(
+            (p) =>
+              `${p.categoryName}: gasto R$${p.spent.toFixed(2)} de R$${p.budget.toFixed(2)} (${p.pctSpent}%), projeção ${p.pctProjected}% ao final do mês${p.projectedOverrun > 0 ? `, estouro previsto de R$${p.projectedOverrun.toFixed(2)}` : ""}`,
+          )
+          .join("\n");
 
         const prompt = `Analise estas projeções de orçamento e dê conselhos curtos e práticos (máximo 3 frases em português):
 ${context}
@@ -128,7 +161,11 @@ Responda APENAS com a análise, sem saudações. Foque em ações concretas para
             body: JSON.stringify({
               model: "deepseek-chat",
               messages: [
-                { role: "system", content: "Você é um consultor financeiro conciso. Responda sempre em português brasileiro com bullet points curtos e práticos." },
+                {
+                  role: "system",
+                  content:
+                    "Você é um consultor financeiro conciso. Responda sempre em português brasileiro com bullet points curtos e práticos.",
+                },
                 { role: "user", content: prompt },
               ],
               tools: [
@@ -185,13 +222,13 @@ Responda APENAS com a análise, sem saudações. Foque em ações concretas para
         },
         aiSuggestions,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
     console.error("predictive-alerts error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

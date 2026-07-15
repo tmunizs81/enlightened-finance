@@ -10,8 +10,20 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import {
-  LayoutDashboard, ArrowLeftRight, Target, Wallet, PiggyBank,
-  FileText, Brain, Settings, Trophy, Zap, Key, Download, Plus, Search,
+  LayoutDashboard,
+  ArrowLeftRight,
+  Target,
+  Wallet,
+  PiggyBank,
+  FileText,
+  Brain,
+  Settings,
+  Trophy,
+  Zap,
+  Key,
+  Download,
+  Plus,
+  Search,
   DollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +32,7 @@ import { useAuth } from "@/hooks/use-auth";
 const pages = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Transações", path: "/transactions", icon: ArrowLeftRight },
-  
+
   { name: "Orçamentos", path: "/budgets", icon: PiggyBank },
   { name: "Metas", path: "/goals", icon: Target },
   { name: "Contas", path: "/accounts", icon: Wallet },
@@ -59,67 +71,66 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  const searchAll = useCallback(async (q: string) => {
-    if (!user || !q || q.length < 2) {
-      setResults([]);
-      return;
-    }
+  const searchAll = useCallback(
+    async (q: string) => {
+      if (!user || !q || q.length < 2) {
+        setResults([]);
+        return;
+      }
 
-    const pattern = `%${q}%`;
+      const pattern = `%${q}%`;
 
-    const [txRes, goalRes, accRes] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("id, description, amount, type, date")
-        .ilike("description", pattern)
-        .order("date", { ascending: false })
-        .limit(5),
-      supabase
-        .from("goals")
-        .select("id, name, target_amount, current_amount")
-        .ilike("name", pattern)
-        .limit(5),
-      supabase
-        .from("accounts")
-        .select("id, name, balance, type")
-        .ilike("name", pattern)
-        .limit(5),
-    ]);
+      const [txRes, goalRes, accRes] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("id, description, amount, type, date")
+          .ilike("description", pattern)
+          .order("date", { ascending: false })
+          .limit(5),
+        supabase
+          .from("goals")
+          .select("id, name, target_amount, current_amount")
+          .ilike("name", pattern)
+          .limit(5),
+        supabase.from("accounts").select("id, name, balance, type").ilike("name", pattern).limit(5),
+      ]);
 
-    const items: SearchResult[] = [];
+      const items: SearchResult[] = [];
 
-    txRes.data?.forEach((t) =>
-      items.push({
-        id: t.id,
-        label: t.description,
-        sublabel: `${t.type === "income" ? "+" : "-"}R$ ${Number(t.amount).toLocaleString("pt-BR")} · ${new Date(t.date).toLocaleDateString("pt-BR")}`,
-        type: "transaction",
-        path: "/transactions",
-      })
-    );
+      txRes.data?.forEach((t) =>
+        items.push({
+          id: t.id,
+          label: t.description,
+          sublabel: `${t.type === "income" ? "+" : "-"}R$ ${Number(t.amount).toLocaleString("pt-BR")} · ${new Date(t.date).toLocaleDateString("pt-BR")}`,
+          type: "transaction",
+          path: "/transactions",
+        }),
+      );
 
-    goalRes.data?.forEach((g) =>
-      items.push({
-        id: g.id,
-        label: g.name,
-        sublabel: `R$ ${Number(g.current_amount).toLocaleString("pt-BR")} / R$ ${Number(g.target_amount).toLocaleString("pt-BR")}`,
-        type: "goal",
-        path: "/goals",
-      })
-    );
+      goalRes.data?.forEach((g) =>
+        items.push({
+          id: g.id,
+          label: g.name,
+          sublabel: `R$ ${Number(g.current_amount).toLocaleString("pt-BR")} / R$ ${Number(g.target_amount).toLocaleString("pt-BR")}`,
+          type: "goal",
+          path: "/goals",
+        }),
+      );
 
-    accRes.data?.forEach((a) =>
-      items.push({
-        id: a.id,
-        label: a.name,
-        sublabel: `Saldo: R$ ${Number(a.balance).toLocaleString("pt-BR")}`,
-        type: "account",
-        path: "/accounts",
-      })
-    );
+      accRes.data?.forEach((a) =>
+        items.push({
+          id: a.id,
+          label: a.name,
+          sublabel: `Saldo: R$ ${Number(a.balance).toLocaleString("pt-BR")}`,
+          type: "account",
+          path: "/accounts",
+        }),
+      );
 
-    setResults(items);
-  }, [user]);
+      setResults(items);
+    },
+    [user],
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => searchAll(query), 200);
@@ -154,7 +165,16 @@ export function CommandPalette() {
   }, {});
 
   return (
-    <CommandDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setQuery(""); setResults([]); } }}>
+    <CommandDialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) {
+          setQuery("");
+          setResults([]);
+        }
+      }}
+    >
       <CommandInput
         placeholder="Buscar transações, metas, contas..."
         value={query}
@@ -198,9 +218,11 @@ export function CommandPalette() {
                 return (
                   <CommandItem key={item.id} onSelect={() => go(item.path)} className="gap-2">
                     <Icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <span className="truncate block text-sm">{item.label}</span>
-                      <span className="text-xs text-muted-foreground truncate block">{item.sublabel}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{item.label}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {item.sublabel}
+                      </span>
                     </div>
                   </CommandItem>
                 );

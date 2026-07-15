@@ -51,6 +51,7 @@ systemctl start docker
 ```
 
 Verificar instalação:
+
 ```bash
 docker --version
 docker compose version
@@ -59,6 +60,7 @@ docker compose version
 ### 4. Clonar o Repositório
 
 **Opção A - Repositório Público:**
+
 ```bash
 cd /opt
 git clone https://github.com/tmunizs81/enlightened-finance.git financeai
@@ -66,6 +68,7 @@ cd financeai
 ```
 
 **Opção B - Repositório Privado:**
+
 ```bash
 # Criar Personal Access Token no GitHub
 # Settings → Developer Settings → Personal Access Tokens → Generate new token
@@ -88,6 +91,7 @@ EOF
 ```
 
 Verificar:
+
 ```bash
 cat .env
 ```
@@ -119,6 +123,7 @@ hostname -I | awk '{print $1}'
 ```
 
 Abra no navegador:
+
 ```
 http://SEU_IP
 ```
@@ -128,22 +133,26 @@ http://SEU_IP
 ## 🔧 Comandos Úteis
 
 ### Ver logs da aplicação
+
 ```bash
 cd /opt/financeai
 docker compose logs -f
 ```
 
 ### Reiniciar a aplicação
+
 ```bash
 docker compose restart
 ```
 
 ### Parar a aplicação
+
 ```bash
 docker compose down
 ```
 
 ### Atualizar a aplicação (após push no GitHub)
+
 ```bash
 cd /opt/financeai
 git pull
@@ -152,21 +161,25 @@ docker compose up -d --build
 ```
 
 ### Ver uso de recursos
+
 ```bash
 docker stats
 ```
 
 ### Ver status dos containers
+
 ```bash
 docker compose ps
 ```
 
 ### Acessar o container (debug)
+
 ```bash
 docker exec -it financeai-app sh
 ```
 
 ### Limpar logs antigos
+
 ```bash
 docker compose logs --tail=100
 ```
@@ -192,9 +205,11 @@ docker compose up -d --build
 ### Erro: Authentication failed no git clone
 
 **Solução 1 - Tornar repositório público:**
+
 - GitHub → seu repo → Settings → Danger Zone → Change visibility → Public
 
 **Solução 2 - Usar Personal Access Token:**
+
 ```bash
 git clone https://SEU_TOKEN@github.com/tmunizs81/enlightened-finance.git financeai
 ```
@@ -408,6 +423,7 @@ docker inspect financeai-app | grep Health
 ### Configurar alertas (opcional)
 
 Instalar Netdata para monitoramento visual:
+
 ```bash
 bash <(curl -Ss https://my-netdata.io/kickstart.sh)
 ```
@@ -419,6 +435,7 @@ Acessar: `http://SEU_IP:19999`
 ## 📱 Testar em Dispositivos
 
 ### Desktop
+
 ```
 http://SEU_IP
 ou
@@ -426,6 +443,7 @@ https://seudominio.com
 ```
 
 ### Mobile
+
 Use o mesmo endereço acima no navegador do celular.
 
 ---
@@ -454,6 +472,7 @@ Use o mesmo endereço acima no navegador do celular.
 O banco de dados está no Supabase (cloud), backups automáticos já estão ativos.
 
 Para exportar dados:
+
 1. Acesse o Lovable Cloud
 2. Cloud → Database → Selecione a tabela
 3. Clique em Export
@@ -500,21 +519,25 @@ Basta seguir este guia do zero no novo servidor! 🎉
 ## 🆘 Suporte
 
 ### Logs do Docker
+
 ```bash
 docker compose logs -f
 ```
 
 ### Logs do Sistema
+
 ```bash
 journalctl -xe
 ```
 
 ### Status de Serviços
+
 ```bash
 systemctl status docker
 ```
 
 ### Reiniciar Tudo
+
 ```bash
 cd /opt/financeai
 docker compose down
@@ -540,6 +563,7 @@ docker compose up -d --build
 ## 📝 Changelog
 
 ### v1.0.0 - 2026-03-09
+
 - ✅ Deploy inicial funcionando
 - ✅ Docker + Docker Compose configurado
 - ✅ Nginx como proxy reverso
@@ -550,4 +574,4 @@ docker compose up -d --build
 
 ---
 
-*Criado com ❤️ usando Lovable*
+_Criado com ❤️ usando Lovable_

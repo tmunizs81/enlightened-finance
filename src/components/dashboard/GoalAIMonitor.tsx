@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, Sparkles, TrendingUp, AlertTriangle, CheckCircle, Target, RefreshCw, Lightbulb } from "lucide-react";
+import {
+  Brain,
+  Sparkles,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Target,
+  RefreshCw,
+  Lightbulb,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,10 +30,30 @@ interface GoalAnalysis {
 }
 
 const statusConfig = {
-  on_track: { icon: CheckCircle, label: "No caminho", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
-  needs_attention: { icon: AlertTriangle, label: "Atenção", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-  behind: { icon: AlertTriangle, label: "Atrasada", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-  completed: { icon: CheckCircle, label: "Concluída", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+  on_track: {
+    icon: CheckCircle,
+    label: "No caminho",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
+  },
+  needs_attention: {
+    icon: AlertTriangle,
+    label: "Atenção",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10 border-amber-500/20",
+  },
+  behind: {
+    icon: AlertTriangle,
+    label: "Atrasada",
+    color: "text-red-400",
+    bg: "bg-red-500/10 border-red-500/20",
+  },
+  completed: {
+    icon: CheckCircle,
+    label: "Concluída",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
+  },
 };
 
 const overallConfig = {
@@ -57,18 +86,33 @@ export function GoalAIMonitor() {
 
   if (!hasLoaded) {
     return (
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-5"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Coach IA de Metas</h3>
           </div>
-          <Button onClick={runAnalysis} disabled={loading} size="sm" className="gradient-bg-primary text-primary-foreground gap-2">
-            {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          <Button
+            onClick={runAnalysis}
+            disabled={loading}
+            size="sm"
+            className="gradient-bg-primary gap-2 text-primary-foreground"
+          >
+            {loading ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
             {loading ? "Analisando..." : "Analisar Metas"}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Clique para receber recomendações personalizadas da IA sobre suas metas financeiras.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Clique para receber recomendações personalizadas da IA sobre suas metas financeiras.
+        </p>
       </motion.div>
     );
   }
@@ -78,58 +122,90 @@ export function GoalAIMonitor() {
   const overall = overallConfig[analysis.overall_status] || overallConfig.attention;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-4"
+    >
       {/* Summary Card */}
-      <div className={`glass-card p-5 bg-gradient-to-br ${overall.color}`}>
-        <div className="flex items-center justify-between mb-3">
+      <div className={`glass-card bg-gradient-to-br p-5 ${overall.color}`}>
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Coach IA de Metas</h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{overall.icon} {overall.label}</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+              {overall.icon} {overall.label}
+            </span>
           </div>
-          <Button onClick={runAnalysis} disabled={loading} size="sm" variant="ghost" className="text-muted-foreground h-7 gap-1">
+          <Button
+            onClick={runAnalysis}
+            disabled={loading}
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 text-muted-foreground"
+          >
             <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
             <span className="text-xs">Atualizar</span>
           </Button>
         </div>
-        <p className="text-xs text-foreground/80 leading-relaxed">{analysis.summary}</p>
+        <p className="text-xs leading-relaxed text-foreground/80">{analysis.summary}</p>
       </div>
 
       {/* Recommendations per goal */}
-      {analysis.recommendations.sort((a, b) => a.priority - b.priority).map((rec, i) => {
-        const config = statusConfig[rec.status] || statusConfig.needs_attention;
-        const StatusIcon = config.icon;
-        return (
-          <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className={`glass-card p-4 border ${config.bg}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <StatusIcon className={`h-4 w-4 ${config.color}`} />
-                  <span className="text-sm font-medium text-foreground">{rec.goal_name}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${config.bg} ${config.color}`}>{config.label}</span>
+      {analysis.recommendations
+        .sort((a, b) => a.priority - b.priority)
+        .map((rec, i) => {
+          const config = statusConfig[rec.status] || statusConfig.needs_attention;
+          const StatusIcon = config.icon;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className={`glass-card border p-4 ${config.bg}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon className={`h-4 w-4 ${config.color}`} />
+                    <span className="text-sm font-medium text-foreground">{rec.goal_name}</span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] ${config.bg} ${config.color}`}
+                    >
+                      {config.label}
+                    </span>
+                  </div>
+                  <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                    <Lightbulb className="mt-0.5 h-3 w-3 shrink-0 text-amber-400" />
+                    {rec.tip}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                  <Lightbulb className="h-3 w-3 mt-0.5 shrink-0 text-amber-400" />
-                  {rec.tip}
-                </p>
+                <div className="shrink-0 text-right">
+                  <p className="text-[10px] text-muted-foreground">Aporte sugerido</p>
+                  <p className="text-sm font-bold text-primary">
+                    R$ {rec.suggested_monthly.toLocaleString("pt-BR")}
+                    <span className="text-[10px] font-normal text-muted-foreground">/mês</span>
+                  </p>
+                </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-[10px] text-muted-foreground">Aporte sugerido</p>
-                <p className="text-sm font-bold text-primary">R$ {rec.suggested_monthly.toLocaleString("pt-BR")}<span className="text-[10px] font-normal text-muted-foreground">/mês</span></p>
-              </div>
-            </div>
-          </motion.div>
-        );
-      })}
+            </motion.div>
+          );
+        })}
 
       {/* Savings Plan */}
       {analysis.savings_plan && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="glass-card p-4 border border-primary/20 bg-primary/5">
-          <div className="flex items-center gap-2 mb-2">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="glass-card border border-primary/20 bg-primary/5 p-4"
+        >
+          <div className="mb-2 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
             <span className="text-xs font-semibold text-foreground">Plano de Economia</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">{analysis.savings_plan}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{analysis.savings_plan}</p>
         </motion.div>
       )}
     </motion.div>

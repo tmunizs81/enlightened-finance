@@ -1,12 +1,25 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { PiggyBank, Plus, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  PiggyBank,
+  Plus,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
-import { useSupabaseQuery, useSupabaseInsert, useSupabaseUpdate, useSupabaseDelete } from "@/hooks/use-supabase-crud";
+import {
+  useSupabaseQuery,
+  useSupabaseInsert,
+  useSupabaseUpdate,
+  useSupabaseDelete,
+} from "@/hooks/use-supabase-crud";
 import { BudgetForm } from "@/components/forms/BudgetForm";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { toast } from "sonner";
@@ -39,7 +52,20 @@ interface Transaction {
   status: string;
 }
 
-const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const monthNames = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
 
 const Budgets = () => {
   const now = new Date();
@@ -47,9 +73,14 @@ const Budgets = () => {
   const [year, setYear] = useState(now.getFullYear());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Budget | null>(null);
-  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
+  const { deleteTarget, isConfirmOpen, requestDelete, cancelDelete, confirmDelete } =
+    useConfirmDelete();
 
-  const { data: budgets = [], isLoading } = useSupabaseQuery<Budget>("budgets", "created_at", false);
+  const { data: budgets = [], isLoading } = useSupabaseQuery<Budget>(
+    "budgets",
+    "created_at",
+    false,
+  );
   const { data: categories = [] } = useSupabaseQuery<Category>("categories", "name", true);
   const { data: transactions = [] } = useSupabaseQuery<Transaction>("transactions", "date", false);
 
@@ -79,18 +110,27 @@ const Budgets = () => {
   const totalSpent = monthBudgets.reduce((s, b) => s + (spending[b.category_id || "none"] || 0), 0);
 
   const prevMonth = () => {
-    if (month === 1) { setMonth(12); setYear(year - 1); }
-    else setMonth(month - 1);
+    if (month === 1) {
+      setMonth(12);
+      setYear(year - 1);
+    } else setMonth(month - 1);
   };
 
   const nextMonth = () => {
-    if (month === 12) { setMonth(1); setYear(year + 1); }
-    else setMonth(month + 1);
+    if (month === 12) {
+      setMonth(1);
+      setYear(year + 1);
+    } else setMonth(month + 1);
   };
 
   const handleSubmit = (data: any) => {
     if (data.id) {
-      updateBudget.mutate(data, { onSuccess: () => { setEditing(null); setFormOpen(false); } });
+      updateBudget.mutate(data, {
+        onSuccess: () => {
+          setEditing(null);
+          setFormOpen(false);
+        },
+      });
     } else {
       const exists = monthBudgets.find((b) => b.category_id === data.category_id);
       if (exists) {
@@ -118,60 +158,96 @@ const Budgets = () => {
             <p className="text-sm text-muted-foreground">Controle seus gastos por categoria</p>
           </div>
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gradient-bg-primary text-primary-foreground gap-2">
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setFormOpen(true);
+          }}
+          className="gradient-bg-primary gap-2 text-primary-foreground"
+        >
           <Plus className="h-4 w-4" /> Novo
         </Button>
       </div>
 
       <div className="flex items-center justify-center gap-4">
-        <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={prevMonth}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-semibold text-foreground min-w-[160px] text-center">
+        <span className="min-w-[160px] text-center text-sm font-semibold text-foreground">
           {monthNames[month - 1]} {year}
         </span>
-        <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={nextMonth}
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-card p-4 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orçado</p>
-          <p className="text-lg font-bold text-foreground">R$ {totalBudget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Orçado</p>
+          <p className="text-lg font-bold text-foreground">
+            R$ {totalBudget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Gasto</p>
-          <p className={`text-lg font-bold ${totalSpent > totalBudget ? "text-destructive" : "text-foreground"}`}>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gasto</p>
+          <p
+            className={`text-lg font-bold ${totalSpent > totalBudget ? "text-destructive" : "text-foreground"}`}
+          >
             R$ {totalSpent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Disponível</p>
-          <p className={`text-lg font-bold ${totalBudget - totalSpent >= 0 ? "text-success" : "text-destructive"}`}>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Disponível</p>
+          <p
+            className={`text-lg font-bold ${totalBudget - totalSpent >= 0 ? "text-success" : "text-destructive"}`}
+          >
             R$ {(totalBudget - totalSpent).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </p>
         </div>
       </div>
 
       {overBudgetCount > 0 && (
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
           <p className="text-xs text-destructive">
-            <strong>{overBudgetCount} {overBudgetCount === 1 ? "categoria ultrapassou" : "categorias ultrapassaram"}</strong> o limite de orçamento neste mês!
+            <strong>
+              {overBudgetCount}{" "}
+              {overBudgetCount === 1 ? "categoria ultrapassou" : "categorias ultrapassaram"}
+            </strong>{" "}
+            o limite de orçamento neste mês!
           </p>
         </motion.div>
       )}
 
       {isLoading ? (
         <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} lines={2} />
+          ))}
         </div>
       ) : monthBudgets.length === 0 ? (
-        <div className="glass-card p-8 text-center space-y-3">
+        <div className="glass-card space-y-3 p-8 text-center">
           <div className="text-4xl">🐷</div>
-          <p className="text-sm text-muted-foreground font-medium">Nenhum orçamento definido para este mês.</p>
-          <p className="text-xs text-muted-foreground">Crie categorias de despesa e defina limites mensais.</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Nenhum orçamento definido para este mês.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Crie categorias de despesa e defina limites mensais.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -190,33 +266,57 @@ const Budgets = () => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="glass-card-hover p-4 space-y-3"
+                className="glass-card-hover space-y-3 p-4"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{cat?.icon || "📁"}</span>
-                    <span className="text-sm font-semibold text-foreground">{cat?.name || "Sem categoria"}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {cat?.name || "Sem categoria"}
+                    </span>
                     {isOver && (
-                      <Badge variant="outline" className="text-[10px] bg-destructive/15 text-destructive border-destructive/20">
-                        <AlertTriangle className="h-2.5 w-2.5 mr-1" /> Estourado
+                      <Badge
+                        variant="outline"
+                        className="border-destructive/20 bg-destructive/15 text-[10px] text-destructive"
+                      >
+                        <AlertTriangle className="mr-1 h-2.5 w-2.5" /> Estourado
                       </Badge>
                     )}
                     {isWarning && (
-                      <Badge variant="outline" className="text-[10px] bg-warning/15 text-warning border-warning/20">
+                      <Badge
+                        variant="outline"
+                        className="border-warning/20 bg-warning/15 text-[10px] text-warning"
+                      >
                         {pct >= 100 ? "Limite Excedido" : `Acima de ${threshold}%`}
                       </Badge>
                     )}
                     {!budget.notification_enabled && (
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">
+                      <Badge
+                        variant="outline"
+                        className="border-border text-[10px] text-muted-foreground"
+                      >
                         Alertas off
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(budget); setFormOpen(true); }}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditing(budget);
+                        setFormOpen(true);
+                      }}
+                    >
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => requestDelete(budget.id, cat?.name || "este orçamento")}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => requestDelete(budget.id, cat?.name || "este orçamento")}
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -225,9 +325,12 @@ const Budgets = () => {
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">
-                      R$ {spent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} / R$ {limit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {spent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} / R${" "}
+                      {limit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
-                    <span className={`font-semibold ${isOver ? "text-destructive" : isWarning ? "text-warning" : "text-muted-foreground"}`}>
+                    <span
+                      className={`font-semibold ${isOver ? "text-destructive" : isWarning ? "text-warning" : "text-muted-foreground"}`}
+                    >
                       {pct.toFixed(0)}%
                     </span>
                   </div>
@@ -237,7 +340,8 @@ const Budgets = () => {
                   />
                   {isOver && (
                     <p className="text-[11px] text-destructive">
-                      Excedido em R$ {(spent - limit).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      Excedido em R${" "}
+                      {(spent - limit).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </p>
                   )}
                 </div>
@@ -249,7 +353,9 @@ const Budgets = () => {
 
       <ConfirmDialog
         open={isConfirmOpen}
-        onOpenChange={(open) => { if (!open) cancelDelete(); }}
+        onOpenChange={(open) => {
+          if (!open) cancelDelete();
+        }}
         title="Excluir orçamento"
         description={`Tem certeza que deseja excluir o orçamento de "${deleteTarget?.name || ""}"? Esta ação não pode ser desfeita.`}
         onConfirm={() => confirmDelete((id) => deleteBudget.mutate(id))}
@@ -257,7 +363,10 @@ const Budgets = () => {
 
       <BudgetForm
         open={formOpen}
-        onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
+        onOpenChange={(v) => {
+          setFormOpen(v);
+          if (!v) setEditing(null);
+        }}
         onSubmit={handleSubmit}
         initialData={editing}
         loading={insertBudget.isPending || updateBudget.isPending}

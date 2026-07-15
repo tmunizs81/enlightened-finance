@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,19 +15,33 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
     const userId = claimsData.claims.sub as string;
 
     const [txRes, accountsRes, recurringRes] = await Promise.all([
-      supabase.from("transactions").select("amount, type, status, date").eq("user_id", userId).eq("status", "paid").order("date", { ascending: false }).limit(500),
+      supabase
+        .from("transactions")
+        .select("amount, type, status, date")
+        .eq("user_id", userId)
+        .eq("status", "paid")
+        .order("date", { ascending: false })
+        .limit(500),
       supabase.from("accounts").select("balance").eq("user_id", userId),
-      supabase.from("recurring_transactions").select("amount, type, active").eq("user_id", userId).eq("active", true),
+      supabase
+        .from("recurring_transactions")
+        .select("amount, type, active")
+        .eq("user_id", userId)
+        .eq("active", true),
     ]);
 
     const transactions = txRes.data || [];
@@ -43,17 +58,28 @@ serve(async (req) => {
       const mStart = m.toISOString().split("T")[0];
       const mEndStr = mEnd.toISOString().split("T")[0];
       const mTx = transactions.filter((t: any) => t.date >= mStart && t.date <= mEndStr);
-      const income = mTx.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-      const expense = mTx.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const income = mTx
+        .filter((t: any) => t.type === "income")
+        .reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const expense = mTx
+        .filter((t: any) => t.type === "expense")
+        .reduce((s: number, t: any) => s + Number(t.amount), 0);
       monthlyNets.push(income - expense);
     }
 
-    const avgNet = monthlyNets.length > 0 ? monthlyNets.reduce((a, b) => a + b, 0) / monthlyNets.length : 0;
-    const stdDev = monthlyNets.length > 1
-      ? Math.sqrt(monthlyNets.reduce((s, v) => s + Math.pow(v - avgNet, 2), 0) / (monthlyNets.length - 1))
-      : Math.abs(avgNet) * 0.3;
+    const avgNet =
+      monthlyNets.length > 0 ? monthlyNets.reduce((a, b) => a + b, 0) / monthlyNets.length : 0;
+    const stdDev =
+      monthlyNets.length > 1
+        ? Math.sqrt(
+            monthlyNets.reduce((s, v) => s + Math.pow(v - avgNet, 2), 0) / (monthlyNets.length - 1),
+          )
+        : Math.abs(avgNet) * 0.3;
 
-    const monthlyRecurringNet = recurring.reduce((s: number, r: any) => s + (r.type === "income" ? 1 : -1) * Number(r.amount), 0);
+    const monthlyRecurringNet = recurring.reduce(
+      (s: number, r: any) => s + (r.type === "income" ? 1 : -1) * Number(r.amount),
+      0,
+    );
     const projectedMonthlyNet = avgNet * 0.6 + monthlyRecurringNet * 0.4;
 
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
@@ -71,7 +97,10 @@ Responda APENAS com a análise, sem saudações.`;
 
         const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
@@ -117,22 +146,26 @@ Responda APENAS com a análise, sem saudações.`;
       scenarios.pessimistic.push({ month: label, value: Math.round(pessBalance) });
     }
 
-    return new Response(JSON.stringify({
-      currentBalance,
-      scenarios,
-      monthlyNet: Math.round(projectedMonthlyNet),
-      stdDev: Math.round(stdDev),
-      aiAnalysis,
-      projected30: Math.round(currentBalance + projectedMonthlyNet),
-      projected60: Math.round(currentBalance + projectedMonthlyNet * 2),
-      projected90: Math.round(currentBalance + projectedMonthlyNet * 3),
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        currentBalance,
+        scenarios,
+        monthlyNet: Math.round(projectedMonthlyNet),
+        stdDev: Math.round(stdDev),
+        aiAnalysis,
+        projected30: Math.round(currentBalance + projectedMonthlyNet),
+        projected60: Math.round(currentBalance + projectedMonthlyNet * 2),
+        projected90: Math.round(currentBalance + projectedMonthlyNet * 3),
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     console.error("balance-forecast error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

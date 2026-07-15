@@ -16,9 +16,12 @@ export function useLicenseNotification() {
 
     if (isValid && daysRemaining <= 7 && daysRemaining > 0) {
       notified.current = true;
-      toast.warning(`Sua licença expira em ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}. Contate o administrador para renovação.`, {
-        duration: 10000,
-      });
+      toast.warning(
+        `Sua licença expira em ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}. Contate o administrador para renovação.`,
+        {
+          duration: 10000,
+        },
+      );
     } else if (!isValid && license.status === "active") {
       notified.current = true;
       toast.error("Sua licença expirou. Contate o administrador para renovação.", {

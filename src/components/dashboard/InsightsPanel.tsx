@@ -29,22 +29,31 @@ const colorMap: Record<string, string> = {
 };
 
 export function InsightsPanel() {
-  const { data: insights = [], isLoading } = useSupabaseQuery<Insight>("ai_insights" as any, "created_at", false);
+  const { data: insights = [], isLoading } = useSupabaseQuery<Insight>(
+    "ai_insights" as any,
+    "created_at",
+    false,
+  );
   const [generating, setGenerating] = useState(false);
   const qc = useQueryClient();
 
   const generateInsights = async () => {
     setGenerating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-insights`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-insights`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Erro" }));
@@ -62,16 +71,20 @@ export function InsightsPanel() {
 
   return (
     <div className="glass-card p-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">🧠 Insights da IA</h3>
         <Button
           variant="outline"
           size="sm"
           onClick={generateInsights}
           disabled={generating}
-          className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5"
+          className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
         >
-          {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+          {generating ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3 w-3" />
+          )}
           {generating ? "Analisando..." : "Gerar Insights"}
         </Button>
       </div>
@@ -82,8 +95,9 @@ export function InsightsPanel() {
           </div>
         )}
         {!isLoading && insights.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-4">
-            Clique em "Gerar Insights" para a IA analisar suas transações e gerar alertas personalizados.
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            Clique em "Gerar Insights" para a IA analisar suas transações e gerar alertas
+            personalizados.
           </p>
         )}
         {insights.map((insight, i) => {
@@ -94,12 +108,16 @@ export function InsightsPanel() {
               initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1, duration: 0.3 }}
-              className="flex gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50"
+              className="flex gap-3 rounded-lg border border-border/50 bg-secondary/50 p-3"
             >
-              <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${colorMap[insight.type] || "text-muted-foreground"}`} />
+              <Icon
+                className={`mt-0.5 h-4 w-4 shrink-0 ${colorMap[insight.type] || "text-muted-foreground"}`}
+              />
               <div>
                 <p className="text-xs font-semibold text-foreground">{insight.title}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{insight.description}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {insight.description}
+                </p>
               </div>
             </motion.div>
           );

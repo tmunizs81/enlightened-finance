@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -22,7 +23,7 @@ serve(async (req) => {
         const supabase = createClient(
           Deno.env.get("SUPABASE_URL")!,
           Deno.env.get("SUPABASE_ANON_KEY")!,
-          { global: { headers: { Authorization: authHeader } } }
+          { global: { headers: { Authorization: authHeader } } },
         );
 
         const chatToken = authHeader.replace("Bearer ", "");
@@ -33,16 +34,33 @@ serve(async (req) => {
           const currentMonth = now.getMonth();
           const currentYear = now.getFullYear();
           const firstDayOfMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
-          const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
+          const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0)
+            .toISOString()
+            .split("T")[0];
 
-          const [txRes, accountsRes, goalsRes, budgetsRes, categoriesRes, recurringRes] = await Promise.all([
-            supabase.from("transactions").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(200),
-            supabase.from("accounts").select("*").eq("user_id", userId),
-            supabase.from("goals").select("*").eq("user_id", userId),
-            supabase.from("budgets").select("*").eq("user_id", userId).eq("month", currentMonth + 1).eq("year", currentYear),
-            supabase.from("categories").select("*").eq("user_id", userId),
-            supabase.from("recurring_transactions").select("*").eq("user_id", userId).eq("active", true),
-          ]);
+          const [txRes, accountsRes, goalsRes, budgetsRes, categoriesRes, recurringRes] =
+            await Promise.all([
+              supabase
+                .from("transactions")
+                .select("*")
+                .eq("user_id", userId)
+                .order("date", { ascending: false })
+                .limit(200),
+              supabase.from("accounts").select("*").eq("user_id", userId),
+              supabase.from("goals").select("*").eq("user_id", userId),
+              supabase
+                .from("budgets")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("month", currentMonth + 1)
+                .eq("year", currentYear),
+              supabase.from("categories").select("*").eq("user_id", userId),
+              supabase
+                .from("recurring_transactions")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("active", true),
+            ]);
 
           const transactions = txRes.data || [];
           const accounts = accountsRes.data || [];
@@ -52,50 +70,91 @@ serve(async (req) => {
           const recurring = recurringRes.data || [];
 
           const catMap: Record<string, string> = {};
-          categories.forEach((c: any) => { catMap[c.id] = c.name; });
+          categories.forEach((c: any) => {
+            catMap[c.id] = c.name;
+          });
 
-          const monthTx = transactions.filter((t: any) => t.date >= firstDayOfMonth && t.date <= lastDayOfMonth);
-          const monthIncome = monthTx.filter((t: any) => t.type === "income" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
-          const monthExpense = monthTx.filter((t: any) => t.type === "expense" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
-          const monthPending = monthTx.filter((t: any) => t.status === "pending").reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const monthTx = transactions.filter(
+            (t: any) => t.date >= firstDayOfMonth && t.date <= lastDayOfMonth,
+          );
+          const monthIncome = monthTx
+            .filter((t: any) => t.type === "income" && t.status === "paid")
+            .reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const monthExpense = monthTx
+            .filter((t: any) => t.type === "expense" && t.status === "paid")
+            .reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const monthPending = monthTx
+            .filter((t: any) => t.status === "pending")
+            .reduce((s: number, t: any) => s + Number(t.amount), 0);
 
           const catSpending: Record<string, number> = {};
-          monthTx.filter((t: any) => t.type === "expense" && t.status === "paid").forEach((t: any) => {
-            const catName = t.category_id ? (catMap[t.category_id] || "Sem categoria") : "Sem categoria";
-            catSpending[catName] = (catSpending[catName] || 0) + Number(t.amount);
-          });
+          monthTx
+            .filter((t: any) => t.type === "expense" && t.status === "paid")
+            .forEach((t: any) => {
+              const catName = t.category_id
+                ? catMap[t.category_id] || "Sem categoria"
+                : "Sem categoria";
+              catSpending[catName] = (catSpending[catName] || 0) + Number(t.amount);
+            });
 
           const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
           const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
           const firstDayPrev = `${prevYear}-${String(prevMonth + 1).padStart(2, "0")}-01`;
           const lastDayPrev = new Date(prevYear, prevMonth + 1, 0).toISOString().split("T")[0];
-          const prevMonthTx = transactions.filter((t: any) => t.date >= firstDayPrev && t.date <= lastDayPrev);
-          const prevMonthExpense = prevMonthTx.filter((t: any) => t.type === "expense" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
-          const prevMonthIncome = prevMonthTx.filter((t: any) => t.type === "income" && t.status === "paid").reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const prevMonthTx = transactions.filter(
+            (t: any) => t.date >= firstDayPrev && t.date <= lastDayPrev,
+          );
+          const prevMonthExpense = prevMonthTx
+            .filter((t: any) => t.type === "expense" && t.status === "paid")
+            .reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const prevMonthIncome = prevMonthTx
+            .filter((t: any) => t.type === "income" && t.status === "paid")
+            .reduce((s: number, t: any) => s + Number(t.amount), 0);
 
           const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
-          const accountsSummary = accounts.map((a: any) => `${a.name} (${a.type}): R$ ${Number(a.balance).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join("\n");
-          const goalsSummary = goals.map((g: any) => {
-            const pct = Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100);
-            return `${g.name}: R$ ${Number(g.current_amount).toLocaleString("pt-BR")} / R$ ${Number(g.target_amount).toLocaleString("pt-BR")} (${pct}%)${g.deadline ? ` - prazo: ${g.deadline}` : ""}`;
-          }).join("\n");
-          const budgetSummary = budgets.map((b: any) => {
-            const catName = b.category_id ? (catMap[b.category_id] || "Categoria") : "Geral";
-            const spent = catSpending[catName] || 0;
-            const pct = Math.round((spent / Number(b.amount)) * 100);
-            return `${catName}: gasto R$ ${spent.toLocaleString("pt-BR")} de R$ ${Number(b.amount).toLocaleString("pt-BR")} (${pct}%)`;
-          }).join("\n");
-          const recurringSummary = recurring.map((r: any) => 
-            `${r.description}: R$ ${Number(r.amount).toLocaleString("pt-BR")} (${r.type === "income" ? "receita" : "despesa"}, dia ${r.day_of_month})`
-          ).join("\n");
-          const recentTx = transactions.slice(0, 15).map((t: any) => {
-            const catName = t.category_id ? (catMap[t.category_id] || "") : "";
-            return `${t.date} | ${t.type === "income" ? "+" : "-"}R$ ${Number(t.amount).toLocaleString("pt-BR")} | ${t.description}${catName ? ` [${catName}]` : ""} | ${t.status}`;
-          }).join("\n");
-          const sortedCats = Object.entries(catSpending).sort(([, a], [, b]) => (b as number) - (a as number));
-          const topCats = sortedCats.slice(0, 8).map(([name, amount]) => 
-            `${name}: R$ ${(amount as number).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-          ).join("\n");
+          const accountsSummary = accounts
+            .map(
+              (a: any) =>
+                `${a.name} (${a.type}): R$ ${Number(a.balance).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+            )
+            .join("\n");
+          const goalsSummary = goals
+            .map((g: any) => {
+              const pct = Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100);
+              return `${g.name}: R$ ${Number(g.current_amount).toLocaleString("pt-BR")} / R$ ${Number(g.target_amount).toLocaleString("pt-BR")} (${pct}%)${g.deadline ? ` - prazo: ${g.deadline}` : ""}`;
+            })
+            .join("\n");
+          const budgetSummary = budgets
+            .map((b: any) => {
+              const catName = b.category_id ? catMap[b.category_id] || "Categoria" : "Geral";
+              const spent = catSpending[catName] || 0;
+              const pct = Math.round((spent / Number(b.amount)) * 100);
+              return `${catName}: gasto R$ ${spent.toLocaleString("pt-BR")} de R$ ${Number(b.amount).toLocaleString("pt-BR")} (${pct}%)`;
+            })
+            .join("\n");
+          const recurringSummary = recurring
+            .map(
+              (r: any) =>
+                `${r.description}: R$ ${Number(r.amount).toLocaleString("pt-BR")} (${r.type === "income" ? "receita" : "despesa"}, dia ${r.day_of_month})`,
+            )
+            .join("\n");
+          const recentTx = transactions
+            .slice(0, 15)
+            .map((t: any) => {
+              const catName = t.category_id ? catMap[t.category_id] || "" : "";
+              return `${t.date} | ${t.type === "income" ? "+" : "-"}R$ ${Number(t.amount).toLocaleString("pt-BR")} | ${t.description}${catName ? ` [${catName}]` : ""} | ${t.status}`;
+            })
+            .join("\n");
+          const sortedCats = Object.entries(catSpending).sort(
+            ([, a], [, b]) => (b as number) - (a as number),
+          );
+          const topCats = sortedCats
+            .slice(0, 8)
+            .map(
+              ([name, amount]) =>
+                `${name}: R$ ${(amount as number).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+            )
+            .join("\n");
           const categoryList = categories.map((c: any) => `${c.name} (${c.type})`).join(", ");
 
           financialContext = `
@@ -164,20 +223,22 @@ INSTRUÇÕES IMPORTANTES:
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
     });
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "Limite de requisições excedido. Tente novamente em instantes.",
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
@@ -198,9 +259,12 @@ INSTRUÇÕES IMPORTANTES:
     });
   } catch (e) {
     console.error("chat error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

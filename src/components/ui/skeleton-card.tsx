@@ -2,10 +2,10 @@ import { Skeleton } from "./skeleton";
 
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="glass-card p-5 space-y-3 animate-in fade-in duration-300">
+    <div className="glass-card space-y-3 p-5 duration-300 animate-in fade-in">
       <div className="flex items-center gap-3">
         <Skeleton className="h-10 w-10 rounded-lg" />
-        <div className="space-y-1.5 flex-1">
+        <div className="flex-1 space-y-1.5">
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-3 w-1/3" />
         </div>
@@ -21,7 +21,11 @@ export function SkeletonList({ count = 5 }: { count?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="glass-card p-4 flex items-center gap-4 animate-in fade-in duration-300" style={{ animationDelay: `${i * 50}ms` }}>
+        <div
+          key={i}
+          className="glass-card flex items-center gap-4 p-4 duration-300 animate-in fade-in"
+          style={{ animationDelay: `${i * 50}ms` }}
+        >
           <Skeleton className="h-9 w-9 rounded-lg" />
           <div className="flex-1 space-y-1.5">
             <Skeleton className="h-4 w-1/2" />

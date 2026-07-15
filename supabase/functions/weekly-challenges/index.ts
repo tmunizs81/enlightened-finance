@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -14,12 +15,16 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader! } } },
     );
 
     const token = (authHeader || "").replace("Bearer ", "");
     const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (claimsErr || !claimsData?.claims)
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     const user = { id: claimsData.claims.sub as string };
 
     const body = await req.json().catch(() => ({}));
@@ -71,9 +76,12 @@ serve(async (req) => {
         .select("*")
         .eq("user_id", user.id)
         .gte("week_start", weekStartStr);
-      return new Response(JSON.stringify({ challenges: challenges || [], already_generated: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ challenges: challenges || [], already_generated: true }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const currentMonth = now.getMonth() + 1;
@@ -82,9 +90,20 @@ serve(async (req) => {
     const lastDay = new Date(currentYear, currentMonth, 0).toISOString().split("T")[0];
 
     const [txRes, catRes, budgetRes, goalRes] = await Promise.all([
-      supabase.from("transactions").select("*").eq("user_id", user.id).eq("type", "expense").gte("date", firstDay).lte("date", lastDay),
+      supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("type", "expense")
+        .gte("date", firstDay)
+        .lte("date", lastDay),
       supabase.from("categories").select("id, name").eq("user_id", user.id).eq("type", "expense"),
-      supabase.from("budgets").select("*").eq("user_id", user.id).eq("month", currentMonth).eq("year", currentYear),
+      supabase
+        .from("budgets")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("month", currentMonth)
+        .eq("year", currentYear),
       supabase.from("goals").select("*").eq("user_id", user.id),
     ]);
 
@@ -94,7 +113,9 @@ serve(async (req) => {
     const goals = goalRes.data || [];
 
     const catMap: Record<string, string> = {};
-    categories.forEach((c: any) => { catMap[c.id] = c.name; });
+    categories.forEach((c: any) => {
+      catMap[c.id] = c.name;
+    });
 
     const spendByCategory: Record<string, number> = {};
     transactions.forEach((t: any) => {
@@ -116,7 +137,7 @@ Dados do mês atual:
 - Gasto total: R$ ${totalSpend.toFixed(2)}
 - Gastos por categoria: ${JSON.stringify(spendByCategory)}
 - Orçamentos: ${budgets.map((b: any) => `${catMap[b.category_id] || "Geral"}: R$ ${Number(b.amount).toFixed(2)}`).join(", ") || "nenhum"}
-- Metas: ${goals.map((g: any) => `${g.name}: ${Math.round(Number(g.current_amount) / Number(g.target_amount) * 100)}%`).join(", ") || "nenhuma"}
+- Metas: ${goals.map((g: any) => `${g.name}: ${Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100)}%`).join(", ") || "nenhuma"}
 
 Categorias disponíveis com IDs:
 ${categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n")}
@@ -133,40 +154,54 @@ Regras:
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: "Você cria desafios financeiros gamificados. Retorne JSON estruturado." },
+          {
+            role: "system",
+            content: "Você cria desafios financeiros gamificados. Retorne JSON estruturado.",
+          },
           { role: "user", content: prompt },
         ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "return_challenges",
-            description: "Return weekly financial challenges",
-            parameters: {
-              type: "object",
-              properties: {
-                challenges: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      description: { type: "string" },
-                      target_type: { type: "string", enum: ["spending_reduction", "savings", "no_spend_days"] },
-                      target_category_id: { type: "string", description: "UUID of category or null" },
-                      target_amount: { type: "number", description: "Target amount in BRL" },
-                      target_percent: { type: "number", description: "Target reduction percentage" },
-                      xp_reward: { type: "number" },
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "return_challenges",
+              description: "Return weekly financial challenges",
+              parameters: {
+                type: "object",
+                properties: {
+                  challenges: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" },
+                        target_type: {
+                          type: "string",
+                          enum: ["spending_reduction", "savings", "no_spend_days"],
+                        },
+                        target_category_id: {
+                          type: "string",
+                          description: "UUID of category or null",
+                        },
+                        target_amount: { type: "number", description: "Target amount in BRL" },
+                        target_percent: {
+                          type: "number",
+                          description: "Target reduction percentage",
+                        },
+                        xp_reward: { type: "number" },
+                      },
+                      required: ["title", "description", "target_type", "xp_reward"],
+                      additionalProperties: false,
                     },
-                    required: ["title", "description", "target_type", "xp_reward"],
-                    additionalProperties: false,
                   },
                 },
+                required: ["challenges"],
+                additionalProperties: false,
               },
-              required: ["challenges"],
-              additionalProperties: false,
             },
           },
-        }],
+        ],
         tool_choice: { type: "function", function: { name: "return_challenges" } },
       }),
     });
@@ -214,7 +249,8 @@ Regras:
   } catch (e) {
     console.error("weekly-challenges error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
@@ -235,14 +271,19 @@ async function calculateProgress(supabase: any, userId: string, challenge: any):
 
     let spent = 0;
     if (challenge.target_category_id) {
-      const filtered = (txs || []).filter((t: any) => t.category_id === challenge.target_category_id);
+      const filtered = (txs || []).filter(
+        (t: any) => t.category_id === challenge.target_category_id,
+      );
       spent = filtered.reduce((s: number, t: any) => s + Number(t.amount), 0);
     } else {
       spent = (txs || []).reduce((s: number, t: any) => s + Number(t.amount), 0);
     }
 
     if (challenge.target_amount) {
-      return Math.min(100, Math.round(((challenge.target_amount - spent) / challenge.target_amount) * 100));
+      return Math.min(
+        100,
+        Math.round(((challenge.target_amount - spent) / challenge.target_amount) * 100),
+      );
     }
     return spent === 0 ? 100 : 0;
   }

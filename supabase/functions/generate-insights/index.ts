@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -28,7 +29,11 @@ serve(async (req) => {
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
     const [txResult, catResult, accountResult, goalResult] = await Promise.all([
-      supabase.from("transactions").select("*").gte("date", ninetyDaysAgo.toISOString().split("T")[0]).order("date", { ascending: false }),
+      supabase
+        .from("transactions")
+        .select("*")
+        .gte("date", ninetyDaysAgo.toISOString().split("T")[0])
+        .order("date", { ascending: false }),
       supabase.from("categories").select("*"),
       supabase.from("accounts").select("*"),
       supabase.from("goals").select("*"),
@@ -41,19 +46,30 @@ serve(async (req) => {
 
     const catMap = new Map(categories.map((c: any) => [c.id, c.name]));
 
-    const totalIncome = transactions.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-    const totalExpense = transactions.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const totalIncome = transactions
+      .filter((t: any) => t.type === "income")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const totalExpense = transactions
+      .filter((t: any) => t.type === "expense")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
 
     const expByCategory: Record<string, number> = {};
-    transactions.filter((t: any) => t.type === "expense").forEach((t: any) => {
-      const name = catMap.get(t.category_id) || "Sem categoria";
-      expByCategory[name] = (expByCategory[name] || 0) + Number(t.amount);
-    });
+    transactions
+      .filter((t: any) => t.type === "expense")
+      .forEach((t: any) => {
+        const name = catMap.get(t.category_id) || "Sem categoria";
+        expByCategory[name] = (expByCategory[name] || 0) + Number(t.amount);
+      });
 
     const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance), 0);
     const overdueCount = transactions.filter((t: any) => t.status === "overdue").length;
 
-    const goalsSummary = goals.map((g: any) => `${g.name}: R$${Number(g.current_amount).toFixed(0)}/${Number(g.target_amount).toFixed(0)} (${g.deadline || "sem prazo"})`).join("; ");
+    const goalsSummary = goals
+      .map(
+        (g: any) =>
+          `${g.name}: R$${Number(g.current_amount).toFixed(0)}/${Number(g.target_amount).toFixed(0)} (${g.deadline || "sem prazo"})`,
+      )
+      .join("; ");
 
     const prompt = `Analise os dados financeiros abaixo e gere de 3 a 5 insights acionáveis para o usuário. 
 Cada insight deve ter um type (warning, success ou destructive), um título curto e uma descrição de até 2 frases.
@@ -86,7 +102,10 @@ Regras:
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: "Você é um analista financeiro. Retorne insights estruturados." },
+          {
+            role: "system",
+            content: "Você é um analista financeiro. Retorne insights estruturados.",
+          },
           { role: "user", content: prompt },
         ],
         tools: [
@@ -126,10 +145,16 @@ Regras:
       const errText = await aiResponse.text();
       console.error("AI error:", aiResponse.status, errText);
       if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       throw new Error("AI gateway error");
     }
@@ -171,18 +196,15 @@ Regras:
           const telegramMsg = `⚠️ *T2-SimplyFin — Alertas Graves*\n\n${alertText}\n\n_Acesse o app para mais detalhes._`;
 
           try {
-            await fetch(
-              `https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: profile.telegram_chat_id,
-                  text: telegramMsg,
-                  parse_mode: "Markdown",
-                }),
-              }
-            );
+            await fetch(`https://api.telegram.org/bot${profile.telegram_bot_token}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: profile.telegram_chat_id,
+                text: telegramMsg,
+                parse_mode: "Markdown",
+              }),
+            });
           } catch (tgErr) {
             console.error("Telegram send error:", tgErr);
           }
@@ -195,9 +217,12 @@ Regras:
     });
   } catch (e) {
     console.error("generate-insights error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });

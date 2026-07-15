@@ -23,21 +23,24 @@ export function usePushNotifications() {
     }
   }, [isSupported]);
 
-  const sendLocalNotification = useCallback((title: string, body: string, tag?: string) => {
-    if (!isSupported || Notification.permission !== "granted") return;
+  const sendLocalNotification = useCallback(
+    (title: string, body: string, tag?: string) => {
+      if (!isSupported || Notification.permission !== "granted") return;
 
-    const registration = navigator.serviceWorker?.ready;
-    if (registration) {
-      registration.then((reg) => {
-        reg.showNotification(title, {
-          body,
-          icon: "/pwa-icon-192.png",
-          badge: "/pwa-icon-192.png",
-          tag: tag || "t2-notification",
-        } as NotificationOptions);
-      });
-    }
-  }, [isSupported]);
+      const registration = navigator.serviceWorker?.ready;
+      if (registration) {
+        registration.then((reg) => {
+          reg.showNotification(title, {
+            body,
+            icon: "/pwa-icon-192.png",
+            badge: "/pwa-icon-192.png",
+            tag: tag || "t2-notification",
+          } as NotificationOptions);
+        });
+      }
+    },
+    [isSupported],
+  );
 
   const isEnabled = isSupported && Notification.permission === "granted";
 
@@ -62,7 +65,7 @@ export function useDailyReminder() {
         sendLocalNotification(
           "📝 Revisão diária",
           "Você registrou todos os gastos de hoje? Toque para conferir.",
-          "daily-reminder"
+          "daily-reminder",
         );
         localStorage.setItem("t2-last-reminder", today);
       }

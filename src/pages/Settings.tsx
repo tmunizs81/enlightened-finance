@@ -1,5 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Settings2, Bot, Brain, CheckCircle, Send, Loader2, Download, Upload, DatabaseBackup, AlertTriangle, Cloud, RotateCcw, Trash2, Clock, UserPlus, Users, Bell, BellOff, Keyboard } from "lucide-react";
+import {
+  Settings2,
+  Bot,
+  Brain,
+  CheckCircle,
+  Send,
+  Loader2,
+  Download,
+  Upload,
+  DatabaseBackup,
+  AlertTriangle,
+  Cloud,
+  RotateCcw,
+  Trash2,
+  Clock,
+  UserPlus,
+  Users,
+  Bell,
+  BellOff,
+  Keyboard,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -17,15 +37,18 @@ import { SHORTCUTS_LIST } from "@/hooks/use-keyboard-shortcuts";
 function PushNotificationsSection() {
   const { isSupported, isEnabled, requestPermission } = usePushNotifications();
   return (
-    <div className="glass-card p-5 space-y-4">
+    <div className="glass-card space-y-4 p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Bell className="h-5 w-5 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Notificações Push</h2>
         </div>
         {isEnabled && (
-          <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-            <CheckCircle className="h-3 w-3 mr-1" /> Ativadas
+          <Badge
+            variant="outline"
+            className="border-success/20 bg-success/15 text-[10px] text-success"
+          >
+            <CheckCircle className="mr-1 h-3 w-3" /> Ativadas
           </Badge>
         )}
       </div>
@@ -33,13 +56,20 @@ function PushNotificationsSection() {
         Receba lembretes diários às 21h para registrar seus gastos e alertas importantes.
       </p>
       {!isSupported ? (
-        <p className="text-xs text-muted-foreground">Seu navegador não suporta notificações push.</p>
+        <p className="text-xs text-muted-foreground">
+          Seu navegador não suporta notificações push.
+        </p>
       ) : isEnabled ? (
-        <div className="rounded-lg bg-success/5 border border-success/20 p-3">
-          <p className="text-[11px] text-success">✅ Notificações ativadas. Você receberá lembretes diários às 21h.</p>
+        <div className="rounded-lg border border-success/20 bg-success/5 p-3">
+          <p className="text-[11px] text-success">
+            ✅ Notificações ativadas. Você receberá lembretes diários às 21h.
+          </p>
         </div>
       ) : (
-        <Button onClick={requestPermission} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5">
+        <Button
+          onClick={requestPermission}
+          className="gradient-bg-primary gap-1.5 text-xs text-primary-foreground"
+        >
           <Bell className="h-3.5 w-3.5" /> Ativar Notificações
         </Button>
       )}
@@ -49,17 +79,24 @@ function PushNotificationsSection() {
 
 function KeyboardShortcutsSection() {
   return (
-    <div className="glass-card p-5 space-y-4">
+    <div className="glass-card space-y-4 p-5">
       <div className="flex items-center gap-3">
         <Keyboard className="h-5 w-5 text-primary" />
         <h2 className="text-sm font-semibold text-foreground">Atalhos de Teclado</h2>
       </div>
-      <p className="text-xs text-muted-foreground">Use atalhos para navegar e executar ações rapidamente.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <p className="text-xs text-muted-foreground">
+        Use atalhos para navegar e executar ações rapidamente.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {SHORTCUTS_LIST.map((s) => (
-          <div key={s.keys} className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 border border-border/50">
+          <div
+            key={s.keys}
+            className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-2"
+          >
             <span className="text-[11px] text-muted-foreground">{s.label}</span>
-            <kbd className="px-2 py-0.5 rounded bg-muted text-[10px] font-mono text-foreground">{s.keys}</kbd>
+            <kbd className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-foreground">
+              {s.keys}
+            </kbd>
           </div>
         ))}
       </div>
@@ -67,8 +104,15 @@ function KeyboardShortcutsSection() {
   );
 }
 
-
-const BACKUP_TABLES = ["accounts", "categories", "transactions", "goals", "budgets", "recurring_transactions", "ai_insights"] as const;
+const BACKUP_TABLES = [
+  "accounts",
+  "categories",
+  "transactions",
+  "goals",
+  "budgets",
+  "recurring_transactions",
+  "ai_insights",
+] as const;
 
 interface CloudBackup {
   name: string;
@@ -123,37 +167,54 @@ const SettingsPage = () => {
   const loadCloudBackups = useCallback(async () => {
     setLoadingBackups(true);
     try {
-      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "list" } });
+      const { data, error } = await supabase.functions.invoke("auto-backup", {
+        body: { action: "list" },
+      });
       if (error) throw error;
       setCloudBackups(data.backups || []);
-    } catch (e: any) { console.error("Error loading backups:", e); }
-    finally { setLoadingBackups(false); }
+    } catch (e: any) {
+      console.error("Error loading backups:", e);
+    } finally {
+      setLoadingBackups(false);
+    }
   }, []);
 
-  useEffect(() => { if (user) loadCloudBackups(); }, [user, loadCloudBackups]);
+  useEffect(() => {
+    if (user) loadCloudBackups();
+  }, [user, loadCloudBackups]);
 
   const handleCloudBackupNow = async () => {
     if (!user) return;
     setCreatingCloud(true);
     try {
-      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "create" } });
+      const { data, error } = await supabase.functions.invoke("auto-backup", {
+        body: { action: "create" },
+      });
       if (error) throw error;
       toast.success(`Backup na nuvem criado! ${data.totalRows} registros salvos.`);
       loadCloudBackups();
-    } catch (e: any) { toast.error(e.message || "Erro ao criar backup"); }
-    finally { setCreatingCloud(false); }
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao criar backup");
+    } finally {
+      setCreatingCloud(false);
+    }
   };
 
   const handleCloudRestore = async (filename: string) => {
     if (!user) return;
     setRestoringCloud(filename);
     try {
-      const { data, error } = await supabase.functions.invoke("auto-backup", { body: { action: "restore", filename } });
+      const { data, error } = await supabase.functions.invoke("auto-backup", {
+        body: { action: "restore", filename },
+      });
       if (error) throw error;
       qc.invalidateQueries();
       toast.success(`Backup restaurado! ${data.totalRows} registros importados.`);
-    } catch (e: any) { toast.error(e.message || "Erro ao restaurar backup"); }
-    finally { setRestoringCloud(null); }
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao restaurar backup");
+    } finally {
+      setRestoringCloud(null);
+    }
   };
 
   const handleSave = async () => {
@@ -169,45 +230,68 @@ const SettingsPage = () => {
   };
 
   const handleDetectChatId = async () => {
-    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    if (!botToken) {
+      toast.error("Preencha o token do bot primeiro.");
+      return;
+    }
     setTesting(true);
     try {
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`);
       const data = await resp.json();
       if (data.ok && data.result && data.result.length > 0) {
         const lastUpdate = data.result[data.result.length - 1];
-        const detectedChatId = String(lastUpdate.message?.chat?.id || lastUpdate.callback_query?.message?.chat?.id || "");
+        const detectedChatId = String(
+          lastUpdate.message?.chat?.id || lastUpdate.callback_query?.message?.chat?.id || "",
+        );
         if (detectedChatId) {
           setChatId(detectedChatId);
-          toast.success(`Chat ID detectado: ${detectedChatId}\n\nAgora clique em "Salvar Configuração"`);
+          toast.success(
+            `Chat ID detectado: ${detectedChatId}\n\nAgora clique em "Salvar Configuração"`,
+          );
         } else {
           toast.error("Nenhuma mensagem encontrada. Envie /start para o bot primeiro.");
         }
       } else {
         toast.error("Envie /start para o bot no Telegram primeiro, depois clique aqui novamente.");
       }
-    } catch { toast.error("Falha ao detectar Chat ID."); }
-    finally { setTesting(false); }
+    } catch {
+      toast.error("Falha ao detectar Chat ID.");
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleTest = async () => {
-    if (!botToken || !chatId) { toast.error("Preencha o token e o Chat ID primeiro."); return; }
+    if (!botToken || !chatId) {
+      toast.error("Preencha o token e o Chat ID primeiro.");
+      return;
+    }
     setTesting(true);
     try {
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text: "✅ *T2-SimplyFin* — Conexão testada com sucesso!", parse_mode: "Markdown" }),
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "✅ *T2-SimplyFin* — Conexão testada com sucesso!",
+          parse_mode: "Markdown",
+        }),
       });
       const data = await resp.json();
       if (data.ok) toast.success("Mensagem de teste enviada!");
       else toast.error(`Erro: ${data.description || "Verifique token e Chat ID"}`);
-    } catch { toast.error("Falha ao conectar com a API do Telegram."); }
-    finally { setTesting(false); }
+    } catch {
+      toast.error("Falha ao conectar com a API do Telegram.");
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleSetWebhook = async () => {
-    if (!botToken) { toast.error("Preencha o token do bot primeiro."); return; }
+    if (!botToken) {
+      toast.error("Preencha o token do bot primeiro.");
+      return;
+    }
     setSettingWebhook(true);
     try {
       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
@@ -217,10 +301,14 @@ const SettingsPage = () => {
         body: JSON.stringify({ url: webhookUrl }),
       });
       const data = await resp.json();
-      if (data.ok) toast.success("Webhook configurado! Agora envie fotos de comprovantes para o bot.");
+      if (data.ok)
+        toast.success("Webhook configurado! Agora envie fotos de comprovantes para o bot.");
       else toast.error(`Erro: ${data.description || "Falha ao configurar webhook"}`);
-    } catch { toast.error("Falha ao configurar webhook."); }
-    finally { setSettingWebhook(false); }
+    } catch {
+      toast.error("Falha ao configurar webhook.");
+    } finally {
+      setSettingWebhook(false);
+    }
   };
 
   // === BACKUP: Export ===
@@ -236,8 +324,14 @@ const SettingsPage = () => {
       }
 
       const blob = new Blob(
-        [JSON.stringify({ version: 1, exported_at: new Date().toISOString(), tables: backup }, null, 2)],
-        { type: "application/json" }
+        [
+          JSON.stringify(
+            { version: 1, exported_at: new Date().toISOString(), tables: backup },
+            null,
+            2,
+          ),
+        ],
+        { type: "application/json" },
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -283,12 +377,23 @@ const SettingsPage = () => {
       setImportProgress(20);
 
       // Insert in dependency order (categories before transactions, etc.)
-      const insertOrder: typeof BACKUP_TABLES[number][] = ["accounts", "categories", "goals", "budgets", "transactions", "recurring_transactions", "ai_insights"];
+      const insertOrder: (typeof BACKUP_TABLES)[number][] = [
+        "accounts",
+        "categories",
+        "goals",
+        "budgets",
+        "transactions",
+        "recurring_transactions",
+        "ai_insights",
+      ];
       let done = 0;
 
       for (const table of insertOrder) {
         const rows = tables[table];
-        if (!rows || rows.length === 0) { done++; continue; }
+        if (!rows || rows.length === 0) {
+          done++;
+          continue;
+        }
 
         // Re-add user_id and insert in batches
         const withUser = rows.map((row: any) => ({ ...row, user_id: user.id }));
@@ -304,7 +409,10 @@ const SettingsPage = () => {
 
       // Invalidate all queries
       qc.invalidateQueries();
-      const totalRows = Object.values(tables).reduce((s: number, arr: any[]) => s + (arr?.length || 0), 0);
+      const totalRows = Object.values(tables).reduce(
+        (s: number, arr: any[]) => s + (arr?.length || 0),
+        0,
+      );
       toast.success(`Backup restaurado! ${totalRows} registros importados.`);
     } catch (e: any) {
       toast.error(e.message || "Erro ao importar backup");
@@ -356,86 +464,168 @@ const SettingsPage = () => {
       </div>
 
       {/* AI */}
-      <div className="glass-card p-5 space-y-4">
+      <div className="glass-card space-y-4 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Brain className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Inteligência Artificial — Google Gemini</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              Inteligência Artificial — Google Gemini
+            </h2>
           </div>
-          <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-            <CheckCircle className="h-3 w-3 mr-1" /> DeepSeek Ativo
+          <Badge
+            variant="outline"
+            className="border-success/20 bg-success/15 text-[10px] text-success"
+          >
+            <CheckCircle className="mr-1 h-3 w-3" /> DeepSeek Ativo
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O T2-SimplyFin utiliza o <strong className="text-foreground">DeepSeek</strong> como assistente financeiro inteligente.
+          O T2-SimplyFin utiliza o <strong className="text-foreground">DeepSeek</strong> como
+          assistente financeiro inteligente.
         </p>
-        <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-2">
-          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Modelo:</strong> DeepSeek Chat (V3)</p>
-          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Provedor:</strong> DeepSeek API</p>
-          <p className="text-[11px] text-muted-foreground">Integrado via API Key — modelo de IA avançado para análise financeira.</p>
+        <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/50 p-3">
+          <p className="text-[11px] text-muted-foreground">
+            <strong className="text-foreground">Modelo:</strong> DeepSeek Chat (V3)
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            <strong className="text-foreground">Provedor:</strong> DeepSeek API
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Integrado via API Key — modelo de IA avançado para análise financeira.
+          </p>
         </div>
       </div>
 
       {/* Telegram */}
-      <div className="glass-card p-5 space-y-4">
+      <div className="glass-card space-y-4 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Bot className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Notificações via Telegram</h2>
           </div>
           {botToken && chatId && (
-            <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-              <CheckCircle className="h-3 w-3 mr-1" /> Configurado
+            <Badge
+              variant="outline"
+              className="border-success/20 bg-success/15 text-[10px] text-success"
+            >
+              <CheckCircle className="mr-1 h-3 w-3" /> Configurado
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">Receba alertas e envie fotos de comprovantes para lançar despesas automaticamente via OCR com IA.</p>
-        <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
+        <p className="text-xs text-muted-foreground">
+          Receba alertas e envie fotos de comprovantes para lançar despesas automaticamente via OCR
+          com IA.
+        </p>
+        <div className="space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 p-3">
           <p className="text-[11px] font-semibold text-foreground">Como configurar:</p>
-          <p className="text-[11px] text-muted-foreground">1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong></p>
-          <p className="text-[11px] text-muted-foreground">2. Envie <code className="bg-background px-1 rounded text-foreground">/newbot</code> e siga as instruções</p>
-          <p className="text-[11px] text-muted-foreground">3. Copie o <strong className="text-foreground">Token</strong> gerado e cole abaixo</p>
-          <p className="text-[11px] text-muted-foreground">4. Envie <code className="bg-background px-1 rounded text-foreground">/start</code> para o seu bot no Telegram</p>
-          <p className="text-[11px] text-muted-foreground">5. Clique em <strong className="text-foreground">"Detectar Chat ID"</strong> abaixo</p>
+          <p className="text-[11px] text-muted-foreground">
+            1. Abra o Telegram e procure por <strong className="text-foreground">@BotFather</strong>
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            2. Envie <code className="rounded bg-background px-1 text-foreground">/newbot</code> e
+            siga as instruções
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            3. Copie o <strong className="text-foreground">Token</strong> gerado e cole abaixo
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            4. Envie <code className="rounded bg-background px-1 text-foreground">/start</code> para
+            o seu bot no Telegram
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            5. Clique em <strong className="text-foreground">"Detectar Chat ID"</strong> abaixo
+          </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">Token do Bot</Label>
-          <Input id="telegram-token" value={botToken} onChange={(e) => setBotToken(e.target.value)} placeholder="123456789:ABCDEF..." className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
+          <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">
+            Token do Bot
+          </Label>
+          <Input
+            id="telegram-token"
+            value={botToken}
+            onChange={(e) => setBotToken(e.target.value)}
+            placeholder="123456789:ABCDEF..."
+            className="border-border bg-secondary font-mono text-xs"
+            disabled={!loaded}
+          />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">Chat ID</Label>
-            <Button variant="ghost" size="sm" onClick={handleDetectChatId} disabled={testing || !botToken} className="text-[10px] h-6 px-2 text-primary">
+            <Label htmlFor="telegram-chat" className="text-xs text-muted-foreground">
+              Chat ID
+            </Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDetectChatId}
+              disabled={testing || !botToken}
+              className="h-6 px-2 text-[10px] text-primary"
+            >
               {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "🔍 Detectar Chat ID"}
             </Button>
           </div>
-          <Input id="telegram-chat" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Envie /start no bot e clique em 'Detectar Chat ID'" className="bg-secondary border-border font-mono text-xs" disabled={!loaded} />
+          <Input
+            id="telegram-chat"
+            value={chatId}
+            onChange={(e) => setChatId(e.target.value)}
+            placeholder="Envie /start no bot e clique em 'Detectar Chat ID'"
+            className="border-border bg-secondary font-mono text-xs"
+            disabled={!loaded}
+          />
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={saving || !loaded} className="gradient-bg-primary text-primary-foreground text-xs">
-            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+          <Button
+            onClick={handleSave}
+            disabled={saving || !loaded}
+            className="gradient-bg-primary text-xs text-primary-foreground"
+          >
+            {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
             {saving ? "Salvando..." : "Salvar Configuração"}
           </Button>
-          <Button variant="outline" onClick={handleTest} disabled={testing || !botToken || !chatId} className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5">
+          <Button
+            variant="outline"
+            onClick={handleTest}
+            disabled={testing || !botToken || !chatId}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Testar Envio
           </Button>
-          <Button variant="outline" onClick={handleSetWebhook} disabled={settingWebhook || !botToken} className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5">
-            {settingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
+          <Button
+            variant="outline"
+            onClick={handleSetWebhook}
+            disabled={settingWebhook || !botToken}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {settingWebhook ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Bot className="h-3 w-3" />
+            )}
             Ativar OCR via Telegram
           </Button>
         </div>
-        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
-          <p className="text-[11px] font-semibold text-foreground">📸 OCR de Comprovantes via Telegram</p>
-          <p className="text-[11px] text-muted-foreground">Após ativar, envie uma foto de comprovante para o bot. A IA irá:</p>
-          <p className="text-[11px] text-muted-foreground">• Ler o valor, descrição e data automaticamente</p>
-          <p className="text-[11px] text-muted-foreground">• Classificar na categoria e conta corretas</p>
-          <p className="text-[11px] text-muted-foreground">• Salvar o comprovante como anexo da transação</p>
+        <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <p className="text-[11px] font-semibold text-foreground">
+            📸 OCR de Comprovantes via Telegram
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Após ativar, envie uma foto de comprovante para o bot. A IA irá:
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            • Ler o valor, descrição e data automaticamente
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            • Classificar na categoria e conta corretas
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            • Salvar o comprovante como anexo da transação
+          </p>
         </div>
       </div>
 
       {/* Backup Local */}
-      <div className="glass-card p-5 space-y-4">
+      <div className="glass-card space-y-4 p-5">
         <div className="flex items-center gap-3">
           <DatabaseBackup className="h-5 w-5 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Backup Local (JSON)</h2>
@@ -445,76 +635,133 @@ const SettingsPage = () => {
         </p>
 
         <div className="flex gap-3">
-          <Button onClick={handleExport} disabled={exporting} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 flex-1">
-            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          <Button
+            onClick={handleExport}
+            disabled={exporting}
+            className="gradient-bg-primary flex-1 gap-1.5 text-xs text-primary-foreground"
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
             {exporting ? "Exportando..." : "Exportar Backup"}
           </Button>
           <Button
             variant="outline"
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="text-xs border-border text-muted-foreground hover:text-primary gap-1.5 flex-1"
+            className="flex-1 gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
           >
-            {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {importing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
             {importing ? "Importando..." : "Restaurar de Arquivo"}
           </Button>
-          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
         </div>
 
         {importing && (
           <div className="space-y-1.5">
             <Progress value={importProgress} className="h-2 [&>div]:bg-primary" />
-            <p className="text-[10px] text-muted-foreground text-center">{importProgress}% concluído</p>
+            <p className="text-center text-[10px] text-muted-foreground">
+              {importProgress}% concluído
+            </p>
           </div>
         )}
       </div>
 
       {/* Backup Automático na Nuvem */}
-      <div className="glass-card p-5 space-y-4">
+      <div className="glass-card space-y-4 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Cloud className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Backup Automático na Nuvem</h2>
           </div>
-          <Badge variant="outline" className="bg-success/15 text-success border-success/20 text-[10px]">
-            <Clock className="h-3 w-3 mr-1" /> Diário às 23:30
+          <Badge
+            variant="outline"
+            className="border-success/20 bg-success/15 text-[10px] text-success"
+          >
+            <Clock className="mr-1 h-3 w-3" /> Diário às 23:30
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          O sistema cria backups automaticamente todos os dias às 23:30 (quando o app estiver aberto). São mantidos os últimos 7 backups.
+          O sistema cria backups automaticamente todos os dias às 23:30 (quando o app estiver
+          aberto). São mantidos os últimos 7 backups.
         </p>
 
-        <div className="rounded-lg bg-secondary/50 border border-border/50 p-3 space-y-1.5">
+        <div className="space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 p-3">
           <p className="text-[11px] font-semibold text-foreground">Dados incluídos:</p>
           <div className="grid grid-cols-2 gap-1">
-            {["Contas bancárias", "Categorias", "Transações", "Metas", "Orçamentos", "Recorrentes", "Insights da IA"].map((item) => (
-              <p key={item} className="text-[11px] text-muted-foreground">✓ {item}</p>
+            {[
+              "Contas bancárias",
+              "Categorias",
+              "Transações",
+              "Metas",
+              "Orçamentos",
+              "Recorrentes",
+              "Insights da IA",
+            ].map((item) => (
+              <p key={item} className="text-[11px] text-muted-foreground">
+                ✓ {item}
+              </p>
             ))}
           </div>
         </div>
 
-        <Button onClick={handleCloudBackupNow} disabled={creatingCloud} className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 w-full">
-          {creatingCloud ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5" />}
+        <Button
+          onClick={handleCloudBackupNow}
+          disabled={creatingCloud}
+          className="gradient-bg-primary w-full gap-1.5 text-xs text-primary-foreground"
+        >
+          {creatingCloud ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Cloud className="h-3.5 w-3.5" />
+          )}
           {creatingCloud ? "Criando backup..." : "Criar Backup Agora"}
         </Button>
 
         {/* Cloud backups list */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold text-foreground">Backups disponíveis na nuvem:</p>
-            <Button variant="ghost" size="sm" onClick={loadCloudBackups} disabled={loadingBackups} className="h-6 text-[10px] text-muted-foreground">
-              {loadingBackups ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+            <p className="text-[11px] font-semibold text-foreground">
+              Backups disponíveis na nuvem:
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadCloudBackups}
+              disabled={loadingBackups}
+              className="h-6 text-[10px] text-muted-foreground"
+            >
+              {loadingBackups ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RotateCcw className="h-3 w-3" />
+              )}
             </Button>
           </div>
 
           {cloudBackups.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground text-center py-3">
+            <p className="py-3 text-center text-[11px] text-muted-foreground">
               {loadingBackups ? "Carregando..." : "Nenhum backup na nuvem ainda."}
             </p>
           ) : (
-            <div className="space-y-1.5 max-h-48 overflow-auto scrollbar-thin">
+            <div className="scrollbar-thin max-h-48 space-y-1.5 overflow-auto">
               {cloudBackups.map((b) => (
-                <div key={b.name} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/50 border border-border/50">
+                <div
+                  key={b.name}
+                  className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/50 p-2.5"
+                >
                   <div>
                     <p className="text-[11px] font-medium text-foreground">{b.name}</p>
                     <p className="text-[10px] text-muted-foreground">
@@ -526,9 +773,13 @@ const SettingsPage = () => {
                     size="sm"
                     onClick={() => handleCloudRestore(b.name)}
                     disabled={restoringCloud === b.name}
-                    className="h-7 text-[10px] border-border text-muted-foreground hover:text-primary gap-1"
+                    className="h-7 gap-1 border-border text-[10px] text-muted-foreground hover:text-primary"
                   >
-                    {restoringCloud === b.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                    {restoringCloud === b.name ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3 w-3" />
+                    )}
                     Restaurar
                   </Button>
                 </div>
@@ -537,62 +788,73 @@ const SettingsPage = () => {
           )}
         </div>
 
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
-          <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 p-3">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
           <p className="text-[11px] text-warning">
-            <strong>Atenção:</strong> Restaurar um backup substituirá todos os dados atuais. Esta ação não pode ser desfeita.
+            <strong>Atenção:</strong> Restaurar um backup substituirá todos os dados atuais. Esta
+            ação não pode ser desfeita.
           </p>
         </div>
       </div>
 
       {/* Gerenciamento de Usuários (Admin Only) */}
       {isAdmin && (
-        <div className="glass-card p-5 space-y-4">
+        <div className="glass-card space-y-4 p-5">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Gerenciamento de Usuários</h2>
           </div>
-          <p className="text-xs text-muted-foreground">Crie novos usuários e defina suas credenciais de acesso.</p>
+          <p className="text-xs text-muted-foreground">
+            Crie novos usuários e defina suas credenciais de acesso.
+          </p>
 
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="new-user-email" className="text-xs text-muted-foreground">Email do Usuário</Label>
+              <Label htmlFor="new-user-email" className="text-xs text-muted-foreground">
+                Email do Usuário
+              </Label>
               <Input
                 id="new-user-email"
                 type="email"
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 placeholder="usuario@exemplo.com"
-                className="bg-secondary border-border text-xs"
+                className="border-border bg-secondary text-xs"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-user-name" className="text-xs text-muted-foreground">Nome (opcional)</Label>
+              <Label htmlFor="new-user-name" className="text-xs text-muted-foreground">
+                Nome (opcional)
+              </Label>
               <Input
                 id="new-user-name"
                 value={newUserName}
                 onChange={(e) => setNewUserName(e.target.value)}
                 placeholder="Nome do usuário"
-                className="bg-secondary border-border text-xs"
+                className="border-border bg-secondary text-xs"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-user-password" className="text-xs text-muted-foreground">Senha</Label>
+              <Label htmlFor="new-user-password" className="text-xs text-muted-foreground">
+                Senha
+              </Label>
               <Input
                 id="new-user-password"
                 type="password"
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
                 placeholder="Senha inicial (mínimo 6 caracteres)"
-                className="bg-secondary border-border text-xs"
+                className="border-border bg-secondary text-xs"
                 minLength={6}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-user-role" className="text-xs text-muted-foreground">Permissão</Label>
+              <Label htmlFor="new-user-role" className="text-xs text-muted-foreground">
+                Permissão
+              </Label>
               <select
                 id="new-user-role"
                 value={newUserRole}
@@ -605,35 +867,50 @@ const SettingsPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="new-user-telegram" className="text-xs text-muted-foreground">Telegram Chat ID (opcional)</Label>
+              <Label htmlFor="new-user-telegram" className="text-xs text-muted-foreground">
+                Telegram Chat ID (opcional)
+              </Label>
               <Input
                 id="new-user-telegram"
                 value={newUserTelegramChatId}
                 onChange={(e) => setNewUserTelegramChatId(e.target.value)}
                 placeholder="Ex: 123456789 — para receber alertas"
-                className="bg-secondary border-border font-mono text-xs"
+                className="border-border bg-secondary font-mono text-xs"
               />
               <p className="text-[10px] text-muted-foreground">
-                O usuário pode obter o Chat ID enviando /start ao bot do Telegram e usando "Detectar Chat ID" nas configurações dele.
+                O usuário pode obter o Chat ID enviando /start ao bot do Telegram e usando "Detectar
+                Chat ID" nas configurações dele.
               </p>
             </div>
 
             <Button
               onClick={handleCreateUser}
               disabled={creatingUser}
-              className="gradient-bg-primary text-primary-foreground text-xs gap-1.5 w-full"
+              className="gradient-bg-primary w-full gap-1.5 text-xs text-primary-foreground"
             >
-              {creatingUser ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+              {creatingUser ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <UserPlus className="h-3.5 w-3.5" />
+              )}
               {creatingUser ? "Criando..." : "Criar Usuário"}
             </Button>
           </div>
 
-          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+          <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
             <p className="text-[11px] font-semibold text-foreground">ℹ️ Informações Importantes</p>
-            <p className="text-[11px] text-muted-foreground">• A senha será definida por você e deve ser repassada ao usuário</p>
-            <p className="text-[11px] text-muted-foreground">• O email será confirmado automaticamente (não requer verificação)</p>
-            <p className="text-[11px] text-muted-foreground">• Usuários comuns acessam apenas seus próprios dados</p>
-            <p className="text-[11px] text-muted-foreground">• Administradores podem criar novos usuários</p>
+            <p className="text-[11px] text-muted-foreground">
+              • A senha será definida por você e deve ser repassada ao usuário
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              • O email será confirmado automaticamente (não requer verificação)
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              • Usuários comuns acessam apenas seus próprios dados
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              • Administradores podem criar novos usuários
+            </p>
           </div>
         </div>
       )}
@@ -645,7 +922,7 @@ const SettingsPage = () => {
       <KeyboardShortcutsSection />
 
       {/* Geral */}
-      <div className="glass-card p-5 space-y-4">
+      <div className="glass-card space-y-4 p-5">
         <div className="flex items-center gap-3">
           <Settings2 className="h-5 w-5 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Geral</h2>

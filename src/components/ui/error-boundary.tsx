@@ -31,13 +31,13 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4">
+          <div className="flex flex-col items-center justify-center space-y-4 px-4 py-16 text-center">
             <div className="rounded-full bg-destructive/10 p-4">
               <AlertTriangle className="h-8 w-8 text-destructive" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">Algo deu errado</h2>
-              <p className="text-sm text-muted-foreground mt-1 max-w-md">
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 Ocorreu um erro inesperado. Tente recarregar o componente.
               </p>
             </div>

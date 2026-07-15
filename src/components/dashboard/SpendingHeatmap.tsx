@@ -35,7 +35,7 @@ export function SpendingHeatmap() {
 
     let maxAmount = 0;
     const cells: { date: string; amount: number; day: number; week: number }[] = [];
-    
+
     for (let w = 0; w < WEEKS_TO_SHOW; w++) {
       for (let d = 0; d < 7; d++) {
         const date = new Date(startDate);
@@ -66,20 +66,32 @@ export function SpendingHeatmap() {
   ];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-5 space-y-4">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card space-y-4 p-5"
+    >
       <div className="flex items-center gap-2">
         <Flame className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Heatmap de Gastos</h3>
-        <span className="text-[10px] text-muted-foreground ml-auto">Últimas {WEEKS_TO_SHOW} semanas</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">
+          Últimas {WEEKS_TO_SHOW} semanas
+        </span>
       </div>
 
       <div className="flex gap-1">
-        <div className="flex flex-col gap-1 mr-1 pt-0.5">
-          {DAYS.map((d, i) => (
-            i % 2 === 1 ? <span key={d} className="text-[9px] text-muted-foreground h-3 flex items-center">{d}</span> : <span key={d} className="h-3" />
-          ))}
+        <div className="mr-1 flex flex-col gap-1 pt-0.5">
+          {DAYS.map((d, i) =>
+            i % 2 === 1 ? (
+              <span key={d} className="flex h-3 items-center text-[9px] text-muted-foreground">
+                {d}
+              </span>
+            ) : (
+              <span key={d} className="h-3" />
+            ),
+          )}
         </div>
-        <div className="flex gap-1 flex-1 overflow-hidden">
+        <div className="flex flex-1 gap-1 overflow-hidden">
           {Array.from({ length: WEEKS_TO_SHOW }, (_, w) => (
             <div key={w} className="flex flex-col gap-1">
               {Array.from({ length: 7 }, (_, d) => {
@@ -89,11 +101,15 @@ export function SpendingHeatmap() {
                 return (
                   <Tooltip key={d}>
                     <TooltipTrigger asChild>
-                      <div className={`h-3 w-3 rounded-sm ${intensityColors[intensity]} transition-colors cursor-default`} />
+                      <div
+                        className={`h-3 w-3 rounded-sm ${intensityColors[intensity]} cursor-default transition-colors`}
+                      />
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-[10px]">
                       <p>{new Date(cell.date + "T12:00:00").toLocaleDateString("pt-BR")}</p>
-                      <p className="font-medium">R$ {cell.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className="font-medium">
+                        R$ {cell.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -103,7 +119,7 @@ export function SpendingHeatmap() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 justify-end">
+      <div className="flex items-center justify-end gap-1.5">
         <span className="text-[9px] text-muted-foreground">Menos</span>
         {intensityColors.map((c, i) => (
           <div key={i} className={`h-2.5 w-2.5 rounded-sm ${c}`} />

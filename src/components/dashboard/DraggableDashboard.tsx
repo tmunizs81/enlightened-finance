@@ -117,7 +117,7 @@ export function DashboardWidgetManager({
           Widgets
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
         <DropdownMenuLabel className="text-xs">Mostrar/Ocultar Widgets</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {widgets.map((w) => (
@@ -132,10 +132,10 @@ export function DashboardWidgetManager({
         ))}
         <DropdownMenuSeparator />
         <div className="p-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full text-xs gap-1.5 text-muted-foreground" 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full gap-1.5 text-xs text-muted-foreground"
             onClick={() => {
               localStorage.removeItem("dismissed_alerts");
               window.location.reload();
@@ -147,7 +147,12 @@ export function DashboardWidgetManager({
         </div>
         <DropdownMenuSeparator />
         <div className="p-1">
-          <Button variant="ghost" size="sm" className="w-full text-xs gap-1.5" onClick={resetLayout}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full gap-1.5 text-xs"
+            onClick={resetLayout}
+          >
             <RotateCcw className="h-3 w-3" />
             Restaurar padrão
           </Button>
@@ -177,13 +182,13 @@ export function DraggableDashboard({
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
-                    className={`relative group transition-shadow ${
-                      snapshot.isDragging ? "z-50 shadow-2xl shadow-primary/20 rounded-xl" : ""
+                    className={`group relative transition-shadow ${
+                      snapshot.isDragging ? "z-50 rounded-xl shadow-2xl shadow-primary/20" : ""
                     }`}
                   >
                     <div
                       {...provided.dragHandleProps}
-                      className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-secondary/90 rounded-md p-1 cursor-grab active:cursor-grabbing"
+                      className="absolute -left-1 top-1/2 z-10 -translate-y-1/2 cursor-grab rounded-md bg-secondary/90 p-1 opacity-0 transition-opacity active:cursor-grabbing group-hover:opacity-100"
                     >
                       <GripVertical className="h-4 w-4 text-muted-foreground" />
                     </div>

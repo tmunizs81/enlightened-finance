@@ -32,7 +32,10 @@ export function TagManager({ transactionId, tags, allTags, onTagsChange }: TagMa
     const { error } = await supabase
       .from("transaction_tags" as any)
       .insert({ transaction_id: transactionId, tag_id: tagId } as any);
-    if (error) { toast.error("Erro ao adicionar tag"); return; }
+    if (error) {
+      toast.error("Erro ao adicionar tag");
+      return;
+    }
     onTagsChange();
   };
 
@@ -42,7 +45,10 @@ export function TagManager({ transactionId, tags, allTags, onTagsChange }: TagMa
       .delete()
       .eq("transaction_id", transactionId)
       .eq("tag_id", tagId);
-    if (error) { toast.error("Erro ao remover tag"); return; }
+    if (error) {
+      toast.error("Erro ao remover tag");
+      return;
+    }
     onTagsChange();
   };
 
@@ -82,7 +88,7 @@ export function TagManager({ transactionId, tags, allTags, onTagsChange }: TagMa
         <Badge
           key={tag.id}
           variant="outline"
-          className="text-[10px] gap-1 pr-1"
+          className="gap-1 pr-1 text-[10px]"
           style={{ borderColor: tag.color, color: tag.color }}
         >
           {tag.name}
@@ -93,30 +99,40 @@ export function TagManager({ transactionId, tags, allTags, onTagsChange }: TagMa
       ))}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button className="h-5 w-5 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-colors">
+          <button className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground transition-colors hover:border-primary hover:text-primary">
             <Plus className="h-3 w-3" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2 space-y-2" align="start">
+        <PopoverContent className="w-56 space-y-2 p-2" align="start">
           <div className="flex gap-1">
             <Input
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
               placeholder="Nova tag..."
-              className="h-7 text-xs bg-secondary"
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createAndAdd(); } }}
+              className="h-7 bg-secondary text-xs"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  createAndAdd();
+                }
+              }}
             />
-            <Button size="sm" className="h-7 text-xs px-2" onClick={createAndAdd} disabled={!newTag.trim()}>
+            <Button
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={createAndAdd}
+              disabled={!newTag.trim()}
+            >
               +
             </Button>
           </div>
           {availableTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+            <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
               {availableTags.map((tag) => (
                 <button
                   key={tag.id}
                   onClick={() => addTag(tag.id)}
-                  className="text-[10px] px-2 py-0.5 rounded-full border hover:opacity-80 transition-opacity"
+                  className="rounded-full border px-2 py-0.5 text-[10px] transition-opacity hover:opacity-80"
                   style={{ borderColor: tag.color, color: tag.color }}
                 >
                   {tag.name}

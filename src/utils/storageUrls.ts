@@ -20,16 +20,19 @@ interface CachedUrl {
 
 // Memory cache structured by userId
 const urlCache: Record<string, Record<string, CachedUrl>> = {};
-const pendingRequests: Record<string, { promise: Promise<string | null>, controller: AbortController }> = {};
+const pendingRequests: Record<
+  string,
+  { promise: Promise<string | null>; controller: AbortController }
+> = {};
 
 // Current authenticated user ID tracker for sync helper functions
 let currentUserId: string | null = null;
 
 // Use session storage for user info if available (faster than async getUser)
 try {
-  const authKey = Object.keys(localStorage).find(k => k.endsWith('-auth-token'));
+  const authKey = Object.keys(localStorage).find((k) => k.endsWith("-auth-token"));
   if (authKey) {
-    const session = JSON.parse(localStorage.getItem(authKey) || '{}');
+    const session = JSON.parse(localStorage.getItem(authKey) || "{}");
     currentUserId = session?.user?.id || null;
   }
 } catch (e) {}
@@ -50,9 +53,9 @@ const requestQueue: (() => void)[] = [];
 // Background cleanup
 setInterval(() => {
   const now = Date.now();
-  Object.keys(urlCache).forEach(userId => {
+  Object.keys(urlCache).forEach((userId) => {
     const userCache = urlCache[userId];
-    Object.keys(userCache).forEach(path => {
+    Object.keys(userCache).forEach((path) => {
       if (userCache[path].expiresAt <= now) {
         delete userCache[path];
       }
@@ -89,7 +92,7 @@ function loadFromSessionStorage(userId: string) {
       const parsed = JSON.parse(stored);
       const now = Date.now();
       const valid: Record<string, CachedUrl> = {};
-      Object.keys(parsed).forEach(path => {
+      Object.keys(parsed).forEach((path) => {
         if (parsed[path].expiresAt > now) valid[path] = parsed[path];
       });
       urlCache[userId] = valid;
@@ -134,8 +137,8 @@ export function isUrlPending(value: string | null | undefined): boolean {
 }
 
 export async function getSignedReceiptUrl(
-  value: string | null | undefined, 
-  signal?: AbortSignal
+  value: string | null | undefined,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   if (!value) return null;
   const path = extractStoragePath(value);
@@ -143,8 +146,10 @@ export async function getSignedReceiptUrl(
   // Use currentUserId if available, otherwise fallback to session
   let userId = currentUserId;
   if (!userId) {
-    const { data: { session } } = await supabase.auth.getSession();
-    userId = session?.user?.id || 'anonymous';
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    userId = session?.user?.id || "anonymous";
     currentUserId = userId;
   }
 
@@ -152,7 +157,7 @@ export async function getSignedReceiptUrl(
     urlCache[userId] = {};
     loadFromSessionStorage(userId);
   }
-  
+
   const cached = urlCache[userId][path];
   if (cached && cached.expiresAt > Date.now()) return cached.url;
 
@@ -160,18 +165,20 @@ export async function getSignedReceiptUrl(
   if (pendingRequests[requestKey]) return pendingRequests[requestKey].promise;
 
   const controller = new AbortController();
-  
+
   const signPromise = new Promise<string | null>((resolve) => {
     const executeSigning = async () => {
       const startTime = Date.now();
       let success = false;
       try {
         if (signal) {
-          signal.addEventListener('abort', () => controller.abort(), { once: true });
+          signal.addEventListener("abort", () => controller.abort(), { once: true });
         }
 
-        const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_TTL);
-        
+        const { data, error } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(path, SIGNED_TTL);
+
         if (error || !data?.signedUrl) {
           resolve(null);
           return;
@@ -184,9 +191,9 @@ export async function getSignedReceiptUrl(
 
         urlCache[userId][path] = {
           url: data.signedUrl,
-          expiresAt: Date.now() + CACHE_TTL
+          expiresAt: Date.now() + CACHE_TTL,
         };
-        
+
         saveToSessionStorage(userId);
         success = true;
         resolve(data.signedUrl);

@@ -2,7 +2,13 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, FileText, Check, X, Loader2, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +43,10 @@ export function CSVImport() {
 
   const parseCSV = (text: string) => {
     const lines = text.trim().split("\n").filter(Boolean);
-    if (lines.length < 2) { toast.error("CSV vazio ou sem dados."); return; }
+    if (lines.length < 2) {
+      toast.error("CSV vazio ou sem dados.");
+      return;
+    }
 
     const parsed: ParsedRow[] = [];
     for (let i = 1; i < lines.length; i++) {
@@ -67,7 +76,10 @@ export function CSVImport() {
       });
     }
 
-    if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada."); return; }
+    if (parsed.length === 0) {
+      toast.error("Nenhuma transação válida encontrada.");
+      return;
+    }
     setRows(parsed);
     setOpen(true);
   };
@@ -109,12 +121,16 @@ export function CSVImport() {
     if (orgMatch && accounts.length > 0) {
       const orgName = orgMatch[1].trim().toLowerCase();
       const matched = accounts.find(
-        (a) => a.institution?.toLowerCase().includes(orgName) || a.name.toLowerCase().includes(orgName)
+        (a) =>
+          a.institution?.toLowerCase().includes(orgName) || a.name.toLowerCase().includes(orgName),
       );
       if (matched) setSelectedAccountId(matched.id);
     }
 
-    if (parsed.length === 0) { toast.error("Nenhuma transação válida encontrada no OFX."); return; }
+    if (parsed.length === 0) {
+      toast.error("Nenhuma transação válida encontrada no OFX.");
+      return;
+    }
     setRows(parsed);
     setOpen(true);
   };
@@ -151,7 +167,9 @@ export function CSVImport() {
 
       const batchSize = 100;
       for (let i = 0; i < toInsert.length; i += batchSize) {
-        const { error } = await supabase.from("transactions").insert(toInsert.slice(i, i + batchSize));
+        const { error } = await supabase
+          .from("transactions")
+          .insert(toInsert.slice(i, i + batchSize));
         if (error) throw error;
       }
 
@@ -169,23 +187,33 @@ export function CSVImport() {
 
   return (
     <>
-      <input ref={fileRef} type="file" accept=".csv,.txt,.ofx" className="hidden" onChange={handleFile} />
-      <Button variant="outline" onClick={() => fileRef.current?.click()} className="gap-2 border-border text-muted-foreground hover:text-foreground">
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,.txt,.ofx"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <Button
+        variant="outline"
+        onClick={() => fileRef.current?.click()}
+        className="gap-2 border-border text-muted-foreground hover:text-foreground"
+      >
         <Upload className="h-4 w-4" /> Importar CSV/OFX
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl bg-background border-border">
+        <DialogContent className="max-w-2xl border-border bg-background">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <FileText className="h-4 w-4 text-primary" />
             Importar Transações ({rows.length} encontradas)
           </DialogTitle>
 
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Separador:</span>
               <Select value={separator} onValueChange={(v) => setSeparator(v as "," | ";")}>
-                <SelectTrigger className="w-24 h-8 text-xs bg-secondary border-border">
+                <SelectTrigger className="h-8 w-24 border-border bg-secondary text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -198,39 +226,47 @@ export function CSVImport() {
               <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Conta:</span>
               <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                <SelectTrigger className="w-40 h-8 text-xs bg-secondary border-border">
+                <SelectTrigger className="h-8 w-40 border-border bg-secondary text-xs">
                   <SelectValue placeholder="Sem vínculo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Sem vínculo</SelectItem>
                   {accounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="max-h-64 overflow-auto scrollbar-thin border border-border rounded-lg">
+          <div className="scrollbar-thin max-h-64 overflow-auto rounded-lg border border-border">
             <table className="w-full text-xs">
-              <thead className="bg-secondary sticky top-0">
+              <thead className="sticky top-0 bg-secondary">
                 <tr>
-                  <th className="text-left p-2 text-muted-foreground font-medium">Data</th>
-                  <th className="text-left p-2 text-muted-foreground font-medium">Descrição</th>
-                  <th className="text-right p-2 text-muted-foreground font-medium">Valor</th>
-                  <th className="text-center p-2 text-muted-foreground font-medium">Tipo</th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">Data</th>
+                  <th className="p-2 text-left font-medium text-muted-foreground">Descrição</th>
+                  <th className="p-2 text-right font-medium text-muted-foreground">Valor</th>
+                  <th className="p-2 text-center font-medium text-muted-foreground">Tipo</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.slice(0, 50).map((r, i) => (
                   <tr key={i} className="border-t border-border">
-                    <td className="p-2 text-foreground">{new Date(r.date + "T12:00:00").toLocaleDateString("pt-BR")}</td>
-                    <td className="p-2 text-foreground truncate max-w-[200px]">{r.description}</td>
-                    <td className={`p-2 text-right font-medium ${r.type === "income" ? "text-success" : "text-foreground"}`}>
+                    <td className="p-2 text-foreground">
+                      {new Date(r.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="max-w-[200px] truncate p-2 text-foreground">{r.description}</td>
+                    <td
+                      className={`p-2 text-right font-medium ${r.type === "income" ? "text-success" : "text-foreground"}`}
+                    >
                       R$ {r.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </td>
                     <td className="p-2 text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${r.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] ${r.type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}
+                      >
                         {r.type === "income" ? "Receita" : "Despesa"}
                       </span>
                     </td>
@@ -238,15 +274,31 @@ export function CSVImport() {
                 ))}
               </tbody>
             </table>
-            {rows.length > 50 && <p className="text-[10px] text-muted-foreground text-center py-2">... e mais {rows.length - 50} transações</p>}
+            {rows.length > 50 && (
+              <p className="py-2 text-center text-[10px] text-muted-foreground">
+                ... e mais {rows.length - 50} transações
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setOpen(false)} className="gap-1 border-border text-muted-foreground">
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="gap-1 border-border text-muted-foreground"
+            >
               <X className="h-3.5 w-3.5" /> Cancelar
             </Button>
-            <Button onClick={handleImport} disabled={importing} className="gradient-bg-primary text-primary-foreground gap-1">
-              {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            <Button
+              onClick={handleImport}
+              disabled={importing}
+              className="gradient-bg-primary gap-1 text-primary-foreground"
+            >
+              {importing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
               {importing ? "Importando..." : `Importar ${rows.length} transações`}
             </Button>
           </div>

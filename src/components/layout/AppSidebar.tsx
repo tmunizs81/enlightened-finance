@@ -8,7 +8,6 @@ import {
   Brain,
   LogOut,
   PiggyBank,
-  
   FileText,
   Key,
   Download,
@@ -40,7 +39,7 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Transações", url: "/transactions", icon: ArrowLeftRight },
-  
+
   { title: "Orçamentos", url: "/budgets", icon: PiggyBank },
   { title: "Metas", url: "/goals", icon: Target },
   { title: "Contas", url: "/accounts", icon: Wallet },
@@ -65,7 +64,10 @@ export const AppSidebar = memo(function AppSidebar() {
   const { signOut } = useAuth();
   const { isAdmin } = useUserRole();
   const { data: accounts = [] } = useSupabaseQuery<{ id: string; balance: number }>("accounts");
-  const totalBalance = useMemo(() => accounts.reduce((s, a) => s + Number(a.balance), 0), [accounts]);
+  const totalBalance = useMemo(
+    () => accounts.reduce((s, a) => s + Number(a.balance), 0),
+    [accounts],
+  );
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
@@ -73,7 +75,11 @@ export const AppSidebar = memo(function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="T2-SimplyFin" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+          <img
+            src={logo}
+            alt="T2-SimplyFin"
+            className="h-9 w-9 shrink-0 rounded-lg object-contain"
+          />
           {!collapsed && (
             <div>
               <h1 className="text-sm font-bold text-foreground">T2-SimplyFin</h1>
@@ -158,16 +164,19 @@ export const AppSidebar = memo(function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-2">
+      <SidebarFooter className="space-y-2 p-4">
         {!collapsed && (
           <div className="glass-card p-3 text-center">
             <p className="text-[10px] text-muted-foreground">Saldo Total</p>
-            <p className="text-lg font-bold gradient-text-primary">
+            <p className="gradient-text-primary text-lg font-bold">
               R$ {totalBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </div>
         )}
-        <button onClick={signOut} className="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors rounded-md hover:bg-secondary">
+        <button
+          onClick={signOut}
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
+        >
           <LogOut className="h-3.5 w-3.5" />
           {!collapsed && <span>Sair</span>}
         </button>

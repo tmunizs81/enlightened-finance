@@ -18,8 +18,7 @@ const BACKUP_TABLES = [
 ] as const;
 
 serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     // Authenticate user
@@ -66,8 +65,14 @@ serve(async (req) => {
       if (error) throw error;
 
       return new Response(
-        JSON.stringify({ backups: (files || []).map((f: any) => ({ name: f.name, created_at: f.created_at, size: f.metadata?.size })) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          backups: (files || []).map((f: any) => ({
+            name: f.name,
+            created_at: f.created_at,
+            size: f.metadata?.size,
+          })),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -109,7 +114,15 @@ serve(async (req) => {
       }
 
       // Insert in dependency order
-      const insertOrder = ["accounts", "categories", "goals", "budgets", "transactions", "recurring_transactions", "ai_insights"];
+      const insertOrder = [
+        "accounts",
+        "categories",
+        "goals",
+        "budgets",
+        "transactions",
+        "recurring_transactions",
+        "ai_insights",
+      ];
       let totalRows = 0;
 
       for (const table of insertOrder) {
@@ -126,10 +139,9 @@ serve(async (req) => {
         totalRows += rows.length;
       }
 
-      return new Response(
-        JSON.stringify({ success: true, totalRows }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: true, totalRows }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // === CREATE BACKUP (default) ===
@@ -137,10 +149,7 @@ serve(async (req) => {
     let totalRows = 0;
 
     for (const table of BACKUP_TABLES) {
-      const { data, error } = await supabase
-        .from(table)
-        .select("*")
-        .eq("user_id", userId);
+      const { data, error } = await supabase.from(table).select("*").eq("user_id", userId);
 
       if (error) {
         console.error(`Error reading ${table}:`, error.message);
@@ -182,13 +191,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, filename, totalRows, tables: Object.keys(backup).length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
     console.error("auto-backup error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

@@ -3,17 +3,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { toast } from "sonner";
 
-type Tables = "transactions" | "accounts" | "goals" | "categories" | "budgets" | "ai_insights" | "recurring_transactions" | "achievements" | "streaks" | "financial_rules";
+type Tables =
+  | "transactions"
+  | "accounts"
+  | "goals"
+  | "categories"
+  | "budgets"
+  | "ai_insights"
+  | "recurring_transactions"
+  | "achievements"
+  | "streaks"
+  | "financial_rules";
 
 export function useSupabaseQuery<T>(table: Tables, orderBy = "created_at", ascending = false) {
   const { user } = useAuth();
   return useQuery({
     queryKey: [table, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from(table)
-        .select("*")
-        .order(orderBy, { ascending });
+      const { data, error } = await supabase.from(table).select("*").order(orderBy, { ascending });
       if (error) throw error;
       return data as T[];
     },
