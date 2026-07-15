@@ -14,7 +14,7 @@ const Goals = lazy(() => import("./pages/Goals"));
 const Accounts = lazy(() => import("./pages/Accounts"));
 const Insights = lazy(() => import("./pages/Insights"));
 const Budgets = lazy(() => import("./pages/Budgets"));
-const Recurring = lazy(() => import("./pages/Recurring"));
+// Recurring page removed — recurring entries are centralized in Transactions.
 const Reports = lazy(() => import("./pages/Reports"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -70,7 +70,7 @@ function ProtectedRoutes() {
           <Route path="/goals" element={<Goals />} />
           <Route path="/accounts" element={<Accounts />} />
           <Route path="/budgets" element={<Budgets />} />
-          <Route path="/recurring" element={<Recurring />} />
+          <Route path="/recurring" element={<Navigate to="/transactions" replace />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<SettingsPage />} />
