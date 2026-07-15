@@ -15,6 +15,7 @@ import {
   Trophy,
   Zap,
   FolderOpen,
+  Coins,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -45,6 +46,7 @@ const mainItems = [
   { title: "Contas", url: "/accounts", icon: Wallet },
   { title: "Categorias", url: "/categories", icon: FolderOpen },
   { title: "Conquistas", url: "/achievements", icon: Trophy },
+  { title: "DeFi Tracker", url: "/defi", icon: Coins },
 ];
 
 const toolItems = [
