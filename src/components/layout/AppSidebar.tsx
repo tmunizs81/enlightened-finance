@@ -8,7 +8,7 @@ import {
   Brain,
   LogOut,
   PiggyBank,
-  Repeat,
+  
   FileText,
   Key,
   Download,

@@ -10,7 +10,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import {
-  LayoutDashboard, ArrowLeftRight, Target, Wallet, PiggyBank, Repeat,
+  LayoutDashboard, ArrowLeftRight, Target, Wallet, PiggyBank,
   FileText, Brain, Settings, Trophy, Zap, Key, Download, Plus, Search,
   DollarSign,
 } from "lucide-react";
