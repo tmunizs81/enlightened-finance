@@ -12,6 +12,10 @@ interface License {
   updated_at: string;
   plan_type?: string;
   max_seats?: number;
+  grace_until?: string | null;
+  last_payment_status?: string | null;
+  asaas_subscription_id?: string | null;
+  next_charge_at?: string | null;
 }
 
 export function useLicense() {
@@ -19,19 +23,29 @@ export function useLicense() {
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
   const [isValid, setIsValid] = useState(false);
-  const [source, setSource] = useState<"own" | "family" | null>(null);
+  const [source, setSource] = useState<"own" | "family" | "trial" | null>(null);
+  const [inGrace, setInGrace] = useState(false);
+  const [inTrial, setInTrial] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState<Date | null>(null);
+  const [daysUntilBlock, setDaysUntilBlock] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
       setLicense(null);
       setIsValid(false);
       setSource(null);
+      setInGrace(false);
+      setInTrial(false);
+      setTrialEndsAt(null);
+      setDaysUntilBlock(null);
       setLoading(false);
       return;
     }
 
-    const checkLicense = async () => {
+    const check = async () => {
       try {
+        const now = new Date();
+
         // 1) licença própria
         const { data: own } = await supabase
           .from("licenses")
@@ -40,14 +54,28 @@ export function useLicense() {
           .order("expires_at", { ascending: false })
           .maybeSingle();
 
-        const ownValid =
-          !!own && own.status === "active" && new Date(own.expires_at) > new Date();
+        if (own) {
+          const exp = new Date(own.expires_at);
+          const grace = (own as any).grace_until ? new Date((own as any).grace_until) : null;
+          const graceDate = grace || new Date(exp.getTime() + 3 * 86400000);
+          const activeStatus = own.status === "active";
 
-        if (ownValid) {
-          setLicense(own as License);
-          setIsValid(true);
-          setSource("own");
-          return;
+          if (activeStatus && exp > now) {
+            setLicense(own as License);
+            setIsValid(true);
+            setSource("own");
+            setInGrace(false);
+            setDaysUntilBlock(Math.ceil((exp.getTime() - now.getTime()) / 86400000));
+            return;
+          }
+          if (activeStatus && graceDate > now) {
+            setLicense(own as License);
+            setIsValid(true);
+            setSource("own");
+            setInGrace(true);
+            setDaysUntilBlock(Math.ceil((graceDate.getTime() - now.getTime()) / 86400000));
+            return;
+          }
         }
 
         // 2) licença família herdada
@@ -65,7 +93,7 @@ export function useLicense() {
             .eq("user_id", ownerId)
             .eq("plan_type", "family")
             .eq("status", "active")
-            .gt("expires_at", new Date().toISOString())
+            .gt("expires_at", now.toISOString())
             .order("expires_at", { ascending: false })
             .maybeSingle();
 
@@ -73,8 +101,29 @@ export function useLicense() {
             setLicense(familyLic as License);
             setIsValid(true);
             setSource("family");
+            setInGrace(false);
             return;
           }
+        }
+
+        // 3) trial ativo (perfil recém-criado sem licença paga)
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("trial_ends_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const trialEnd = (profile as any)?.trial_ends_at
+          ? new Date((profile as any).trial_ends_at)
+          : null;
+        if (trialEnd && trialEnd > now) {
+          setTrialEndsAt(trialEnd);
+          setInTrial(true);
+          setIsValid(true);
+          setSource("trial");
+          setLicense((own as License) ?? null);
+          setDaysUntilBlock(Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000));
+          return;
         }
 
         setLicense((own as License) ?? null);
@@ -88,8 +137,8 @@ export function useLicense() {
       }
     };
 
-    checkLicense();
+    check();
   }, [user]);
 
-  return { license, isValid, loading, source };
+  return { license, isValid, loading, source, inGrace, inTrial, trialEndsAt, daysUntilBlock };
 }
