@@ -174,36 +174,77 @@ serve(async (req) => {
         if (inviteRole === "admin" && m.role !== "owner")
           return json(403, { error: "Apenas o dono pode convidar admins" });
 
-        // check seat availability
-        const [{ count: memberCount }, { data: fam }] = await Promise.all([
+        // check seat availability (members + pending invites, ignoring expired ones)
+        const nowIso = new Date().toISOString();
+        const normalizedEmail = String(inviteEmail).toLowerCase().trim();
+        const [
+          { count: memberCount },
+          { data: fam },
+          { count: pendingCount },
+          { data: dupInvite },
+          { data: dupMember },
+        ] = await Promise.all([
           admin
             .from("family_members")
             .select("*", { count: "exact", head: true })
             .eq("family_id", m.family_id),
           admin.from("families").select("max_seats").eq("id", m.family_id).maybeSingle(),
+          admin
+            .from("family_invites")
+            .select("*", { count: "exact", head: true })
+            .eq("family_id", m.family_id)
+            .is("accepted_at", null)
+            .gt("expires_at", nowIso),
+          admin
+            .from("family_invites")
+            .select("id")
+            .eq("family_id", m.family_id)
+            .eq("email", normalizedEmail)
+            .is("accepted_at", null)
+            .gt("expires_at", nowIso)
+            .maybeSingle(),
+          admin.rpc("admin_lookup_user_by_email" as never, { _email: normalizedEmail }),
         ]);
+
         const maxSeats = fam?.max_seats ?? 5;
-        const pendingInvites = await admin
-          .from("family_invites")
-          .select("*", { count: "exact", head: true })
-          .eq("family_id", m.family_id)
-          .is("accepted_at", null);
-        if ((memberCount ?? 0) + (pendingInvites.count ?? 0) >= maxSeats)
-          return json(400, { error: `Limite de ${maxSeats} assentos atingido` });
+        const used = (memberCount ?? 0) + (pendingCount ?? 0);
+        if (used >= maxSeats)
+          return json(400, {
+            error: `Limite de ${maxSeats} assentos atingido (${memberCount ?? 0} membro(s) + ${pendingCount ?? 0} convite(s) pendente(s)). Revogue um convite ou remova um membro antes de convidar novamente.`,
+            code: "SEATS_FULL",
+            seats_used: used,
+            seats_max: maxSeats,
+            members: memberCount ?? 0,
+            pending_invites: pendingCount ?? 0,
+          });
+        if (dupInvite)
+          return json(400, {
+            error: `Já existe um convite pendente para ${normalizedEmail}.`,
+            code: "DUPLICATE_INVITE",
+          });
 
         const { data: inv, error } = await admin
           .from("family_invites")
           .insert({
             family_id: m.family_id,
-            email: String(inviteEmail).toLowerCase().trim(),
+            email: normalizedEmail,
             role: inviteRole,
             invited_by: uid,
           })
           .select()
           .single();
         if (error) return json(400, { error: error.message });
-        await audit("invite", inv.id, { email: inviteEmail, role: inviteRole });
-        return json(200, { invite: inv });
+        await audit("invite", inv.id, {
+          email: normalizedEmail,
+          role: inviteRole,
+          seats_used_after: used + 1,
+          seats_max: maxSeats,
+        });
+        return json(200, {
+          invite: inv,
+          seats_used: used + 1,
+          seats_max: maxSeats,
+        });
       }
 
       case "revoke_invite": {
