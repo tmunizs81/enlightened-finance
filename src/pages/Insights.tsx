@@ -208,7 +208,6 @@ const Insights = () => {
       {/* Monthly Summary Section */}
       <div className="glass-card space-y-4 p-5">
         <div className="flex items-center justify-between">
-        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarRange className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Resumo Mensal Comparativo</h2>
