@@ -177,45 +177,54 @@ export default function Plans() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label>Forma de pagamento</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {([
-                  { v: "PIX", icon: QrCode, label: "Pix" },
-                  { v: "BOLETO", icon: FileText, label: "Boleto" },
-                  { v: "CREDIT_CARD", icon: CreditCard, label: "Cartão" },
-                ] as { v: Billing; icon: any; label: string }[]).map(({ v, icon: Icon, label }) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setBilling(v)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-xs transition ${
-                      billing === v ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {label}
-                  </button>
-                ))}
+            {gateway === "asaas" ? (
+              <>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {([
+                      { v: "PIX", icon: QrCode, label: "Pix" },
+                      { v: "BOLETO", icon: FileText, label: "Boleto" },
+                      { v: "CREDIT_CARD", icon: CreditCard, label: "Cartão" },
+                    ] as { v: Billing; icon: any; label: string }[]).map(({ v, icon: Icon, label }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setBilling(v)}
+                        className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-xs transition ${
+                          billing === v ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="cpf">CPF ou CNPJ</Label>
+                  <Input
+                    id="cpf"
+                    value={cpfCnpj}
+                    onChange={(e) => setCpfCnpj(e.target.value)}
+                    placeholder="000.000.000-00"
+                    className="mt-1"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Necessário para emissão da cobrança.</p>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
+                <CreditCard className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Pagamento via Stripe</p>
+                  <p className="text-xs text-muted-foreground">
+                    Você será redirecionado ao checkout seguro do Stripe para inserir os dados do cartão.
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="cpf">CPF ou CNPJ</Label>
-              <Input
-                id="cpf"
-                value={cpfCnpj}
-                onChange={(e) => setCpfCnpj(e.target.value)}
-                placeholder="000.000.000-00"
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Necessário para emissão da cobrança.</p>
-            </div>
-
-            <Button onClick={checkout} disabled={loading} className="w-full">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? "Gerando cobrança..." : "Continuar para pagamento"}
-            </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
