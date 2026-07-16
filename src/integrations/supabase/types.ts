@@ -506,11 +506,16 @@ export type Database = {
       }
       licenses: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
           created_at: string
           expires_at: string
+          grace_until: string | null
           id: string
+          last_payment_status: string | null
           license_key: string
           max_seats: number
+          next_charge_at: string | null
           notes: string | null
           plan_type: string
           price_brl: number
@@ -519,11 +524,16 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           created_at?: string
           expires_at: string
+          grace_until?: string | null
           id?: string
+          last_payment_status?: string | null
           license_key: string
           max_seats?: number
+          next_charge_at?: string | null
           notes?: string | null
           plan_type?: string
           price_brl?: number
@@ -532,17 +542,61 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           created_at?: string
           expires_at?: string
+          grace_until?: string | null
           id?: string
+          last_payment_status?: string | null
           license_key?: string
           max_seats?: number
+          next_charge_at?: string | null
           notes?: string | null
           plan_type?: string
           price_brl?: number
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          payment_id: string | null
+          processed_at: string
+          provider: string
+          subscription_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string
+          provider?: string
+          subscription_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string
+          provider?: string
+          subscription_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -630,6 +684,7 @@ export type Database = {
           id: string
           telegram_bot_token: string | null
           telegram_chat_id: string | null
+          trial_ends_at: string | null
           updated_at: string
           user_id: string
         }
@@ -640,6 +695,7 @@ export type Database = {
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -650,6 +706,7 @@ export type Database = {
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
         }
