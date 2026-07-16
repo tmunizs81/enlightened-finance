@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.goal-monitor]
 verify_jwt = false
+
+[functions.daily-anomaly-scan]
+verify_jwt = false
