@@ -46,6 +46,8 @@ export function useFamily() {
   const [myRole, setMyRole] = useState<FamilyRole | null>(null);
   const [seatsUsed, setSeatsUsed] = useState(0);
   const [seatsMax, setSeatsMax] = useState(5);
+  const [pendingInvites, setPendingInvites] = useState(0);
+  const [seatsAvailable, setSeatsAvailable] = useState(5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +76,11 @@ export function useFamily() {
     setMyRole(data?.my_role ?? null);
     setSeatsUsed(data?.seats_used ?? 0);
     setSeatsMax(data?.seats_max ?? 5);
+    setPendingInvites(data?.pending_invites ?? (data?.invites?.length ?? 0));
+    setSeatsAvailable(
+      data?.seats_available ??
+        Math.max(0, (data?.seats_max ?? 5) - (data?.seats_used ?? 0) - (data?.invites?.length ?? 0)),
+    );
     setLoading(false);
   }, [user]);
 
@@ -105,6 +112,9 @@ export function useFamily() {
     myRole,
     seatsUsed,
     seatsMax,
+    pendingInvites,
+    seatsAvailable,
+    seatsFull: seatsAvailable <= 0,
     loading,
     error,
     refresh,

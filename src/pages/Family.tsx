@@ -48,6 +48,9 @@ export default function FamilyPage() {
     myRole,
     seatsUsed,
     seatsMax,
+    pendingInvites,
+    seatsAvailable,
+    seatsFull,
     loading,
     isOwner,
     canManage,
@@ -222,13 +225,78 @@ export default function FamilyPage() {
         </div>
       </div>
 
+      {/* Ocupação de assentos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Users className="h-5 w-5" /> Ocupação de assentos
+            </span>
+            <Badge variant={seatsFull ? "destructive" : "secondary"}>
+              {seatsUsed + pendingInvites}/{seatsMax}
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            A licença família cobre até {seatsMax} logins. Convites pendentes também
+            consomem assentos até serem aceitos ou revogados.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-secondary">
+            <div className="flex h-full">
+              <div
+                className="bg-primary transition-all"
+                style={{ width: `${(seatsUsed / seatsMax) * 100}%` }}
+                title={`${seatsUsed} membro(s) ativo(s)`}
+              />
+              <div
+                className="bg-amber-500 transition-all"
+                style={{ width: `${(pendingInvites / seatsMax) * 100}%` }}
+                title={`${pendingInvites} convite(s) pendente(s)`}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="rounded-md border border-border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Membros ativos</p>
+              <p className="text-2xl font-semibold text-primary">{seatsUsed}</p>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Convites pendentes</p>
+              <p className="text-2xl font-semibold text-amber-500">{pendingInvites}</p>
+            </div>
+            <div className="rounded-md border border-border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Disponíveis</p>
+              <p
+                className={`text-2xl font-semibold ${
+                  seatsFull ? "text-destructive" : "text-emerald-500"
+                }`}
+              >
+                {seatsAvailable}
+              </p>
+            </div>
+          </div>
+          {seatsFull && (
+            <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              Todos os {seatsMax} assentos estão ocupados. Revogue um convite pendente ou
+              remova um membro para liberar espaço antes de convidar alguém novo.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Convidar */}
-      {canManage && seatsUsed + invites.length < seatsMax && (
+      {canManage && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5" /> Convidar membro
             </CardTitle>
+            <CardDescription>
+              {seatsFull
+                ? "Sem assentos disponíveis — libere um assento antes de enviar novo convite."
+                : `Você pode convidar mais ${seatsAvailable} pessoa(s).`}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Input
@@ -237,8 +305,13 @@ export default function FamilyPage() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               className="max-w-xs"
+              disabled={seatsFull}
             />
-            <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as FamilyRole)}>
+            <Select
+              value={inviteRole}
+              onValueChange={(v) => setInviteRole(v as FamilyRole)}
+              disabled={seatsFull}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -249,7 +322,7 @@ export default function FamilyPage() {
               </SelectContent>
             </Select>
             <Button
-              disabled={busy || !inviteEmail.includes("@")}
+              disabled={busy || seatsFull || !inviteEmail.includes("@")}
               onClick={() =>
                 wrap(async () => {
                   await call("invite_member", { email: inviteEmail, role: inviteRole });
