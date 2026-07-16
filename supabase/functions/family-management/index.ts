@@ -182,7 +182,6 @@ serve(async (req) => {
           { data: fam },
           { count: pendingCount },
           { data: dupInvite },
-          { data: dupMember },
         ] = await Promise.all([
           admin
             .from("family_members")
@@ -203,7 +202,6 @@ serve(async (req) => {
             .is("accepted_at", null)
             .gt("expires_at", nowIso)
             .maybeSingle(),
-          admin.rpc("admin_lookup_user_by_email" as never, { _email: normalizedEmail }),
         ]);
 
         const maxSeats = fam?.max_seats ?? 5;
