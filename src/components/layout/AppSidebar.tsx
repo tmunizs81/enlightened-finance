@@ -162,6 +162,18 @@ export const AppSidebar = memo(function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/payment-events")}>
+                    <NavLink
+                      to="/admin/payment-events"
+                      className="transition-colors"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Activity className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>Eventos Asaas</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
