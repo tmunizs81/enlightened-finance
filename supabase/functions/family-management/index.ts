@@ -69,6 +69,7 @@ serve(async (req) => {
       case "get_my_family": {
         const m = await myMembership();
         if (!m) return json(200, { family: null, my_role: null, members: [], invites: [] });
+        const nowIso = new Date().toISOString();
         const [{ data: family }, { data: members }, { data: invites }] = await Promise.all([
           admin.from("families").select("*").eq("id", m.family_id).maybeSingle(),
           admin.from("family_members").select("*").eq("family_id", m.family_id),
@@ -76,7 +77,9 @@ serve(async (req) => {
             .from("family_invites")
             .select("*")
             .eq("family_id", m.family_id)
-            .is("accepted_at", null),
+            .is("accepted_at", null)
+            .gt("expires_at", nowIso)
+            .order("created_at", { ascending: false }),
         ]);
 
         // enrich members with email/display_name via admin API
@@ -96,13 +99,20 @@ serve(async (req) => {
           });
         }
 
+        const seatsMax = family?.max_seats ?? 5;
+        const seatsUsed = (members || []).length;
+        const pending = (invites || []).length;
+        const seatsAvailable = Math.max(0, seatsMax - seatsUsed - pending);
+
         return json(200, {
           family,
           my_role: m.role,
           members: enriched,
           invites: invites || [],
-          seats_used: (members || []).length,
-          seats_max: family?.max_seats ?? 5,
+          seats_used: seatsUsed,
+          seats_max: seatsMax,
+          pending_invites: pending,
+          seats_available: seatsAvailable,
           _ids: ids,
         });
       }
