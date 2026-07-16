@@ -76,6 +76,11 @@ export function useFamily() {
     setMyRole(data?.my_role ?? null);
     setSeatsUsed(data?.seats_used ?? 0);
     setSeatsMax(data?.seats_max ?? 5);
+    setPendingInvites(data?.pending_invites ?? (data?.invites?.length ?? 0));
+    setSeatsAvailable(
+      data?.seats_available ??
+        Math.max(0, (data?.seats_max ?? 5) - (data?.seats_used ?? 0) - (data?.invites?.length ?? 0)),
+    );
     setLoading(false);
   }, [user]);
 
