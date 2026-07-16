@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
-type PlanType = "monthly" | "yearly" | "lifetime";
+type PlanType = "monthly" | "yearly" | "lifetime" | "family";
 
 interface License {
   id: string;
@@ -233,6 +233,7 @@ function CreateUserDialog({ onCreated }: { onCreated: () => void }) {
                     <SelectItem value="monthly">Mensal</SelectItem>
                     <SelectItem value="yearly">Anual</SelectItem>
                     <SelectItem value="lifetime">Vitalícia</SelectItem>
+                    <SelectItem value="family">Família (até 5)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -360,7 +361,7 @@ function CreateLicenseDialog({ onCreated }: { onCreated: () => void }) {
   const submit = async () => {
     setLoading(true);
     try {
-      await invokeAdmin("create_license", { months, plan_type: planType, price_brl: priceBrl, notes });
+      await invokeAdmin("create_license", { months, plan_type: planType, price_brl: priceBrl, notes, max_seats: planType === "family" ? 5 : 1 });
       toast.success("Licença criada");
       setOpen(false);
       setNotes("");
@@ -394,6 +395,7 @@ function CreateLicenseDialog({ onCreated }: { onCreated: () => void }) {
                 <SelectItem value="monthly">Mensal</SelectItem>
                 <SelectItem value="yearly">Anual</SelectItem>
                 <SelectItem value="lifetime">Vitalícia</SelectItem>
+                <SelectItem value="family">Família (até 5)</SelectItem>
               </SelectContent>
             </Select>
           </div>
