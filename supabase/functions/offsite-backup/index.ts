@@ -6,7 +6,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
-import { gzip } from "https://deno.land/x/[email protected]/mod.ts";
+
+async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("gzip");
+  const stream = new Blob([bytes]).stream().pipeThrough(cs);
+  const buf = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buf);
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
