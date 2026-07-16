@@ -14,6 +14,7 @@ import {
   Trophy,
   Zap,
   FolderOpen,
+  Users,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -21,6 +22,7 @@ import { useLocation } from "react-router-dom";
 import { useSupabaseQuery } from "@/hooks/use-supabase-crud";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useFamily } from "@/hooks/use-family";
 import {
   Sidebar,
   SidebarContent,
@@ -50,6 +52,7 @@ const toolItems = [
   { title: "Relatórios", url: "/reports", icon: FileText },
   { title: "Insights IA", url: "/insights", icon: Brain },
   { title: "Regras", url: "/rules", icon: Zap },
+  { title: "Família", url: "/familia", icon: Users },
   { title: "Instalar App", url: "/install", icon: Download },
   { title: "Minha Licença", url: "/license", icon: Key },
   { title: "Configurações", url: "/settings", icon: Settings },

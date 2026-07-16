@@ -20,6 +20,7 @@ export type Database = {
           color: string | null
           created_at: string
           currency: string
+          family_id: string | null
           id: string
           institution: string | null
           name: string
@@ -32,6 +33,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           currency?: string
+          family_id?: string | null
           id?: string
           institution?: string | null
           name: string
@@ -44,6 +46,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           currency?: string
+          family_id?: string | null
           id?: string
           institution?: string | null
           name?: string
@@ -51,11 +54,20 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "accounts_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       achievements: {
         Row: {
           achievement_key: string
+          family_id: string | null
           id: string
           progress: number
           unlocked_at: string
@@ -63,6 +75,7 @@ export type Database = {
         }
         Insert: {
           achievement_key: string
+          family_id?: string | null
           id?: string
           progress?: number
           unlocked_at?: string
@@ -70,12 +83,21 @@ export type Database = {
         }
         Update: {
           achievement_key?: string
+          family_id?: string | null
           id?: string
           progress?: number
           unlocked_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "achievements_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_audit_log: {
         Row: {
@@ -117,6 +139,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          family_id: string | null
           id: string
           read: boolean
           title: string
@@ -126,6 +149,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          family_id?: string | null
           id?: string
           read?: boolean
           title: string
@@ -135,13 +159,22 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          family_id?: string | null
           id?: string
           read?: boolean
           title?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       budgets: {
         Row: {
@@ -149,6 +182,7 @@ export type Database = {
           amount: number
           category_id: string | null
           created_at: string
+          family_id: string | null
           id: string
           month: number
           notification_enabled: boolean | null
@@ -161,6 +195,7 @@ export type Database = {
           amount: number
           category_id?: string | null
           created_at?: string
+          family_id?: string | null
           id?: string
           month: number
           notification_enabled?: boolean | null
@@ -173,6 +208,7 @@ export type Database = {
           amount?: number
           category_id?: string | null
           created_at?: string
+          family_id?: string | null
           id?: string
           month?: number
           notification_enabled?: boolean | null
@@ -188,12 +224,20 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "budgets_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
         ]
       }
       categories: {
         Row: {
           color: string | null
           created_at: string
+          family_id: string | null
           icon: string | null
           id: string
           name: string
@@ -203,6 +247,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          family_id?: string | null
           icon?: string | null
           id?: string
           name: string
@@ -212,13 +257,136 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          family_id?: string | null
           icon?: string | null
           id?: string
           name?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      families: {
+        Row: {
+          created_at: string
+          id: string
+          license_id: string | null
+          max_seats: number
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          license_id?: string | null
+          max_seats?: number
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          license_id?: string | null
+          max_seats?: number
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "families_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      family_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          family_id: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["family_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          family_id: string
+          id?: string
+          invited_by: string
+          role?: Database["public"]["Enums"]["family_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          family_id?: string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["family_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_invites_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      family_members: {
+        Row: {
+          family_id: string
+          id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }
+        Insert: {
+          family_id: string
+          id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }
+        Update: {
+          family_id?: string
+          id?: string
+          joined_at?: string
+          role?: Database["public"]["Enums"]["family_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_rules: {
         Row: {
@@ -230,6 +398,7 @@ export type Database = {
           condition_period: string | null
           condition_type: string
           created_at: string
+          family_id: string | null
           id: string
           last_triggered_at: string | null
           name: string
@@ -245,6 +414,7 @@ export type Database = {
           condition_period?: string | null
           condition_type: string
           created_at?: string
+          family_id?: string | null
           id?: string
           last_triggered_at?: string | null
           name: string
@@ -260,6 +430,7 @@ export type Database = {
           condition_period?: string | null
           condition_type?: string
           created_at?: string
+          family_id?: string | null
           id?: string
           last_triggered_at?: string | null
           name?: string
@@ -274,6 +445,13 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financial_rules_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
         ]
       }
       goals: {
@@ -282,6 +460,7 @@ export type Database = {
           created_at: string
           current_amount: number
           deadline: string | null
+          family_id: string | null
           icon: string | null
           id: string
           name: string
@@ -294,6 +473,7 @@ export type Database = {
           created_at?: string
           current_amount?: number
           deadline?: string | null
+          family_id?: string | null
           icon?: string | null
           id?: string
           name: string
@@ -306,6 +486,7 @@ export type Database = {
           created_at?: string
           current_amount?: number
           deadline?: string | null
+          family_id?: string | null
           icon?: string | null
           id?: string
           name?: string
@@ -313,7 +494,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "goals_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       licenses: {
         Row: {
@@ -321,6 +510,7 @@ export type Database = {
           expires_at: string
           id: string
           license_key: string
+          max_seats: number
           notes: string | null
           plan_type: string
           price_brl: number
@@ -333,6 +523,7 @@ export type Database = {
           expires_at: string
           id?: string
           license_key: string
+          max_seats?: number
           notes?: string | null
           plan_type?: string
           price_brl?: number
@@ -345,6 +536,7 @@ export type Database = {
           expires_at?: string
           id?: string
           license_key?: string
+          max_seats?: number
           notes?: string | null
           plan_type?: string
           price_brl?: number
@@ -365,6 +557,7 @@ export type Database = {
           date: string
           description: string
           edit_field: string | null
+          family_id: string | null
           id: string
           receipt_path: string | null
           receipt_url: string | null
@@ -381,6 +574,7 @@ export type Database = {
           date?: string
           description: string
           edit_field?: string | null
+          family_id?: string | null
           id?: string
           receipt_path?: string | null
           receipt_url?: string | null
@@ -397,6 +591,7 @@ export type Database = {
           date?: string
           description?: string
           edit_field?: string | null
+          family_id?: string | null
           id?: string
           receipt_path?: string | null
           receipt_url?: string | null
@@ -416,6 +611,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_ocr_transactions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
             referencedColumns: ["id"]
           },
         ]
@@ -463,6 +665,7 @@ export type Database = {
           created_at: string
           day_of_month: number
           description: string
+          family_id: string | null
           id: string
           last_generated: string | null
           type: string
@@ -478,6 +681,7 @@ export type Database = {
           created_at?: string
           day_of_month?: number
           description: string
+          family_id?: string | null
           id?: string
           last_generated?: string | null
           type: string
@@ -493,6 +697,7 @@ export type Database = {
           created_at?: string
           day_of_month?: number
           description?: string
+          family_id?: string | null
           id?: string
           last_generated?: string | null
           type?: string
@@ -514,12 +719,20 @@ export type Database = {
             referencedRelation: "categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recurring_transactions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
         ]
       }
       streaks: {
         Row: {
           best_streak: number
           current_streak: number
+          family_id: string | null
           id: string
           last_check_date: string | null
           streak_type: string
@@ -529,6 +742,7 @@ export type Database = {
         Insert: {
           best_streak?: number
           current_streak?: number
+          family_id?: string | null
           id?: string
           last_check_date?: string | null
           streak_type?: string
@@ -538,18 +752,28 @@ export type Database = {
         Update: {
           best_streak?: number
           current_streak?: number
+          family_id?: string | null
           id?: string
           last_check_date?: string | null
           streak_type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "streaks_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {
           color: string | null
           created_at: string
+          family_id: string | null
           id: string
           name: string
           user_id: string
@@ -557,6 +781,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          family_id?: string | null
           id?: string
           name: string
           user_id: string
@@ -564,11 +789,20 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          family_id?: string | null
           id?: string
           name?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tags_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transaction_splits: {
         Row: {
@@ -657,6 +891,7 @@ export type Database = {
           created_at: string
           date: string
           description: string
+          family_id: string | null
           id: string
           notes: string | null
           receipt_url: string | null
@@ -673,6 +908,7 @@ export type Database = {
           created_at?: string
           date?: string
           description: string
+          family_id?: string | null
           id?: string
           notes?: string | null
           receipt_url?: string | null
@@ -689,6 +925,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string
+          family_id?: string | null
           id?: string
           notes?: string | null
           receipt_url?: string | null
@@ -710,6 +947,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
             referencedColumns: ["id"]
           },
         ]
@@ -741,6 +985,7 @@ export type Database = {
           created_at: string
           current_progress: number
           description: string
+          family_id: string | null
           id: string
           status: string
           target_amount: number | null
@@ -758,6 +1003,7 @@ export type Database = {
           created_at?: string
           current_progress?: number
           description: string
+          family_id?: string | null
           id?: string
           status?: string
           target_amount?: number | null
@@ -775,6 +1021,7 @@ export type Database = {
           created_at?: string
           current_progress?: number
           description?: string
+          family_id?: string | null
           id?: string
           status?: string
           target_amount?: number | null
@@ -788,6 +1035,13 @@ export type Database = {
           xp_reward?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "weekly_challenges_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "weekly_challenges_target_category_id_fkey"
             columns: ["target_category_id"]
@@ -809,8 +1063,26 @@ export type Database = {
           user_id: string
         }[]
       }
+      can_read_family: {
+        Args: { _fid: string; _uid: string }
+        Returns: boolean
+      }
+      can_write_family: {
+        Args: { _fid: string; _uid: string }
+        Returns: boolean
+      }
       cleanup_orphaned_receipts: { Args: never; Returns: number }
+      family_role_level: {
+        Args: { _r: Database["public"]["Enums"]["family_role"] }
+        Returns: number
+      }
       generate_license_key: { Args: never; Returns: string }
+      get_family_role: {
+        Args: { _uid: string }
+        Returns: Database["public"]["Enums"]["family_role"]
+      }
+      get_user_family: { Args: { _uid: string }; Returns: string }
+      has_active_family_license: { Args: { _uid: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -821,6 +1093,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      family_role: "owner" | "admin" | "member" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -949,6 +1222,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      family_role: ["owner", "admin", "member", "viewer"],
     },
   },
 } as const
