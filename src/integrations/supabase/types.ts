@@ -77,6 +77,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          target_email: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_email?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_email?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       ai_insights: {
         Row: {
           created_at: string
@@ -285,6 +321,9 @@ export type Database = {
           expires_at: string
           id: string
           license_key: string
+          notes: string | null
+          plan_type: string
+          price_brl: number
           status: string
           updated_at: string
           user_id: string
@@ -294,6 +333,9 @@ export type Database = {
           expires_at: string
           id?: string
           license_key: string
+          notes?: string | null
+          plan_type?: string
+          price_brl?: number
           status?: string
           updated_at?: string
           user_id: string
@@ -303,6 +345,9 @@ export type Database = {
           expires_at?: string
           id?: string
           license_key?: string
+          notes?: string | null
+          plan_type?: string
+          price_brl?: number
           status?: string
           updated_at?: string
           user_id?: string
