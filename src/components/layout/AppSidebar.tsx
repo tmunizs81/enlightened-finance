@@ -17,6 +17,7 @@ import {
   Users,
   CreditCard,
   Activity,
+  Sliders,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
