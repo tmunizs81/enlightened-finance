@@ -42,31 +42,13 @@ const TABLES = [
 
 const RETENTION_DAYS = 30;
 
-async function notifyFailure(supabase: any, errorMsg: string) {
+async function notifyFailure(_supabase: any, errorMsg: string) {
   try {
     const chatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (!chatId) return;
+    const token = Deno.env.get("TELEGRAM_ADMIN_BOT_TOKEN");
+    if (!chatId || !token) return;
 
-    // Reuse any admin's bot token from profiles
-    const { data: admins } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin")
-      .limit(5);
 
-    if (!admins?.length) return;
-
-    const adminIds = admins.map((a: any) => a.user_id);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("telegram_bot_token")
-      .in("user_id", adminIds)
-      .not("telegram_bot_token", "is", null)
-      .limit(1)
-      .maybeSingle();
-
-    const token = profile?.telegram_bot_token;
-    if (!token) return;
 
     await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
