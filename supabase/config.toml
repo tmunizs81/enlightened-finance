@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.licenses-enforce-grace]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

@@ -17,6 +17,7 @@ import {
   Users,
   CreditCard,
   Activity,
+  Sliders,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -171,6 +172,18 @@ export const AppSidebar = memo(function AppSidebar() {
                     >
                       <Activity className="mr-2 h-4 w-4" />
                       {!collapsed && <span>Eventos Asaas</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/settings")}>
+                    <NavLink
+                      to="/admin/settings"
+                      className="transition-colors"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Sliders className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>Configurações</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

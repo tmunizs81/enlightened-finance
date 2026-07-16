@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, CreditCard, QrCode, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useLicense } from "@/hooks/use-license";
 
 type PlanKey = "individual" | "family";
 type Billing = "PIX" | "BOLETO" | "CREDIT_CARD";
+type Gateway = "asaas" | "stripe";
 
 const PLANS: Record<PlanKey, { name: string; price: number; features: string[] }> = {
   individual: {
@@ -44,23 +45,46 @@ export default function Plans() {
   const [billing, setBilling] = useState<Billing>("PIX");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [loading, setLoading] = useState(false);
+  const [gateway, setGateway] = useState<Gateway>("asaas");
+  const [gatewayLoading, setGatewayLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("active_payment_gateway")
+        .eq("id", true)
+        .maybeSingle();
+      if (data?.active_payment_gateway) setGateway(data.active_payment_gateway as Gateway);
+      setGatewayLoading(false);
+    })();
+  }, []);
 
   const hasActiveAsaas = !!license?.asaas_subscription_id && license?.status === "active";
+  const hasActiveStripe = !!(license as any)?.stripe_subscription_id && license?.status === "active";
+  const hasActive = hasActiveAsaas || hasActiveStripe;
 
   const checkout = async () => {
     if (!openPlan) return;
-    if (!cpfCnpj || cpfCnpj.replace(/\D/g, "").length < 11) {
-      toast({ title: "CPF/CNPJ obrigatório", description: "Informe um documento válido.", variant: "destructive" });
-      return;
+
+    if (gateway === "asaas") {
+      if (!cpfCnpj || cpfCnpj.replace(/\D/g, "").length < 11) {
+        toast({ title: "CPF/CNPJ obrigatório", description: "Informe um documento válido.", variant: "destructive" });
+        return;
+      }
     }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("asaas-checkout", {
-        body: { plan: openPlan, billing_type: billing, cpf_cnpj: cpfCnpj },
-      });
+      const fn = gateway === "stripe" ? "stripe-checkout" : "asaas-checkout";
+      const body = gateway === "stripe"
+        ? { plan: openPlan }
+        : { plan: openPlan, billing_type: billing, cpf_cnpj: cpfCnpj };
+
+      const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const url = (data as any)?.invoiceUrl;
+      const url = (data as any)?.url || (data as any)?.invoiceUrl;
       if (url) {
         window.location.href = url;
       } else {
@@ -83,7 +107,9 @@ export default function Plans() {
       <div>
         <h1 className="text-3xl font-bold">Planos SimplyFin</h1>
         <p className="mt-1 text-muted-foreground">
-          Assine para ter acesso completo. Pague com Pix, boleto ou cartão de crédito.
+          {gateway === "stripe"
+            ? "Assine para ter acesso completo. Pagamento seguro via Stripe (cartão de crédito)."
+            : "Assine para ter acesso completo. Pague com Pix, boleto ou cartão de crédito."}
         </p>
       </div>
 
@@ -92,7 +118,7 @@ export default function Plans() {
           Você está no período de teste — <strong>{daysUntilBlock} dia(s)</strong> restantes.
         </div>
       )}
-      {hasActiveAsaas && (
+      {hasActive && (
         <div className="rounded-lg border border-green-500/40 bg-green-500/10 p-4 text-sm">
           Assinatura ativa: <strong>{license?.plan_type === "family" ? "Família" : "Individual"}</strong> ·
           próxima cobrança em {license?.next_charge_at ? new Date(license.next_charge_at).toLocaleDateString("pt-BR") : "—"}
@@ -130,9 +156,9 @@ export default function Plans() {
                 <Button
                   className="w-full"
                   onClick={() => setOpenPlan(key)}
-                  disabled={hasActiveAsaas}
+                  disabled={hasActive || gatewayLoading}
                 >
-                  {hasActiveAsaas ? "Plano ativo" : "Assinar"}
+                  {hasActive ? "Plano ativo" : "Assinar"}
                 </Button>
               </CardContent>
             </Card>
@@ -151,44 +177,58 @@ export default function Plans() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label>Forma de pagamento</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {([
-                  { v: "PIX", icon: QrCode, label: "Pix" },
-                  { v: "BOLETO", icon: FileText, label: "Boleto" },
-                  { v: "CREDIT_CARD", icon: CreditCard, label: "Cartão" },
-                ] as { v: Billing; icon: any; label: string }[]).map(({ v, icon: Icon, label }) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setBilling(v)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-xs transition ${
-                      billing === v ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {gateway === "asaas" ? (
+              <>
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {([
+                      { v: "PIX", icon: QrCode, label: "Pix" },
+                      { v: "BOLETO", icon: FileText, label: "Boleto" },
+                      { v: "CREDIT_CARD", icon: CreditCard, label: "Cartão" },
+                    ] as { v: Billing; icon: any; label: string }[]).map(({ v, icon: Icon, label }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setBilling(v)}
+                        className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-xs transition ${
+                          billing === v ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <div>
-              <Label htmlFor="cpf">CPF ou CNPJ</Label>
-              <Input
-                id="cpf"
-                value={cpfCnpj}
-                onChange={(e) => setCpfCnpj(e.target.value)}
-                placeholder="000.000.000-00"
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Necessário para emissão da cobrança.</p>
-            </div>
+                <div>
+                  <Label htmlFor="cpf">CPF ou CNPJ</Label>
+                  <Input
+                    id="cpf"
+                    value={cpfCnpj}
+                    onChange={(e) => setCpfCnpj(e.target.value)}
+                    placeholder="000.000.000-00"
+                    className="mt-1"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Necessário para emissão da cobrança.</p>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4 text-sm">
+                <CreditCard className="mt-0.5 h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Pagamento via Stripe</p>
+                  <p className="text-xs text-muted-foreground">
+                    Você será redirecionado ao checkout seguro do Stripe para inserir os dados do cartão.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <Button onClick={checkout} disabled={loading} className="w-full">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? "Gerando cobrança..." : "Continuar para pagamento"}
+              {loading ? "Gerando cobrança..." : gateway === "stripe" ? "Ir para o Stripe" : "Continuar para pagamento"}
             </Button>
           </div>
         </DialogContent>
