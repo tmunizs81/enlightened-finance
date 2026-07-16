@@ -45,23 +45,46 @@ export default function Plans() {
   const [billing, setBilling] = useState<Billing>("PIX");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [loading, setLoading] = useState(false);
+  const [gateway, setGateway] = useState<Gateway>("asaas");
+  const [gatewayLoading, setGatewayLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("active_payment_gateway")
+        .eq("id", true)
+        .maybeSingle();
+      if (data?.active_payment_gateway) setGateway(data.active_payment_gateway as Gateway);
+      setGatewayLoading(false);
+    })();
+  }, []);
 
   const hasActiveAsaas = !!license?.asaas_subscription_id && license?.status === "active";
+  const hasActiveStripe = !!(license as any)?.stripe_subscription_id && license?.status === "active";
+  const hasActive = hasActiveAsaas || hasActiveStripe;
 
   const checkout = async () => {
     if (!openPlan) return;
-    if (!cpfCnpj || cpfCnpj.replace(/\D/g, "").length < 11) {
-      toast({ title: "CPF/CNPJ obrigatório", description: "Informe um documento válido.", variant: "destructive" });
-      return;
+
+    if (gateway === "asaas") {
+      if (!cpfCnpj || cpfCnpj.replace(/\D/g, "").length < 11) {
+        toast({ title: "CPF/CNPJ obrigatório", description: "Informe um documento válido.", variant: "destructive" });
+        return;
+      }
     }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("asaas-checkout", {
-        body: { plan: openPlan, billing_type: billing, cpf_cnpj: cpfCnpj },
-      });
+      const fn = gateway === "stripe" ? "stripe-checkout" : "asaas-checkout";
+      const body = gateway === "stripe"
+        ? { plan: openPlan }
+        : { plan: openPlan, billing_type: billing, cpf_cnpj: cpfCnpj };
+
+      const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const url = (data as any)?.invoiceUrl;
+      const url = (data as any)?.url || (data as any)?.invoiceUrl;
       if (url) {
         window.location.href = url;
       } else {
