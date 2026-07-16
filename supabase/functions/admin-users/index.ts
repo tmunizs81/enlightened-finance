@@ -29,17 +29,19 @@ serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
 
-  const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(
-    authHeader.replace("Bearer ", ""),
-  );
-  if (claimsErr || !claimsData?.claims) return json(401, { error: "Unauthorized" });
+  const token = authHeader.replace("Bearer ", "");
+  const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+  if (userErr || !userData?.user) return json(401, { error: "Unauthorized" });
 
-  const callerId = claimsData.claims.sub as string;
-  const callerEmail = (claimsData.claims.email as string) ?? null;
+  const callerId = userData.user.id;
+  const callerEmail = userData.user.email ?? null;
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  const body = await req.json().catch(() => ({}));
+  const action = String(body.action || "");
 
   // Verify caller is admin
   const { data: roleRow } = await admin
@@ -48,10 +50,8 @@ serve(async (req) => {
     .eq("user_id", callerId)
     .eq("role", "admin")
     .maybeSingle();
+  if (action === "me") return json(200, { user_id: callerId, email: callerEmail, is_admin: !!roleRow });
   if (!roleRow) return json(403, { error: "Admin access required" });
-
-  const body = await req.json().catch(() => ({}));
-  const action = String(body.action || "");
 
   const audit = async (
     a: string,
