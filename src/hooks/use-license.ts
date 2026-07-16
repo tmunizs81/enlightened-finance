@@ -10,6 +10,8 @@ interface License {
   expires_at: string;
   created_at: string;
   updated_at: string;
+  plan_type?: string;
+  max_seats?: number;
 }
 
 export function useLicense() {
@@ -17,34 +19,67 @@ export function useLicense() {
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
   const [isValid, setIsValid] = useState(false);
+  const [source, setSource] = useState<"own" | "family" | null>(null);
 
   useEffect(() => {
     if (!user) {
       setLicense(null);
       setIsValid(false);
+      setSource(null);
       setLoading(false);
       return;
     }
 
     const checkLicense = async () => {
       try {
-        const { data, error } = await supabase
+        // 1) licença própria
+        const { data: own } = await supabase
           .from("licenses")
           .select("*")
           .eq("user_id", user.id)
+          .order("expires_at", { ascending: false })
           .maybeSingle();
 
-        if (error) throw error;
+        const ownValid =
+          !!own && own.status === "active" && new Date(own.expires_at) > new Date();
 
-        setLicense(data as License | null);
-
-        if (!data) {
-          setIsValid(false);
-        } else {
-          const isActive = data.status === "active";
-          const notExpired = new Date(data.expires_at) > new Date();
-          setIsValid(isActive && notExpired);
+        if (ownValid) {
+          setLicense(own as License);
+          setIsValid(true);
+          setSource("own");
+          return;
         }
+
+        // 2) licença família herdada
+        const { data: membership } = await supabase
+          .from("family_members")
+          .select("family_id, families(owner_id)")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const ownerId = (membership as any)?.families?.owner_id;
+        if (ownerId) {
+          const { data: familyLic } = await supabase
+            .from("licenses")
+            .select("*")
+            .eq("user_id", ownerId)
+            .eq("plan_type", "family")
+            .eq("status", "active")
+            .gt("expires_at", new Date().toISOString())
+            .order("expires_at", { ascending: false })
+            .maybeSingle();
+
+          if (familyLic) {
+            setLicense(familyLic as License);
+            setIsValid(true);
+            setSource("family");
+            return;
+          }
+        }
+
+        setLicense((own as License) ?? null);
+        setIsValid(false);
+        setSource(null);
       } catch (error) {
         console.error("Error checking license:", error);
         setIsValid(false);
@@ -56,5 +91,5 @@ export function useLicense() {
     checkLicense();
   }, [user]);
 
-  return { license, isValid, loading };
+  return { license, isValid, loading, source };
 }
