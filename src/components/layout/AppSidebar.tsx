@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Users,
   CreditCard,
+  Activity,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -158,6 +159,18 @@ export const AppSidebar = memo(function AppSidebar() {
                     >
                       <Key className="mr-2 h-4 w-4" />
                       {!collapsed && <span>Licenças</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/payment-events")}>
+                    <NavLink
+                      to="/admin/payment-events"
+                      className="transition-colors"
+                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                    >
+                      <Activity className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>Eventos Asaas</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

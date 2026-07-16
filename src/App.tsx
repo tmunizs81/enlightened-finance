@@ -20,6 +20,7 @@ const SettingsPage = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLicenses = lazy(() => import("./pages/AdminLicenses"));
+const AdminPaymentEvents = lazy(() => import("./pages/AdminPaymentEvents"));
 const LicenseStatus = lazy(() => import("./pages/LicenseStatus"));
 const Install = lazy(() => import("./pages/Install"));
 const Achievements = lazy(() => import("./pages/Achievements"));
@@ -80,6 +81,7 @@ function ProtectedRoutes() {
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin/licenses" element={<AdminLicenses />} />
+          <Route path="/admin/payment-events" element={<AdminPaymentEvents />} />
           <Route path="/license" element={<LicenseStatus />} />
           <Route path="/install" element={<Install />} />
           <Route path="/achievements" element={<Achievements />} />
