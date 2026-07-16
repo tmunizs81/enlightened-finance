@@ -21,6 +21,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLicenses = lazy(() => import("./pages/AdminLicenses"));
 const AdminPaymentEvents = lazy(() => import("./pages/AdminPaymentEvents"));
+const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const LicenseStatus = lazy(() => import("./pages/LicenseStatus"));
 const Install = lazy(() => import("./pages/Install"));
 const Achievements = lazy(() => import("./pages/Achievements"));
