@@ -27,6 +27,7 @@ const FinancialRules = lazy(() => import("./pages/FinancialRules"));
 const Categories = lazy(() => import("./pages/Categories"));
 const FamilyPage = lazy(() => import("./pages/Family"));
 const FamilyInvite = lazy(() => import("./pages/FamilyInvite"));
+const Plans = lazy(() => import("./pages/Plans"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
