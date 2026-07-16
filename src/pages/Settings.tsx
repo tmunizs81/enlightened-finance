@@ -1000,6 +1000,9 @@ const SettingsPage = () => {
         </div>
       )}
 
+      {/* Alterar Senha */}
+      <ChangePasswordSection />
+
       {/* Notificações Push */}
       <PushNotificationsSection />
 
