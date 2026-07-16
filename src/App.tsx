@@ -25,6 +25,8 @@ const Install = lazy(() => import("./pages/Install"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const FinancialRules = lazy(() => import("./pages/FinancialRules"));
 const Categories = lazy(() => import("./pages/Categories"));
+const FamilyPage = lazy(() => import("./pages/Family"));
+const FamilyInvite = lazy(() => import("./pages/FamilyInvite"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
@@ -82,7 +84,9 @@ function ProtectedRoutes() {
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/rules" element={<FinancialRules />} />
           <Route path="/categories" element={<Categories />} />
-          
+          <Route path="/familia" element={<FamilyPage />} />
+          <Route path="/familia/convite/:token" element={<FamilyInvite />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
