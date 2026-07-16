@@ -107,7 +107,9 @@ export default function Plans() {
       <div>
         <h1 className="text-3xl font-bold">Planos SimplyFin</h1>
         <p className="mt-1 text-muted-foreground">
-          Assine para ter acesso completo. Pague com Pix, boleto ou cartão de crédito.
+          {gateway === "stripe"
+            ? "Assine para ter acesso completo. Pagamento seguro via Stripe (cartão de crédito)."
+            : "Assine para ter acesso completo. Pague com Pix, boleto ou cartão de crédito."}
         </p>
       </div>
 
@@ -116,7 +118,7 @@ export default function Plans() {
           Você está no período de teste — <strong>{daysUntilBlock} dia(s)</strong> restantes.
         </div>
       )}
-      {hasActiveAsaas && (
+      {hasActive && (
         <div className="rounded-lg border border-green-500/40 bg-green-500/10 p-4 text-sm">
           Assinatura ativa: <strong>{license?.plan_type === "family" ? "Família" : "Individual"}</strong> ·
           próxima cobrança em {license?.next_charge_at ? new Date(license.next_charge_at).toLocaleDateString("pt-BR") : "—"}
