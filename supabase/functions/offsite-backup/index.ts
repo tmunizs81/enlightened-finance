@@ -152,7 +152,7 @@ serve(async (req) => {
 
     // 2. Serialize + gzip
     const jsonBytes = new TextEncoder().encode(JSON.stringify(payload));
-    const gzipped = gzip(jsonBytes);
+    const gzipped = await gzip(jsonBytes);
 
     const filename = `daily/full-${stamp}.json.gz`;
 
