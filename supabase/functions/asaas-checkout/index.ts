@@ -156,7 +156,9 @@ serve(async (req) => {
       method: "POST",
       body: JSON.stringify({
         customer: customerId,
-        billingType, // PIX | BOLETO | CREDIT_CARD | UNDEFINED (deixa cliente escolher)
+        // Asaas só aceita BOLETO | CREDIT_CARD | UNDEFINED em assinaturas.
+        // PIX puro não é válido aqui — usamos UNDEFINED (cliente escolhe PIX/Boleto/Cartão na fatura).
+        billingType: billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "UNDEFINED",
         value: cfg.value,
         nextDueDate,
         cycle: "MONTHLY",
