@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Users,
   CreditCard,
+  Activity,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
