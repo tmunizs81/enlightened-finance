@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, CreditCard, QrCode, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useLicense } from "@/hooks/use-license";
 
 type PlanKey = "individual" | "family";
 type Billing = "PIX" | "BOLETO" | "CREDIT_CARD";
+type Gateway = "asaas" | "stripe";
 
 const PLANS: Record<PlanKey, { name: string; price: number; features: string[] }> = {
   individual: {
