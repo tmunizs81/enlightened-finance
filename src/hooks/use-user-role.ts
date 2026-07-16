@@ -24,7 +24,19 @@ export function useUserRole() {
     setLoading(true);
 
     (async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "me" },
+      });
+
+      if (cancelled) return;
+      if (!error) {
+        setIsAdmin(Boolean(data?.is_admin));
+        setLoading(false);
+        return;
+      }
+
+      console.error("useUserRole admin-users error:", error);
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
@@ -32,8 +44,8 @@ export function useUserRole() {
         .maybeSingle();
 
       if (cancelled) return;
-      if (error) console.error("useUserRole error:", error);
-      setIsAdmin(!!data);
+      if (roleError) console.error("useUserRole fallback error:", roleError);
+      setIsAdmin(Boolean(roleData));
       setLoading(false);
     })();
 
