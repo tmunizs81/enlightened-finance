@@ -15,6 +15,7 @@ import {
   Zap,
   FolderOpen,
   Users,
+  CreditCard,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
@@ -55,6 +56,7 @@ const toolItems = [
   { title: "Família", url: "/familia", icon: Users },
   { title: "Instalar App", url: "/install", icon: Download },
   { title: "Minha Licença", url: "/license", icon: Key },
+  { title: "Planos", url: "/planos", icon: CreditCard },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 

@@ -11,6 +11,7 @@ import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { LicenseBanner } from "@/components/LicenseBanner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoBackup();
@@ -42,7 +43,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="scrollbar-thin flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+              <LicenseBanner />
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
       </div>

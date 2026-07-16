@@ -27,6 +27,7 @@ const FinancialRules = lazy(() => import("./pages/FinancialRules"));
 const Categories = lazy(() => import("./pages/Categories"));
 const FamilyPage = lazy(() => import("./pages/Family"));
 const FamilyInvite = lazy(() => import("./pages/FamilyInvite"));
+const Plans = lazy(() => import("./pages/Plans"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
@@ -86,6 +87,7 @@ function ProtectedRoutes() {
           <Route path="/categories" element={<Categories />} />
           <Route path="/familia" element={<FamilyPage />} />
           <Route path="/familia/convite/:token" element={<FamilyInvite />} />
+          <Route path="/planos" element={<Plans />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
