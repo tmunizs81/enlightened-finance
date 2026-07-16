@@ -24,16 +24,13 @@ export function useUserRole() {
     setLoading(true);
 
     (async () => {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "me" },
+      });
 
       if (cancelled) return;
       if (error) console.error("useUserRole error:", error);
-      setIsAdmin(!!data);
+      setIsAdmin(Boolean(data?.is_admin));
       setLoading(false);
     })();
 
