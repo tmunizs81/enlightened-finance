@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { AnomalyDetectionSection } from "@/components/insights/AnomalyDetectionSection";
 
 interface Insight {
   id: string;
@@ -200,6 +201,9 @@ const Insights = () => {
           {generating ? "Analisando..." : "Gerar Insights"}
         </Button>
       </div>
+
+      {/* Anomaly Detection & Phantom Subscriptions */}
+      <AnomalyDetectionSection />
 
       {/* Monthly Summary Section */}
       <div className="glass-card space-y-4 p-5">
