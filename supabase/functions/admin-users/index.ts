@@ -257,26 +257,33 @@ serve(async (req) => {
       }
 
       case "create_license": {
-        const { months, plan_type, price_brl, notes, user_id } = body;
+        const { months, plan_type, price_brl, notes, user_id, max_seats } = body;
         const m = Math.max(1, Math.min(120, Number(months) || 1));
         const expiresAt = new Date();
         expiresAt.setMonth(expiresAt.getMonth() + m);
         const { data: keyData } = await admin.rpc("generate_license_key");
+        const pt = plan_type || "monthly";
+        const seats = pt === "family" ? Math.max(2, Math.min(5, Number(max_seats) || 5)) : 1;
         const { data: lic, error } = await admin
           .from("licenses")
           .insert({
             license_key: keyData,
             status: "active",
             expires_at: expiresAt.toISOString(),
-            plan_type: plan_type || "monthly",
+            plan_type: pt,
             price_brl: price_brl || 0,
             notes: notes || null,
             user_id: user_id || null,
+            max_seats: seats,
           })
           .select()
           .single();
         if (error) return json(400, { error: error.message });
-        await audit("license.create", "license", lic.id, undefined, { months: m, plan_type });
+        await audit("license.create", "license", lic.id, undefined, {
+          months: m,
+          plan_type: pt,
+          max_seats: seats,
+        });
         return json(200, { license: lic });
       }
 
