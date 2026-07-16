@@ -1004,6 +1004,10 @@ const SettingsPage = () => {
       {/* Alterar Senha */}
       <ChangePasswordSection />
 
+      {/* Gestão Comercial (admin) */}
+      {isAdmin && <AdminManagementSection />}
+
+
       {/* Notificações Push */}
       <PushNotificationsSection />
 
