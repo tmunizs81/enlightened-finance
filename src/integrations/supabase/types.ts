@@ -176,6 +176,27 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          active_payment_gateway: string
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_payment_gateway?: string
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_payment_gateway?: string
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           alert_threshold: number | null
@@ -520,6 +541,8 @@ export type Database = {
           plan_type: string
           price_brl: number
           status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
           user_id: string
         }
@@ -538,6 +561,8 @@ export type Database = {
           plan_type?: string
           price_brl?: number
           status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -556,6 +581,8 @@ export type Database = {
           plan_type?: string
           price_brl?: number
           status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
