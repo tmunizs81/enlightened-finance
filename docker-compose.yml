@@ -24,6 +24,30 @@ services:
     networks:
       - financeai-network
 
+  # Uptime Kuma - status/uptime monitoring with Telegram alerts
+  # UI: http://SERVER_IP:${KUMA_PORT:-3001}
+  # First access: create admin user, then add monitors + Telegram notification
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "${KUMA_PORT:-3001}:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - financeai-network
+    healthcheck:
+      test: ["CMD", "extra/healthcheck"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+
 networks:
   financeai-network:
     driver: bridge
+
+volumes:
+  uptime-kuma-data:
+    driver: local
