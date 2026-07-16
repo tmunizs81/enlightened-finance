@@ -156,9 +156,9 @@ export default function Plans() {
                 <Button
                   className="w-full"
                   onClick={() => setOpenPlan(key)}
-                  disabled={hasActiveAsaas}
+                  disabled={hasActive || gatewayLoading}
                 >
-                  {hasActiveAsaas ? "Plano ativo" : "Assinar"}
+                  {hasActive ? "Plano ativo" : "Assinar"}
                 </Button>
               </CardContent>
             </Card>
