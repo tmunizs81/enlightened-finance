@@ -1,103 +1,89 @@
-# Central de Gestão Comercial (Configurações)
+## Modo Família — SimplyFin
 
-## Objetivo
-Consolidar em **Configurações → Gestão** (visível só para admins) todo o controle operacional do modelo comercial: quem usa o sistema, quem administra, e quais licenças mensais estão ativas/vencidas/revogadas. Substitui a necessidade de navegar entre `/admin/licenses` e outras telas isoladas.
+Compartilhamento de dados financeiros entre até 5 logins sob 1 licença família. Pool único: dados criados **após** entrar na família ficam visíveis a todos os membros; dados criados **antes** permanecem privados do dono original. 4 papéis: Owner, Admin, Member, Viewer. Zero mudança no que já existe — só adição.
 
-## Estrutura da nova seção
+---
 
-Nova seção `AdminManagementSection` renderizada em `Configurações` apenas quando `useUserRole().isAdmin === true`. Layout com **3 abas** (shadcn `Tabs`):
+### 1. Schema (migration)
 
-```text
-┌─ Configurações ────────────────────────────────┐
-│                                                │
-│  [Alterar Senha] [Notificações] [Atalhos]      │
-│                                                │
-│  ┌─ 🛡️  GESTÃO (só admin) ─────────────────┐  │
-│  │                                          │  │
-│  │  [ Usuários ] [ Admins ] [ Licenças ]    │  │
-│  │  ─────────────                           │  │
-│  │  ... conteúdo da aba ativa ...           │  │
-│  └──────────────────────────────────────────┘  │
-└────────────────────────────────────────────────┘
-```
+**Novas tabelas**
+- `families` — `id, name, owner_id, license_id, max_seats (default 5), created_at, updated_at`
+- `family_members` — `id, family_id, user_id (unique), role (enum: owner|admin|member|viewer), joined_at`
+- `family_invites` — `id, family_id, email, token, role, invited_by, expires_at (7d), accepted_at`
+- Enum `family_role`
 
-### Aba 1 — Usuários
-Lista todos os usuários do sistema com:
-- Email, nome de exibição, data de cadastro, último login
-- Badge de role (Admin / Usuário)
-- Badge de status da licença (Ativa até dd/mm/aaaa · Vencida · Sem licença)
-- Busca por email/nome
-- Ações por linha:
-  - **Resetar senha** (define nova senha via modal)
-  - **Promover a admin** / **Rebaixar para usuário**
-  - **Vincular licença existente** (dropdown com licenças sem dono)
-  - **Excluir usuário** (com dialog de confirmação — apaga em `auth.users` cascade)
-- Botão topo: **+ Novo Usuário** (email, senha, role, opção de já criar+vincular licença de X meses)
+**Coluna nova em cada tabela de dados** (`family_id UUID NULL` + índice):
+`accounts, transactions, budgets, goals, categories, tags, recurring_transactions, financial_rules, transaction_splits, transaction_tags, ai_insights, pending_ocr_transactions, achievements, streaks, weekly_challenges`
 
-### Aba 2 — Admins
-Sub-visão filtrada da lista com só admins + destaque para operações sensíveis:
-- Lista compacta de todos os `user_roles.role = 'admin'`
-- Bloqueia auto-rebaixamento (não pode remover o próprio admin se for o último)
-- Alerta se existir mais de 1 conta com mesmo email raiz (ex.: `tmunizs@proton.me` vs `tmunizs@proton.ne` — typos)
-- Botão limpar contas órfãs (typos de email detectados)
+Regra: `family_id NULL` = privado do `user_id`; `family_id preenchido` = pool da família.
 
-### Aba 3 — Licenças
-Reutiliza a lógica atual de `AdminLicenses.tsx` embutida como componente:
-- Cards de KPI: **Total** · **Ativas** · **Vencidas** · **Revogadas** · **Receita Mensal Recorrente estimada**
-- Tabela de licenças com filtros (status, período, plano)
-- Ações por linha: editar validade, revogar, renovar por +1 mês / +12 meses, transferir para outro usuário
-- Botão **+ Gerar Licença** (chave gerada por `generate_license_key()` já existente)
-- **Novo:** campo `plan_type` (mensal / anual / vitalícia) e `price_brl` para RMR
+**Licenças** — adicionar coluna `max_seats INT DEFAULT 1`. `plan_type='family'` → `max_seats=5` automaticamente na criação via admin.
 
-## Backend
+**Security definer functions**
+- `get_user_family(uid)` → `family_id` (ou NULL)
+- `get_family_role(uid, fid)` → `family_role`
+- `has_family_permission(uid, fid, min_role)` — hierarquia viewer<member<admin<owner
+- `has_active_family_license(uid)` — checa licença ativa do owner da família do usuário
 
-### Nova edge function `admin-users`
-Substitui/expande `create-user`. Endpoint único com actions:
-- `list` — retorna todos os usuários (email, created_at, last_sign_in_at + join com profiles + role + licença ativa)
-- `create` — cria user + role + opcionalmente licença
-- `update_password` — reseta senha de qualquer user
-- `update_role` — promove/rebaixa (com trava: mín. 1 admin)
-- `delete` — apaga user via `auth.admin.deleteUser` (cascade em profiles/user_roles/licenses)
-- `link_license` — vincula licença existente a um usuário
+**Trigger BEFORE INSERT** em cada tabela de dados: se `family_id` NULL e `auth.uid()` pertence a família → preenche automaticamente. Garante pool único sem alterar código do frontend.
 
-Todas as actions:
-1. Verificam JWT do chamador via `getClaims`
-2. Confirmam que ele tem role admin em `user_roles`
-3. Usam `SERVICE_ROLE_KEY` para operações administrativas
+**RLS reescrita** para todas as tabelas de dados:
+- SELECT: `user_id = auth.uid() OR (family_id = get_user_family(auth.uid()))`
+- INSERT: user_id = auth.uid() AND (family_id NULL OR permission ≥ member)
+- UPDATE/DELETE: dono do registro OU (family_id da família AND permission ≥ member; viewer bloqueado)
 
-### Migração de schema (opcional, se aprovar campos comerciais)
-Adiciona colunas em `licenses`:
-- `plan_type text` (default `'monthly'`) — enum lógico: `monthly`/`yearly`/`lifetime`
-- `price_brl numeric(10,2)` (default 0) — preço mensal para cálculo de RMR
-- `notes text` — observações internas do admin
+### 2. Edge function `family-management`
 
-Cria índice `licenses(user_id, status)` para query rápida de "licença ativa do usuário X".
+Ações: `create_family, list_family, invite_member, list_invites, revoke_invite, accept_invite (via token), list_members, update_member_role, remove_member, leave_family, transfer_ownership`.
+Validações: só Owner pode remover/transferir; Admin pode convidar e alterar roles≤member; verifica `max_seats`; verifica `has_active_family_license`; bloqueia último Owner de sair sem transferir.
 
-## Como o admin acessa
-1. Login como admin em `/auth`
-2. Sidebar → **Configurações**
-3. Rola até o card **🛡️ Gestão** (só aparece se admin)
-4. Clica na aba desejada
+### 3. Licença família no painel admin
 
-A rota antiga `/admin/licenses` continua funcionando (não removo pra não quebrar bookmarks), mas o link no sidebar passa a apontar para `/settings#gestao` (ancora que abre a aba Licenças diretamente).
+`admin-users` action `create_license`: aceitar `plan_type='family'` → seta `max_seats=5` e `price_brl` conforme informado. UI de licenças ganha filtro "Família" e exibe seats ocupados/total (join com families).
 
-## Segurança
-- Toda a lógica sensível fica na edge function `admin-users` — nunca no cliente
-- Frontend só chama a função via `supabase.functions.invoke` com JWT
-- RLS em `licenses` já protege leitura direta (só admin ou dono)
-- Trava anti-lockout: última conta admin não pode se auto-rebaixar nem se auto-deletar
-- Log de auditoria: cada ação administrativa insere linha em nova tabela `admin_audit_log` (quem fez, o quê, quando, alvo) — útil para compliance quando escalar
+### 4. Frontend
 
-## Fora de escopo (não faço nesta entrega)
-- Cobrança automática (Stripe/Paddle) — próximo épico
-- Portal self-service pro cliente comprar licença sozinho — depende de pagamento primeiro
-- Envio de email transacional (licença criada, expirando, renovada) — precisa configurar domínio de envio primeiro
-- Multi-tenancy real (workspaces/famílias) — está bloqueado pela memória atual do projeto
+- **Nova página `/familia`** com abas: Visão geral, Membros, Convites, Configurações. Componente `FamilySection.tsx`.
+- **`use-family.ts`** hook: retorna `{ family, myRole, members, isOwner, isAdmin, canWrite, seatsUsed, seatsMax }`.
+- **`use-license.ts`** atualizado: se usuário não tem licença própria mas é membro de família com licença ativa → `isValid=true`.
+- **`AppSidebar`**: novo item "Família" (só aparece se plan_type='family' na licença própria/herdada).
+- **Página `/convite/:token`**: aceitar convite (mostra família, papel, botão "Aceitar" que chama edge function).
+- **Badges no header** quando em modo família: chip com nome da família + papel.
+- **Guardas por papel**: Viewer não vê botões de criar/editar/excluir (usa `canWrite` do hook).
+- **Formulários** (transactions, accounts, etc.) não mudam — trigger DB cuida do `family_id` automaticamente.
 
-## Perguntas antes de codar
-1. **Confirmar campos comerciais em `licenses`**: quer que eu adicione `plan_type` + `price_brl` + `notes` na tabela? (Sem isso, o KPI de Receita Mensal não sai.)
-2. **Log de auditoria**: quer a tabela `admin_audit_log` já nesta entrega, ou deixa pra depois?
-3. **Excluir usuário**: quando um usuário é deletado, o que fazer com as transações financeiras dele?
-   - **A)** Cascade — apaga tudo (padrão atual, agressivo)
-   - **B)** Manter transações órfãs em tabela `deleted_users_archive` (compliance / auditoria)
-4. **Endpoint público de compra**: não implemento agora, mas quer que eu já deixe as licenças com `activation_url` (link único do tipo `/activate/{key}`) para uso futuro com checkout?
+### 5. Auditoria
+
+Todas as ações em `family-management` logam em `admin_audit_log` (nova `target_type='family'`).
+
+---
+
+### Detalhes técnicos importantes
+
+- **Não migrar dados existentes**: `family_id` começa NULL, permanece NULL — respeitado pela RLS.
+- **Ao sair da família**: dados que o usuário criou com `family_id` preenchido **permanecem na família** (ele não os leva). Decisão explícita para evitar "roubo" de histórico compartilhado.
+- **Transferência de ownership**: obrigatória antes do Owner sair; se Owner for excluído sem transferir, edge function bloqueia.
+- **Índices**: `CREATE INDEX ON <tabela>(family_id) WHERE family_id IS NOT NULL` em todas as tabelas afetadas — evita full scan quando RLS avaliar `family_id = X`.
+- **Preços**: licença família fica como preço configurável pelo admin (não hardcoded).
+- **Grants** em todas as novas tabelas: `authenticated` (INSERT/SELECT/UPDATE/DELETE conforme RLS) + `service_role ALL`.
+
+---
+
+### Ordem de execução
+
+1. Migration (novas tabelas, coluna, enum, functions, triggers, RLS, grants, índices)
+2. Edge function `family-management`
+3. Extensão de `admin-users` para plano família
+4. Hooks (`use-family`, atualização de `use-license`)
+5. Página `/familia` + componente + rota de convite
+6. Sidebar + guardas de UI por papel
+7. Atualização de memória do projeto (remover "NO shared/joint accounts" e documentar o novo modo família)
+
+### Fora do escopo (não muda nada existente)
+
+- Formulários e páginas atuais permanecem idênticos
+- Bot Telegram continua individual (fase 2 se pedir)
+- Backup B2 continua por usuário
+- Nenhuma refatoração de código existente além do estritamente necessário (RLS + hook `use-license`)
+
+Aprovar para eu executar em sequência.
