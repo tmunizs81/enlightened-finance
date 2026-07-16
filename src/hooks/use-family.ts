@@ -46,6 +46,8 @@ export function useFamily() {
   const [myRole, setMyRole] = useState<FamilyRole | null>(null);
   const [seatsUsed, setSeatsUsed] = useState(0);
   const [seatsMax, setSeatsMax] = useState(5);
+  const [pendingInvites, setPendingInvites] = useState(0);
+  const [seatsAvailable, setSeatsAvailable] = useState(5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
