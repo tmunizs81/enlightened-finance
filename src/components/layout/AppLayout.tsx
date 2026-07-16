@@ -43,7 +43,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="scrollbar-thin flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+              <LicenseBanner />
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
       </div>
