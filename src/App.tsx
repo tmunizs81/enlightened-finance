@@ -81,6 +81,7 @@ function ProtectedRoutes() {
           <Route path="/insights" element={<Insights />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin/licenses" element={<AdminLicenses />} />
+          <Route path="/admin/payment-events" element={<AdminPaymentEvents />} />
           <Route path="/license" element={<LicenseStatus />} />
           <Route path="/install" element={<Install />} />
           <Route path="/achievements" element={<Achievements />} />
