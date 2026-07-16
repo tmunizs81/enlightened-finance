@@ -35,6 +35,90 @@ import { toast } from "sonner";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { SHORTCUTS_LIST } from "@/hooks/use-keyboard-shortcuts";
 
+function ChangePasswordSection() {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      toast.error("A senha deve ter pelo menos 8 caracteres");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("As senhas não conferem");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
+    if (error) {
+      toast.error(`Erro ao alterar senha: ${error.message}`);
+      return;
+    }
+    setNewPassword("");
+    setConfirmPassword("");
+    toast.success("Senha alterada com sucesso");
+  };
+
+  return (
+    <div className="glass-card space-y-4 p-5">
+      <div className="flex items-center gap-3">
+        <KeyRound className="h-5 w-5 text-primary" />
+        <h2 className="text-sm font-semibold text-foreground">Alterar Senha</h2>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Defina uma nova senha para sua conta. Mínimo 8 caracteres. Após salvar, use a nova senha no
+        próximo login.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="new-password" className="text-xs text-muted-foreground">
+            Nova senha
+          </Label>
+          <Input
+            id="new-password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="confirm-password" className="text-xs text-muted-foreground">
+            Confirmar nova senha
+          </Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            required
+          />
+        </div>
+        <Button type="submit" disabled={loading} size="sm">
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" /> Alterando...
+            </>
+          ) : (
+            "Alterar senha"
+          )}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function PushNotificationsSection() {
   const { isSupported, isEnabled, requestPermission } = usePushNotifications();
   return (
