@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.daily-anomaly-scan]
 verify_jwt = false
+
+[functions.asaas-webhook]
+verify_jwt = false
+
+[functions.licenses-enforce-grace]
+verify_jwt = false
