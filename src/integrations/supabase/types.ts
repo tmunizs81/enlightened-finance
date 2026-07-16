@@ -565,36 +565,45 @@ export type Database = {
         Row: {
           created_at: string
           customer_id: string | null
+          error_message: string | null
           event_type: string
           id: string
           payload: Json
           payment_id: string | null
           processed_at: string
+          processing_ms: number | null
           provider: string
+          status: string
           subscription_id: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string
           customer_id?: string | null
+          error_message?: string | null
           event_type: string
           id?: string
           payload?: Json
           payment_id?: string | null
           processed_at?: string
+          processing_ms?: number | null
           provider?: string
+          status?: string
           subscription_id?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string
           customer_id?: string | null
+          error_message?: string | null
           event_type?: string
           id?: string
           payload?: Json
           payment_id?: string | null
           processed_at?: string
+          processing_ms?: number | null
           provider?: string
+          status?: string
           subscription_id?: string | null
           user_id?: string | null
         }
