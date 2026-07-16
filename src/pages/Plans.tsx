@@ -225,6 +225,11 @@ export default function Plans() {
                 </div>
               </div>
             )}
+
+            <Button onClick={checkout} disabled={loading} className="w-full">
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {loading ? "Gerando cobrança..." : gateway === "stripe" ? "Ir para o Stripe" : "Continuar para pagamento"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
