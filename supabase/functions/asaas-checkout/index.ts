@@ -137,12 +137,21 @@ serve(async (req) => {
         const payments = await asaasFetch(
           `/subscriptions/${existingLic.asaas_subscription_id}/payments?limit=1&order=desc`,
         );
-        const invoiceUrl =
-          payments?.data?.[0]?.invoiceUrl || payments?.data?.[0]?.bankSlipUrl || null;
+        const firstPay = payments?.data?.[0];
+        if (firstPay?.id && billingType === "PIX") {
+          try {
+            await asaasFetch(`/payments/${firstPay.id}`, {
+              method: "PUT",
+              body: JSON.stringify({ billingType: "PIX" }),
+            });
+          } catch (e) {
+            console.warn("could not switch existing payment to PIX", e);
+          }
+        }
         return json(200, {
           reused: true,
           subscription_id: existingLic.asaas_subscription_id,
-          invoiceUrl,
+          invoiceUrl: firstPay?.invoiceUrl || null,
         });
       }
     }
@@ -152,13 +161,17 @@ serve(async (req) => {
     next.setDate(next.getDate() + 1);
     const nextDueDate = next.toISOString().slice(0, 10);
 
+    // Asaas aceita BOLETO | CREDIT_CARD | UNDEFINED em assinaturas (PIX não).
+    // Se o usuário escolheu PIX, criamos a subscription como UNDEFINED e depois
+    // forçamos a PRIMEIRA cobrança para PIX via PUT /payments/{id}.
+    const subBillingType =
+      billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "UNDEFINED";
+
     const subscription = await asaasFetch("/subscriptions", {
       method: "POST",
       body: JSON.stringify({
         customer: customerId,
-        // Asaas só aceita BOLETO | CREDIT_CARD | UNDEFINED em assinaturas.
-        // PIX puro não é válido aqui — usamos UNDEFINED (cliente escolhe PIX/Boleto/Cartão na fatura).
-        billingType: billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "UNDEFINED",
+        billingType: subBillingType,
         value: cfg.value,
         nextDueDate,
         cycle: "MONTHLY",
@@ -171,8 +184,22 @@ serve(async (req) => {
     const firstPayments = await asaasFetch(
       `/subscriptions/${subscription.id}/payments?limit=1&order=asc`,
     );
-    const firstPayment = firstPayments?.data?.[0];
-    const invoiceUrl = firstPayment?.invoiceUrl || firstPayment?.bankSlipUrl || null;
+    let firstPayment = firstPayments?.data?.[0];
+
+    // Se cliente pediu PIX, converte a primeira cobrança para PIX
+    if (firstPayment?.id && billingType === "PIX") {
+      try {
+        const updated = await asaasFetch(`/payments/${firstPayment.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ billingType: "PIX" }),
+        });
+        firstPayment = updated || firstPayment;
+      } catch (e) {
+        console.warn("could not switch first payment to PIX, falling back to invoice page", e);
+      }
+    }
+
+    const invoiceUrl = firstPayment?.invoiceUrl || null;
 
     // Cria/atualiza licença como PENDING
     const expiresAt = new Date();
