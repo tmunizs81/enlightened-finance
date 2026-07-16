@@ -29,8 +29,23 @@ export function useUserRole() {
       });
 
       if (cancelled) return;
-      if (error) console.error("useUserRole error:", error);
-      setIsAdmin(Boolean(data?.is_admin));
+      if (!error) {
+        setIsAdmin(Boolean(data?.is_admin));
+        setLoading(false);
+        return;
+      }
+
+      console.error("useUserRole admin-users error:", error);
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (roleError) console.error("useUserRole fallback error:", roleError);
+      setIsAdmin(Boolean(roleData));
       setLoading(false);
     })();
 
