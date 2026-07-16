@@ -75,14 +75,15 @@ export default function AdminSettings() {
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <RadioGroup value={gateway} onValueChange={(v) => setGateway(v as Gateway)}>
-              <label
-                htmlFor="asaas"
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setGateway("asaas")}
+                className={`flex w-full items-start gap-3 rounded-lg border p-4 text-left transition ${
                   gateway === "asaas" ? "border-primary bg-primary/5" : "hover:bg-muted"
                 }`}
               >
-                <RadioGroupItem value="asaas" id="asaas" className="mt-1" />
+                <div className={`mt-1 h-4 w-4 shrink-0 rounded-full border-2 ${gateway === "asaas" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 font-medium">
                     <Landmark className="h-4 w-4" /> Asaas
@@ -91,15 +92,16 @@ export default function AdminSettings() {
                     Pix, boleto e cartão brasileiro. Ideal para clientes no Brasil.
                   </p>
                 </div>
-              </label>
+              </button>
 
-              <label
-                htmlFor="stripe"
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
+              <button
+                type="button"
+                onClick={() => setGateway("stripe")}
+                className={`flex w-full items-start gap-3 rounded-lg border p-4 text-left transition ${
                   gateway === "stripe" ? "border-primary bg-primary/5" : "hover:bg-muted"
                 }`}
               >
-                <RadioGroupItem value="stripe" id="stripe" className="mt-1" />
+                <div className={`mt-1 h-4 w-4 shrink-0 rounded-full border-2 ${gateway === "stripe" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 font-medium">
                     <CreditCard className="h-4 w-4" /> Stripe
@@ -108,8 +110,8 @@ export default function AdminSettings() {
                     Cartão de crédito internacional. Cobrança recorrente automática.
                   </p>
                 </div>
-              </label>
-            </RadioGroup>
+              </button>
+            </div>
           )}
 
           {updatedAt && (
