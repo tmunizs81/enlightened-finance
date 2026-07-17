@@ -12,6 +12,7 @@ import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { LicenseBanner } from "@/components/LicenseBanner";
+import { BuildFooter } from "./BuildFooter";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoBackup();
