@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
+import { fetchSignupAvailability } from "@/lib/signup-availability";
 
 // Lazy load all pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -121,6 +122,10 @@ function ProtectedRoutes() {
 
 function AuthRoute() {
   const { session, loading } = useAuth();
+  useEffect(() => {
+    fetchSignupAvailability().catch(() => undefined);
+  }, []);
+
   if (loading) return null;
   if (session) return <Navigate to="/" replace />;
   return (
