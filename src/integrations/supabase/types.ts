@@ -180,18 +180,21 @@ export type Database = {
         Row: {
           active_payment_gateway: string
           id: boolean
+          signups_enabled: boolean
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           active_payment_gateway?: string
           id?: boolean
+          signups_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           active_payment_gateway?: string
           id?: boolean
+          signups_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
         }
