@@ -16,6 +16,8 @@ type Gateway = "asaas" | "stripe";
 export default function AdminSettings() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [gateway, setGateway] = useState<Gateway>("asaas");
+  const [signupsEnabled, setSignupsEnabled] = useState<boolean>(true);
+  const [togglingSignups, setTogglingSignups] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
