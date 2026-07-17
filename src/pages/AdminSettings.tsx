@@ -149,6 +149,41 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
+      {/* Toggle de cadastros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" /> Cadastros de novos usuários
+          </CardTitle>
+          <CardDescription>
+            Controle se novos visitantes podem criar conta em <code>/signup</code>.
+            Quando desativado, a página exibe um aviso e as CTAs da landing ficam bloqueadas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="font-medium">
+              Cadastros{" "}
+              <span className={signupsEnabled ? "text-emerald-500" : "text-destructive"}>
+                {loading ? "..." : signupsEnabled ? "habilitados" : "desabilitados"}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Usuários já existentes continuam podendo fazer login normalmente.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {togglingSignups && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              checked={signupsEnabled}
+              onCheckedChange={toggleSignups}
+              disabled={loading || togglingSignups}
+              aria-label="Habilitar cadastros"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Gateway de pagamento ativo</CardTitle>
