@@ -56,12 +56,39 @@ export default function AdminSettings() {
   if (roleLoading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
 
+  const gatewayLabel = gateway === "stripe" ? "Stripe" : "Asaas";
+  const gatewayColor = gateway === "stripe"
+    ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-500"
+    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-500";
+  const GatewayIcon = gateway === "stripe" ? CreditCard : Landmark;
+
   return (
     <div className="container mx-auto max-w-3xl space-y-6 py-8">
       <div>
         <h1 className="text-3xl font-bold">Configurações do sistema</h1>
         <p className="mt-1 text-muted-foreground">Somente administradores.</p>
       </div>
+
+      {/* Resumo do estado atual */}
+      <Card className={`border-2 ${gatewayColor}`}>
+        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`rounded-lg border p-2 ${gatewayColor}`}>
+              <GatewayIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Gateway ativo agora
+              </p>
+              <p className="text-xl font-bold">{loading ? "..." : gatewayLabel}</p>
+            </div>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <p>Valor salvo em <code>app_settings.active_payment_gateway</code></p>
+            <p className="font-mono">{loading ? "—" : gateway}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
