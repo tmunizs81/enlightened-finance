@@ -302,7 +302,7 @@ export default function Landing() {
                   className={`w-full ${p.highlight ? "gradient-bg-primary text-primary-foreground" : ""}`}
                   variant={p.highlight ? "default" : "outline"}
                 >
-                  <Link to="/signup">Assinar {p.name}</Link>
+                  <Link to={`/signup?plan=${p.name === "Família" ? "family" : "individual"}`}>Assinar {p.name}</Link>
                 </Button>
               </CardContent>
             </Card>
