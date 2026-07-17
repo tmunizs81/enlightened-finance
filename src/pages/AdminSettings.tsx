@@ -28,11 +28,12 @@ export default function AdminSettings() {
     if (!silent) setRefreshing(true);
     const { data, error } = await supabase
       .from("app_settings")
-      .select("active_payment_gateway, updated_at")
+      .select("active_payment_gateway, signups_enabled, updated_at")
       .eq("id", true)
       .maybeSingle();
     if (!error && data) {
       setGateway((data.active_payment_gateway as Gateway) || "asaas");
+      setSignupsEnabled(data.signups_enabled ?? true);
       setUpdatedAt(data.updated_at);
       setLastFetched(new Date());
       if (!silent) {
