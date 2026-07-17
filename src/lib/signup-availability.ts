@@ -10,7 +10,7 @@ export async function fetchSignupAvailability(): Promise<SignupAvailability> {
   const url = new URL(`${SUPABASE_URL}/rest/v1/app_settings`);
   url.searchParams.set("select", "signups_enabled,updated_at");
   url.searchParams.set("id", "eq.true");
-  url.searchParams.set("_fresh", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  url.searchParams.set("limit", "1");
 
   const response = await fetch(url.toString(), {
     method: "GET",
