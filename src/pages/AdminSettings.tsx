@@ -18,20 +18,35 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const reload = async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("active_payment_gateway, updated_at")
+      .eq("id", true)
+      .maybeSingle();
+    if (!error && data) {
+      setGateway((data.active_payment_gateway as Gateway) || "asaas");
+      setUpdatedAt(data.updated_at);
+      setLastFetched(new Date());
+      if (!silent) {
+        toast.success("Atualizado", {
+          description: `Gateway ativo: ${(data.active_payment_gateway || "asaas").toUpperCase()}`,
+        });
+      }
+    } else if (error && !silent) {
+      toast.error("Falha ao recarregar", { description: error.message });
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("active_payment_gateway, updated_at")
-        .eq("id", true)
-        .maybeSingle();
-      if (!error && data) {
-        setGateway((data.active_payment_gateway as Gateway) || "asaas");
-        setUpdatedAt(data.updated_at);
-      }
-      setLoading(false);
-    })();
+    reload(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = async () => {
