@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Landmark, GitCommit } from "lucide-react";
+import { Loader2, Save, CreditCard, Landmark, GitCommit, RefreshCw } from "lucide-react";
 import { BUILD_INFO } from "@/lib/build-info";
 
 type Gateway = "asaas" | "stripe";
@@ -18,20 +18,35 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const reload = async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("active_payment_gateway, updated_at")
+      .eq("id", true)
+      .maybeSingle();
+    if (!error && data) {
+      setGateway((data.active_payment_gateway as Gateway) || "asaas");
+      setUpdatedAt(data.updated_at);
+      setLastFetched(new Date());
+      if (!silent) {
+        toast.success("Atualizado", {
+          description: `Gateway ativo: ${(data.active_payment_gateway || "asaas").toUpperCase()}`,
+        });
+      }
+    } else if (error && !silent) {
+      toast.error("Falha ao recarregar", { description: error.message });
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("active_payment_gateway, updated_at")
-        .eq("id", true)
-        .maybeSingle();
-      if (!error && data) {
-        setGateway((data.active_payment_gateway as Gateway) || "asaas");
-        setUpdatedAt(data.updated_at);
-      }
-      setLoading(false);
-    })();
+    reload(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = async () => {
@@ -50,7 +65,7 @@ export default function AdminSettings() {
       toast.error("Erro ao salvar", { description: error.message });
     } else {
       toast.success("Gateway atualizado", { description: `Agora usando ${gateway === "stripe" ? "Stripe" : "Asaas"}.` });
-      setUpdatedAt(new Date().toISOString());
+      await reload(true);
     }
   };
 
@@ -84,9 +99,26 @@ export default function AdminSettings() {
               <p className="text-xl font-bold">{loading ? "..." : gatewayLabel}</p>
             </div>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <p>Valor salvo em <code>app_settings.active_payment_gateway</code></p>
-            <p className="font-mono">{loading ? "—" : gateway}</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right text-xs text-muted-foreground">
+              <p>Valor salvo em <code>app_settings.active_payment_gateway</code></p>
+              <p className="font-mono">{loading ? "—" : gateway}</p>
+              {lastFetched && (
+                <p className="mt-0.5">
+                  Lido do backend às {lastFetched.toLocaleTimeString("pt-BR")}
+                </p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => reload(false)}
+              disabled={refreshing || loading}
+              title="Recarregar app_settings direto do banco"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
           </div>
         </CardContent>
       </Card>
