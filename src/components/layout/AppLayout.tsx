@@ -48,6 +48,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <LicenseBanner />
               {children}
             </ErrorBoundary>
+            <BuildFooter />
           </main>
         </div>
       </div>
