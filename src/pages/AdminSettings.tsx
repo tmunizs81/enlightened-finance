@@ -65,7 +65,7 @@ export default function AdminSettings() {
       toast.error("Erro ao salvar", { description: error.message });
     } else {
       toast.success("Gateway atualizado", { description: `Agora usando ${gateway === "stripe" ? "Stripe" : "Asaas"}.` });
-      setUpdatedAt(new Date().toISOString());
+      await reload(true);
     }
   };
 
