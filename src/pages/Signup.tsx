@@ -40,6 +40,10 @@ export default function Signup() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupsEnabled === false) {
+      toast.error("Cadastros temporariamente indisponíveis.");
+      return;
+    }
     const parsed = schema.safeParse({ name, email, password });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
