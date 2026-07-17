@@ -107,6 +107,7 @@ function ProtectedRoutes() {
           <Route path="/familia" element={<FamilyPage />} />
           <Route path="/familia/convite/:token" element={<FamilyInvite />} />
           <Route path="/planos" element={<Plans />} />
+          <Route path="/checkout" element={<Checkout />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
