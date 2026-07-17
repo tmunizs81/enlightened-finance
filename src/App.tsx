@@ -67,7 +67,17 @@ function ProtectedRoutes() {
     );
   }
 
-  if (!session) return <Navigate to="/auth" replace />;
+  if (!session) {
+    // Unauthenticated visitors on "/" see the marketing landing page.
+    if (window.location.pathname === "/") {
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <Landing />
+        </Suspense>
+      );
+    }
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <AppLayout>
