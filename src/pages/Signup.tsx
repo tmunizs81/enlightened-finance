@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchSignupAvailability } from "@/lib/signup-availability";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,14 +41,32 @@ export default function Signup() {
   const [signupsEnabled, setSignupsEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("signups_enabled")
-        .eq("id", true)
-        .maybeSingle();
-      setSignupsEnabled(data?.signups_enabled ?? true);
-    })();
+    let active = true;
+
+    const refreshSignupStatus = async () => {
+      try {
+        const status = await fetchSignupAvailability();
+        if (active) setSignupsEnabled(status.signupsEnabled);
+      } catch {
+        if (active) setSignupsEnabled(false);
+      }
+    };
+
+    refreshSignupStatus();
+
+    const handlePageShow = () => refreshSignupStatus();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshSignupStatus();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const submit = async (e: React.FormEvent) => {
@@ -64,6 +83,13 @@ export default function Signup() {
 
     setLoading(true);
     try {
+      const status = await fetchSignupAvailability();
+      setSignupsEnabled(status.signupsEnabled);
+      if (!status.signupsEnabled) {
+        toast.error("Cadastros temporariamente indisponíveis.");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
