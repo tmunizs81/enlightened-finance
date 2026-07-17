@@ -121,32 +121,11 @@ export default function Signup() {
   }
 
   if (signupsEnabled === false) {
-    return (
-      <div
-        className="flex min-h-screen flex-col items-center justify-center p-4"
-        style={{ background: "var(--gradient-dark)" }}
-      >
-        <div className="glass-card w-full max-w-md p-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-            <Ban className="h-7 w-7" />
-          </div>
-          <h1 className="text-xl font-bold">Cadastros temporariamente indisponíveis</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            No momento não estamos aceitando novas contas no SimplyFin. Volte em breve — estamos
-            preparando novidades para você.
-          </p>
-          <div className="mt-6 flex flex-col gap-2">
-            <Button asChild className="gradient-bg-primary text-primary-foreground">
-              <Link to="/auth">Já sou cliente — entrar</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/">Voltar à página inicial</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    const [waitlistEmail, setWaitlistEmail] = ["", () => {}] as const;
+    return <WaitlistScreen plan={plan} />;
   }
+
+
 
   return (
     <div
