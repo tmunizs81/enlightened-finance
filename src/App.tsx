@@ -18,6 +18,7 @@ const Budgets = lazy(() => import("./pages/Budgets"));
 const Reports = lazy(() => import("./pages/Reports"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Landing = lazy(() => import("./pages/Landing"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLicenses = lazy(() => import("./pages/AdminLicenses"));
 const AdminPaymentEvents = lazy(() => import("./pages/AdminPaymentEvents"));
