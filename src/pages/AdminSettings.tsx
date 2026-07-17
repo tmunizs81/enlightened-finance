@@ -73,6 +73,28 @@ export default function AdminSettings() {
     }
   };
 
+  const toggleSignups = async (next: boolean) => {
+    setTogglingSignups(true);
+    const previous = signupsEnabled;
+    setSignupsEnabled(next);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("app_settings")
+      .update({
+        signups_enabled: next,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+      })
+      .eq("id", true);
+    setTogglingSignups(false);
+    if (error) {
+      setSignupsEnabled(previous);
+      toast.error("Erro ao atualizar cadastros", { description: error.message });
+    } else {
+      toast.success(next ? "Cadastros habilitados" : "Cadastros desabilitados");
+    }
+  };
+
   if (roleLoading) return null;
   if (!isAdmin) return <Navigate to="/" replace />;
 
