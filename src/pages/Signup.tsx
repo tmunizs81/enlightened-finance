@@ -84,7 +84,14 @@ export default function Signup() {
       navigate("/auth", { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao criar conta";
-      toast.error(msg.includes("already registered") ? "E-mail já cadastrado. Faça login." : msg);
+      if (msg.includes("SIGNUPS_DISABLED")) {
+        setSignupsEnabled(false);
+        toast.error("Cadastros temporariamente desabilitados pelo administrador.");
+      } else if (msg.includes("already registered")) {
+        toast.error("E-mail já cadastrado. Faça login.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
