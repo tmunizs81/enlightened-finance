@@ -182,6 +182,31 @@ export default function AdminSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitCommit className="h-4 w-4" /> Build atual
+          </CardTitle>
+          <CardDescription>
+            Use estes valores para confirmar que o VPS está rodando o mesmo build publicado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <p className="text-xs uppercase text-muted-foreground">Ambiente</p>
+            <p className="font-medium">{BUILD_INFO.env}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-muted-foreground">Commit</p>
+            <p className="font-mono">{BUILD_INFO.commit}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-muted-foreground">Build</p>
+            <p>{new Date(BUILD_INFO.buildTime).toLocaleString("pt-BR")}</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
