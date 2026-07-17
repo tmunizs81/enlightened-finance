@@ -18,6 +18,7 @@ const Budgets = lazy(() => import("./pages/Budgets"));
 const Reports = lazy(() => import("./pages/Reports"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Landing = lazy(() => import("./pages/Landing"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AdminLicenses = lazy(() => import("./pages/AdminLicenses"));
 const AdminPaymentEvents = lazy(() => import("./pages/AdminPaymentEvents"));
@@ -66,7 +67,17 @@ function ProtectedRoutes() {
     );
   }
 
-  if (!session) return <Navigate to="/auth" replace />;
+  if (!session) {
+    // Unauthenticated visitors on "/" see the marketing landing page.
+    if (window.location.pathname === "/") {
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <Landing />
+        </Suspense>
+      );
+    }
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <AppLayout>
