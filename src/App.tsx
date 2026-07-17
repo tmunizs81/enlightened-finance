@@ -138,6 +138,30 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<AuthRoute />} />
+          <Route
+            path="/signup"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Signup />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/checkout/success"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutSuccess />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/checkout/cancel"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutCancel />
+              </Suspense>
+            }
+          />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
