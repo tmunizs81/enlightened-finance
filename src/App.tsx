@@ -31,6 +31,10 @@ const Categories = lazy(() => import("./pages/Categories"));
 const FamilyPage = lazy(() => import("./pages/Family"));
 const FamilyInvite = lazy(() => import("./pages/FamilyInvite"));
 const Plans = lazy(() => import("./pages/Plans"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
