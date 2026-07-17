@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Loader2, Ban } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,9 +25,25 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signupsEnabled, setSignupsEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("signups_enabled")
+        .eq("id", true)
+        .maybeSingle();
+      setSignupsEnabled(data?.signups_enabled ?? true);
+    })();
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupsEnabled === false) {
+      toast.error("Cadastros temporariamente indisponíveis.");
+      return;
+    }
     const parsed = schema.safeParse({ name, email, password });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
@@ -73,6 +89,45 @@ export default function Signup() {
       setLoading(false);
     }
   };
+
+  if (signupsEnabled === null) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: "var(--gradient-dark)" }}
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (signupsEnabled === false) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center p-4"
+        style={{ background: "var(--gradient-dark)" }}
+      >
+        <div className="glass-card w-full max-w-md p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+            <Ban className="h-7 w-7" />
+          </div>
+          <h1 className="text-xl font-bold">Cadastros temporariamente indisponíveis</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            No momento não estamos aceitando novas contas no SimplyFin. Volte em breve — estamos
+            preparando novidades para você.
+          </p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button asChild className="gradient-bg-primary text-primary-foreground">
+              <Link to="/auth">Já sou cliente — entrar</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/">Voltar à página inicial</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

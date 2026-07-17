@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Landmark, GitCommit, RefreshCw } from "lucide-react";
+import { Loader2, Save, CreditCard, Landmark, GitCommit, RefreshCw, UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { BUILD_INFO } from "@/lib/build-info";
 
 type Gateway = "asaas" | "stripe";
@@ -15,6 +16,8 @@ type Gateway = "asaas" | "stripe";
 export default function AdminSettings() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [gateway, setGateway] = useState<Gateway>("asaas");
+  const [signupsEnabled, setSignupsEnabled] = useState<boolean>(true);
+  const [togglingSignups, setTogglingSignups] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -25,11 +28,12 @@ export default function AdminSettings() {
     if (!silent) setRefreshing(true);
     const { data, error } = await supabase
       .from("app_settings")
-      .select("active_payment_gateway, updated_at")
+      .select("active_payment_gateway, signups_enabled, updated_at")
       .eq("id", true)
       .maybeSingle();
     if (!error && data) {
       setGateway((data.active_payment_gateway as Gateway) || "asaas");
+      setSignupsEnabled(data.signups_enabled ?? true);
       setUpdatedAt(data.updated_at);
       setLastFetched(new Date());
       if (!silent) {
@@ -66,6 +70,28 @@ export default function AdminSettings() {
     } else {
       toast.success("Gateway atualizado", { description: `Agora usando ${gateway === "stripe" ? "Stripe" : "Asaas"}.` });
       await reload(true);
+    }
+  };
+
+  const toggleSignups = async (next: boolean) => {
+    setTogglingSignups(true);
+    const previous = signupsEnabled;
+    setSignupsEnabled(next);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("app_settings")
+      .update({
+        signups_enabled: next,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+      })
+      .eq("id", true);
+    setTogglingSignups(false);
+    if (error) {
+      setSignupsEnabled(previous);
+      toast.error("Erro ao atualizar cadastros", { description: error.message });
+    } else {
+      toast.success(next ? "Cadastros habilitados" : "Cadastros desabilitados");
     }
   };
 
@@ -119,6 +145,41 @@ export default function AdminSettings() {
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               Atualizar
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Toggle de cadastros */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" /> Cadastros de novos usuários
+          </CardTitle>
+          <CardDescription>
+            Controle se novos visitantes podem criar conta em <code>/signup</code>.
+            Quando desativado, a página exibe um aviso e as CTAs da landing ficam bloqueadas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <p className="font-medium">
+              Cadastros{" "}
+              <span className={signupsEnabled ? "text-emerald-500" : "text-destructive"}>
+                {loading ? "..." : signupsEnabled ? "habilitados" : "desabilitados"}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Usuários já existentes continuam podendo fazer login normalmente.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {togglingSignups && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              checked={signupsEnabled}
+              onCheckedChange={toggleSignups}
+              disabled={loading || togglingSignups}
+              aria-label="Habilitar cadastros"
+            />
           </div>
         </CardContent>
       </Card>
