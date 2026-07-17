@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
-import { Loader2, Save, CreditCard, Landmark, GitCommit, RefreshCw } from "lucide-react";
+import { Loader2, Save, CreditCard, Landmark, GitCommit, RefreshCw, UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { BUILD_INFO } from "@/lib/build-info";
 
 type Gateway = "asaas" | "stripe";
