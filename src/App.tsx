@@ -145,6 +145,14 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<AuthRoute />} />
           <Route
+            path="/t2talk"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <T2Talk />
+              </Suspense>
+            }
+          />
+          <Route
             path="/signup"
             element={
               <Suspense fallback={<PageLoader />}>
