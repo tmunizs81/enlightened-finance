@@ -75,13 +75,19 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "https://fin.t2systems.com.br";
+    const successUrl = typeof body?.success_url === "string" && body.success_url.startsWith(origin)
+      ? body.success_url
+      : `${origin}/checkout/success?plan=${plan}`;
+    const cancelUrl = typeof body?.cancel_url === "string" && body.cancel_url.startsWith(origin)
+      ? body.cancel_url
+      : `${origin}/checkout/cancel?plan=${plan}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/planos?stripe=success`,
-      cancel_url: `${origin}/planos?stripe=cancel`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       client_reference_id: user.id,
       subscription_data: {
         metadata: { user_id: user.id, plan },

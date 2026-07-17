@@ -113,7 +113,7 @@ export default function Landing() {
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button asChild size="sm" className="gradient-bg-primary text-primary-foreground">
-              <Link to="/auth?signup=1">
+              <Link to="/signup">
                 Começar
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
@@ -152,7 +152,7 @@ export default function Landing() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" className="gradient-bg-primary text-primary-foreground">
-                <Link to="/auth?signup=1">
+                <Link to="/signup">
                   Começar teste grátis
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -302,7 +302,7 @@ export default function Landing() {
                   className={`w-full ${p.highlight ? "gradient-bg-primary text-primary-foreground" : ""}`}
                   variant={p.highlight ? "default" : "outline"}
                 >
-                  <Link to="/auth?signup=1">Assinar {p.name}</Link>
+                  <Link to={`/signup?plan=${p.name === "Família" ? "family" : "individual"}`}>Assinar {p.name}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -387,7 +387,7 @@ export default function Landing() {
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="gradient-bg-primary text-primary-foreground">
-              <Link to="/auth?signup=1">
+              <Link to="/signup">
                 Criar minha conta grátis
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

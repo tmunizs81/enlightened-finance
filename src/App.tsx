@@ -31,6 +31,10 @@ const Categories = lazy(() => import("./pages/Categories"));
 const FamilyPage = lazy(() => import("./pages/Family"));
 const FamilyInvite = lazy(() => import("./pages/FamilyInvite"));
 const Plans = lazy(() => import("./pages/Plans"));
+const Signup = lazy(() => import("./pages/Signup"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
@@ -103,6 +107,7 @@ function ProtectedRoutes() {
           <Route path="/familia" element={<FamilyPage />} />
           <Route path="/familia/convite/:token" element={<FamilyInvite />} />
           <Route path="/planos" element={<Plans />} />
+          <Route path="/checkout" element={<Checkout />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -133,6 +138,30 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<AuthRoute />} />
+          <Route
+            path="/signup"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Signup />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/checkout/success"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutSuccess />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/checkout/cancel"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <CheckoutCancel />
+              </Suspense>
+            }
+          />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
