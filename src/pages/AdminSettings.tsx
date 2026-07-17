@@ -99,9 +99,26 @@ export default function AdminSettings() {
               <p className="text-xl font-bold">{loading ? "..." : gatewayLabel}</p>
             </div>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <p>Valor salvo em <code>app_settings.active_payment_gateway</code></p>
-            <p className="font-mono">{loading ? "—" : gateway}</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right text-xs text-muted-foreground">
+              <p>Valor salvo em <code>app_settings.active_payment_gateway</code></p>
+              <p className="font-mono">{loading ? "—" : gateway}</p>
+              {lastFetched && (
+                <p className="mt-0.5">
+                  Lido do backend às {lastFetched.toLocaleTimeString("pt-BR")}
+                </p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => reload(false)}
+              disabled={refreshing || loading}
+              title="Recarregar app_settings direto do banco"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
           </div>
         </CardContent>
       </Card>
