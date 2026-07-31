@@ -203,13 +203,26 @@ serve(async (req) => {
 
       case "update_password": {
         const { user_id, password } = body;
-        if (!user_id || !password || password.length < 8)
-          return json(400, { error: "user_id and password (min 8) required" });
-        const { error } = await admin.auth.admin.updateUserById(user_id, { password });
-        if (error) return json(400, { error: error.message });
-        await audit("user.password_reset", "user", user_id);
+        if (!user_id) return json(400, { error: "Selecione um usuário" });
+        if (!password || String(password).length < 8)
+          return json(400, { error: "A senha deve ter ao menos 8 caracteres" });
+        const { data: upd, error } = await admin.auth.admin.updateUserById(user_id, {
+          password: String(password),
+        });
+        if (error) {
+          console.error("update_password error:", error);
+          const m = error.message || "";
+          if (m.toLowerCase().includes("pwned") || m.toLowerCase().includes("compromised"))
+            return json(400, { error: "Senha vazada em bases públicas. Escolha outra senha." });
+          if (m.toLowerCase().includes("same password"))
+            return json(400, { error: "A nova senha é igual à atual." });
+          return json(400, { error: m || "Falha ao alterar a senha" });
+        }
+        if (!upd?.user) return json(400, { error: "Usuário não encontrado" });
+        await audit("user.password_reset", "user", user_id, upd.user.email ?? undefined);
         return json(200, { ok: true });
       }
+
 
       case "update_role": {
         const { user_id, role } = body;
