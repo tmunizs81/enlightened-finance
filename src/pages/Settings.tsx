@@ -532,8 +532,14 @@ const SettingsPage = () => {
         let detail = "";
         const ctx = (error as any)?.context;
         try {
-          if (ctx && typeof ctx.json === "function") {
-            detail = (await ctx.clone().json())?.error || "";
+          if (ctx && typeof ctx.text === "function") {
+            const raw = await ctx.clone().text();
+            try {
+              const parsed = JSON.parse(raw);
+              detail = parsed?.error || parsed?.message || raw;
+            } catch {
+              detail = raw;
+            }
           }
         } catch {
           /* ignora */
