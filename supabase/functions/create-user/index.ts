@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         display_name: displayName || email.split("@")[0],
+        created_by_admin: true,
       },
     });
 
