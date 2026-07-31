@@ -1,7 +1,6 @@
 // Central admin API: users, roles, licenses, audit log.
 // All actions require caller to have role='admin' in user_roles.
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.98.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,12 +14,16 @@ function json(status: number, body: unknown) {
   });
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("admin-users: backend environment is incomplete");
+    return json(500, { error: "Configuração interna do backend incompleta" });
+  }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json(401, { error: "Unauthorized" });
@@ -36,8 +39,20 @@ serve(async (req) => {
   const callerId = userData.user.id;
   const callerEmail = userData.user.email ?? null;
 
+  // New opaque secret keys must be sent as apikey, not as a Bearer JWT.
+  // Older self-hosted installations still use a JWT service-role key.
+  const serviceKeyIsOpaque = SUPABASE_SERVICE_ROLE_KEY.startsWith("sb_secret_");
+  const serviceFetch: typeof fetch = async (input, init = {}) => {
+    const headers = new Headers(init.headers);
+    headers.set("apikey", SUPABASE_SERVICE_ROLE_KEY);
+    if (serviceKeyIsOpaque && headers.get("Authorization") === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+      headers.delete("Authorization");
+    }
+    return fetch(input, { ...init, headers });
+  };
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: serviceFetch },
   });
 
   const body = await req.json().catch(() => ({}));
@@ -137,6 +152,7 @@ serve(async (req) => {
         if (String(password).length < 8)
           return json(400, { error: "A senha deve ter ao menos 8 caracteres" });
 
+        console.info("admin-users create: starting", { email: String(email).trim().toLowerCase() });
         const { data: newUser, error: cErr } = await admin.auth.admin.createUser({
           email: String(email).trim().toLowerCase(),
           password,
@@ -155,20 +171,33 @@ serve(async (req) => {
           });
         }
 
+        const rollbackUser = async (reason: string) => {
+          console.error("admin-users create: rolling back user", { userId: newUser.user.id, reason });
+          const { error: rollbackError } = await admin.auth.admin.deleteUser(newUser.user.id);
+          if (rollbackError) console.error("admin-users create: rollback failed", rollbackError.message);
+        };
+
         const { error: rErr } = await admin
           .from("user_roles")
           .upsert(
             { user_id: newUser.user.id, role: role === "admin" ? "admin" : "user" },
             { onConflict: "user_id,role" },
           );
-        if (rErr) console.error("role insert error:", rErr.message);
+        if (rErr) {
+          await rollbackUser(`role: ${rErr.message}`);
+          return json(400, { error: `Não foi possível atribuir o perfil: ${rErr.message}` });
+        }
 
         let createdLicense = null;
         if (license?.months) {
           const months = Math.max(1, Math.min(120, Number(license.months)));
           const expiresAt = new Date();
           expiresAt.setMonth(expiresAt.getMonth() + months);
-          const { data: keyData } = await admin.rpc("generate_license_key");
+          const { data: keyData, error: keyError } = await admin.rpc("generate_license_key");
+          if (keyError || !keyData) {
+            await rollbackUser(`license key: ${keyError?.message || "empty key"}`);
+            return json(400, { error: `Não foi possível gerar a licença: ${keyError?.message || "chave vazia"}` });
+          }
           const planType = license.plan_type || "monthly";
           const { data: lic, error: lErr } = await admin
             .from("licenses")
@@ -188,8 +217,8 @@ serve(async (req) => {
             .select()
             .maybeSingle();
           if (lErr) {
-            await audit("user.create", "user", newUser.user.id, email, { role, license_error: lErr.message });
-            return json(400, { error: `Usuário criado, mas a licença falhou: ${lErr.message}` });
+            await rollbackUser(`license: ${lErr.message}`);
+            return json(400, { error: `A criação foi cancelada porque a licença falhou: ${lErr.message}` });
           }
           createdLicense = lic;
         }
@@ -198,6 +227,7 @@ serve(async (req) => {
           role,
           license: createdLicense,
         });
+        console.info("admin-users create: completed", { userId: newUser.user.id });
         return json(200, { user: newUser.user, license: createdLicense });
       }
 

@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.98.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,14 +72,32 @@ Deno.serve(async (req) => {
     }
 
     // Create user using service role (admin API)
+    const backendUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!backendUrl || !serviceKey) {
+      return new Response(JSON.stringify({ error: "Configuração interna do backend incompleta" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const serviceKeyIsOpaque = serviceKey.startsWith("sb_secret_");
+    const serviceFetch: typeof fetch = async (input, init = {}) => {
+      const headers = new Headers(init.headers);
+      headers.set("apikey", serviceKey);
+      if (serviceKeyIsOpaque && headers.get("Authorization") === `Bearer ${serviceKey}`) {
+        headers.delete("Authorization");
+      }
+      return fetch(input, { ...init, headers });
+    };
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      backendUrl,
+      serviceKey,
       {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
         },
+        global: { fetch: serviceFetch },
       },
     );
 
@@ -101,13 +119,17 @@ Deno.serve(async (req) => {
     }
 
     // Assign role to new user
-    const { error: roleError } = await supabaseAdmin.from("user_roles").insert({
-      user_id: newUser.user.id,
-      role: role as "admin" | "user",
-    });
+    const { error: roleError } = await supabaseAdmin.from("user_roles").upsert(
+      { user_id: newUser.user.id, role: role === "admin" ? "admin" : "user" },
+      { onConflict: "user_id,role" },
+    );
 
     if (roleError) {
-      console.error("Error assigning role:", roleError);
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      return new Response(JSON.stringify({ error: `Não foi possível atribuir o perfil: ${roleError.message}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Update profile with Telegram info if provided
@@ -140,9 +162,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error creating user:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno ao criar usuário" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

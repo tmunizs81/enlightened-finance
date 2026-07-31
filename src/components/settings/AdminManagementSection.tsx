@@ -100,11 +100,14 @@ async function invokeAdmin<T = any>(action: string, extra: Record<string, unknow
     let detail = "";
     const ctx = (error as any)?.context;
     try {
-      if (ctx && typeof ctx.json === "function") {
-        const parsed = await ctx.clone().json();
-        detail = parsed?.error || "";
-      } else if (ctx && typeof ctx.text === "function") {
-        detail = await ctx.clone().text();
+      if (ctx && typeof ctx.text === "function") {
+        const raw = await ctx.clone().text();
+        try {
+          const parsed = JSON.parse(raw);
+          detail = parsed?.error || parsed?.message || raw;
+        } catch {
+          detail = raw;
+        }
       }
     } catch {
       /* ignora falha de parse */
