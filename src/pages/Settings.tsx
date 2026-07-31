@@ -516,8 +516,9 @@ const SettingsPage = () => {
 
     setCreatingUser(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-user", {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
         body: {
+          action: "create",
           email: newUserEmail,
           password: newUserPassword,
           displayName: newUserName || newUserEmail.split("@")[0],
