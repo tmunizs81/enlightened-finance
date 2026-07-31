@@ -133,19 +133,35 @@ serve(async (req) => {
 
       case "create": {
         const { email, password, displayName, role, license } = body;
-        if (!email || !password) return json(400, { error: "email and password required" });
+        if (!email || !password) return json(400, { error: "email e senha são obrigatórios" });
+        if (String(password).length < 8)
+          return json(400, { error: "A senha deve ter ao menos 8 caracteres" });
 
         const { data: newUser, error: cErr } = await admin.auth.admin.createUser({
-          email,
+          email: String(email).trim().toLowerCase(),
           password,
           email_confirm: true,
-          user_metadata: { display_name: displayName || email.split("@")[0] },
+          user_metadata: {
+            display_name: displayName || String(email).split("@")[0],
+            created_by_admin: true,
+          },
         });
-        if (cErr) return json(400, { error: cErr.message });
+        if (cErr || !newUser?.user) {
+          const msg = cErr?.message || "Falha ao criar usuário";
+          return json(400, {
+            error: msg.includes("SIGNUPS_DISABLED")
+              ? "O gatilho de cadastro bloqueou a criação. Rode a migração mais recente no banco."
+              : msg,
+          });
+        }
 
-        await admin
+        const { error: rErr } = await admin
           .from("user_roles")
-          .insert({ user_id: newUser.user.id, role: role === "admin" ? "admin" : "user" });
+          .upsert(
+            { user_id: newUser.user.id, role: role === "admin" ? "admin" : "user" },
+            { onConflict: "user_id,role" },
+          );
+        if (rErr) console.error("role insert error:", rErr.message);
 
         let createdLicense = null;
         if (license?.months) {
@@ -153,19 +169,28 @@ serve(async (req) => {
           const expiresAt = new Date();
           expiresAt.setMonth(expiresAt.getMonth() + months);
           const { data: keyData } = await admin.rpc("generate_license_key");
-          const { data: lic } = await admin
+          const planType = license.plan_type || "monthly";
+          const { data: lic, error: lErr } = await admin
             .from("licenses")
-            .insert({
-              user_id: newUser.user.id,
-              license_key: keyData,
-              status: "active",
-              expires_at: expiresAt.toISOString(),
-              plan_type: license.plan_type || "monthly",
-              price_brl: license.price_brl || 0,
-              notes: license.notes || null,
-            })
+            .upsert(
+              {
+                user_id: newUser.user.id,
+                license_key: keyData,
+                status: "active",
+                expires_at: expiresAt.toISOString(),
+                plan_type: planType,
+                price_brl: license.price_brl || 0,
+                notes: license.notes || null,
+                max_seats: planType === "family" ? 5 : 1,
+              },
+              { onConflict: "user_id" },
+            )
             .select()
-            .single();
+            .maybeSingle();
+          if (lErr) {
+            await audit("user.create", "user", newUser.user.id, email, { role, license_error: lErr.message });
+            return json(400, { error: `Usuário criado, mas a licença falhou: ${lErr.message}` });
+          }
           createdLicense = lic;
         }
 
