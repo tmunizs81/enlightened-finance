@@ -527,7 +527,19 @@ const SettingsPage = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        let detail = "";
+        const ctx = (error as any)?.context;
+        try {
+          if (ctx && typeof ctx.json === "function") {
+            detail = (await ctx.clone().json())?.error || "";
+          }
+        } catch {
+          /* ignora */
+        }
+        throw new Error(detail || error.message);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
 
       toast.success(`Usuário ${newUserEmail} criado com sucesso!`);
       setNewUserEmail("");
