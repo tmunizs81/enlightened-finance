@@ -95,10 +95,26 @@ async function invokeAdmin<T = any>(action: string, extra: Record<string, unknow
   const { data, error } = await supabase.functions.invoke("admin-users", {
     body: { action, ...extra },
   });
-  if (error) throw error;
+  if (error) {
+    // FunctionsHttpError guarda a resposta real em error.context — extrai a mensagem do backend
+    let detail = "";
+    const ctx = (error as any)?.context;
+    try {
+      if (ctx && typeof ctx.json === "function") {
+        const parsed = await ctx.clone().json();
+        detail = parsed?.error || "";
+      } else if (ctx && typeof ctx.text === "function") {
+        detail = await ctx.clone().text();
+      }
+    } catch {
+      /* ignora falha de parse */
+    }
+    throw new Error(detail || error.message || "Falha na chamada ao servidor");
+  }
   if (data?.error) throw new Error(data.error);
   return data as T;
 }
+
 
 function formatDate(v?: string | null) {
   if (!v) return "—";
