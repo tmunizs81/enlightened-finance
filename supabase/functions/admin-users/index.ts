@@ -329,9 +329,10 @@ serve(async (req) => {
         const { license_id, patch } = body;
         if (!license_id || !patch) return json(400, { error: "license_id and patch required" });
         const allowed: Record<string, unknown> = {};
-        for (const k of ["status", "expires_at", "plan_type", "price_brl", "notes"]) {
+        for (const k of ["status", "expires_at", "plan_type", "price_brl", "notes", "max_seats"]) {
           if (k in patch) allowed[k] = patch[k];
         }
+        if (allowed.plan_type === "family" && !("max_seats" in allowed)) allowed.max_seats = 5;
         const { error } = await admin.from("licenses").update(allowed).eq("id", license_id);
         if (error) return json(400, { error: error.message });
         await audit("license.update", "license", license_id, undefined, { patch: allowed });
