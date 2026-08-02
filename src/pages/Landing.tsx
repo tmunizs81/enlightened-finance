@@ -385,10 +385,14 @@ export default function Landing() {
               q: "Quais formas de pagamento vocês aceitam?",
               a: "Pix, boleto e cartão de crédito com renovação automática. Você pode cancelar quando quiser.",
             },
-            {
-              q: "Meus dados estão seguros?",
-              a: "Sim. Utilizamos criptografia, políticas de acesso por linha (RLS) e backups automáticos diários.",
-            },
+              {
+                q: "Meus dados estão seguros?",
+                a: "Sim. Utilizamos criptografia, políticas de acesso por linha (RLS) e backups automáticos diários.",
+              },
+              {
+                q: "e como faço os lançamentos via telegram ?",
+                a: "Após conectar seu bot nas configurações, basta enviar uma mensagem de texto ou foto do comprovante. Nossa IA processa tudo automaticamente em segundos.",
+              },
           ].map((f) => (
             <details
               key={f.q}
