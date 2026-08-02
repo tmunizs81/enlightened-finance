@@ -26,8 +26,11 @@ serve(async (req) => {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY"); // Keep for vision/OCR only
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+  let update: any = {};
+  let profile: any = null;
+  let botToken: any = null;
   try {
-    let update: any = {};
+    
     try {
       update = await req.json();
     } catch {
