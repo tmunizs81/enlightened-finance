@@ -1069,9 +1069,13 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
   }
 
   // Save as PENDING transaction for confirmation
-  const chatId = (
-    await supabase.from("profiles").select("telegram_chat_id").eq("user_id", userId).single()
-  ).data?.telegram_chat_id;
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("telegram_chat_id")
+    .eq("user_id", userId)
+    .limit(1);
+    
+  const chatId = profileData?.[0]?.telegram_chat_id;
 
   const { data: pending, error: pendingErr } = await supabase
     .from("pending_ocr_transactions")
