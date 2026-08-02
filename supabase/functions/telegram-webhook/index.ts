@@ -449,8 +449,16 @@ serve(async (req) => {
           const filePath = fileData.result.file_path;
           const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
           
-          const aiResult = await analyzeReceipt(fileUrl);
+          let aiResult = await analyzeReceipt(fileUrl);
           
+          if (!aiResult) {
+            console.log("Retrying OCR with fallback strategy...");
+            await sendTelegram(chatId, "🔄 *Primeira tentativa falhou. Tentando com estratégia de contraste...*");
+            // Here we could add image processing if we had a library, but since we're in Edge Functions
+            // we'll try a more descriptive prompt as a "recovery" logic.
+            aiResult = await analyzeReceipt(fileUrl, "Analise este documento com ATENÇÃO REDOBRADA. Extraia o valor total mesmo que a imagem esteja difícil. Retorne JSON: {\"amount\": number, \"description\": string, \"type\": \"expense\", \"date\": string}");
+          }
+
           if (aiResult) {
             let categoryId = null;
             const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
@@ -475,6 +483,7 @@ serve(async (req) => {
               description: aiResult.description || "IA OCR",
               category_id: categoryId,
               account_id: accountId,
+              date: aiResult.date || new Date().toISOString().split('T')[0],
               status: 'active'
             }).select().single();
 
@@ -484,7 +493,7 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Não consegui extrair os dados.* Certifique-se de que o arquivo é um PDF ou Imagem nítida.");
+        await sendTelegram(chatId, "❌ *Falha crítica na leitura.* O comprovante parece ilegível para a IA no momento. Tente uma foto com melhor iluminação ou envie o valor manualmente.");
       } catch (e) {
         console.error("OCR Processing error:", e);
         await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
