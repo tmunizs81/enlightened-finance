@@ -1249,7 +1249,7 @@ REGRAS CRÍTICAS:
 
 Retorne ESTRITAMENTE JSON:
 { "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" }
-ou
+ou se não for transação:
 {"is_transaction": false, "reply": "mensagem"}`,
           },
         ],
