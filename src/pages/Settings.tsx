@@ -435,12 +435,12 @@ const SettingsPage = () => {
     setTestingWebhook(true);
     try {
       // Simular um comando ou mensagem enviada pelo usuário
-      const { error } = await supabase.functions.invoke("telegram-webhook", {
+      const { data, error } = await supabase.functions.invoke("telegram-webhook", {
         body: { 
           message: { 
-            chat: { id: chatId },
+            chat: { id: parseInt(chatId) || 0 },
             text: customMessage || "/help",
-            from: { id: chatId, first_name: "Test User" },
+            from: { id: parseInt(chatId) || 0, first_name: "Test User" },
             date: Math.floor(Date.now() / 1000)
           } 
         },
