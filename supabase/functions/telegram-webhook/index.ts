@@ -27,6 +27,7 @@ serve(async (req) => {
     });
   }
 
+  let payload: any = null;
   try {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405, headers: corsHeaders });
@@ -43,7 +44,7 @@ serve(async (req) => {
     const rawBody = await req.text();
     if (!rawBody) return new Response(null, { status: 200, headers: corsHeaders });
 
-    const payload = JSON.parse(rawBody);
+    payload = JSON.parse(rawBody);
 
     const chatIdStr = String(
       payload.message?.chat?.id || 
@@ -83,9 +84,10 @@ serve(async (req) => {
     }
 
     // 2. AUTHENTICATION (ISOLATION)
-    const { data: profile } = await supabase.from("profiles").select("user_id, name").eq("telegram_chat_id", chatIdStr).single();
-    if (!profile) {
-      await sendTg("👋 Seu Telegram não está vinculado ao *SimplyFin*.\n\nVincule em Configurações > Conectar Telegram.");
+    const { data: profile, error: profileErr } = await supabase.from("profiles").select("user_id, name").eq("telegram_chat_id", chatIdStr).single();
+    
+    if (profileErr || !profile) {
+      await sendTg("⚠️ Seu Telegram não está vinculado a nenhuma conta no *T2-SimplyFin*.\n\nPara vincular:\n1. Vá em *Configurações* no painel web.\n2. Clique em *Conectar Telegram*.\n3. Envie o código gerado aqui.");
       return new Response(null, { status: 200, headers: corsHeaders });
     }
     const userId = profile.user_id;
@@ -184,28 +186,45 @@ serve(async (req) => {
         headers: { "Authorization": `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "deepseek-chat",
-          messages: [{ role: "system", content: "Extraia dados financeiros brasileiros. JSON: {is_transaction: boolean, type: 'expense'|'income', amount: number, description: string}" }, { role: "user", content: text }],
+          messages: [
+            { 
+              role: "system", 
+              content: "Extraia dados financeiros brasileiros. Retorne APENAS JSON: {is_transaction: boolean, type: 'expense'|'income', amount: number, description: string}. Se não for uma transação clara ou o valor for zero, is_transaction deve ser false." 
+            }, 
+            { role: "user", content: text }
+          ],
           response_format: { type: "json_object" }
         })
       });
 
-      const { choices } = await aiResp.json();
-      const result = JSON.parse(choices[0].message.content);
+      if (!aiResp.ok) {
+        await sendTg("⚠️ Falha ao processar com IA. Tente algo como: '50,00 gasolina'");
+        return new Response(null, { status: 200, headers: corsHeaders });
+      }
 
-      if (result.is_transaction && result.amount) {
-        const { data: pending } = await supabase.from("pending_ocr_transactions").insert({
+      const aiData = await aiResp.json();
+      const result = JSON.parse(aiData.choices[0].message.content);
+
+      if (result.is_transaction && result.amount && result.amount > 0) {
+        const { data: pending, error: pendingErr } = await supabase.from("pending_ocr_transactions").insert({
           user_id: userId,
           chat_id: chatIdStr,
           amount: result.amount,
-          description: result.description,
+          description: result.description || "Transação via Telegram",
           status: "pending",
           type: result.type || "expense",
           date: new Date().toISOString().split("T")[0]
         }).select("id").single();
 
+        if (pendingErr || !pending) {
+          await sendTg("❌ Erro ao preparar transação.");
+          return new Response(null, { status: 200, headers: corsHeaders });
+        }
+
         const emoji = result.type === 'income' ? '📈' : '📉';
         const label = result.type === 'income' ? 'Receita' : 'Despesa';
-        await sendTg(`${emoji} ${label} detectada:\n\n💰 Valor: R$ ${Number(result.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n📝 ${result.description}`, {
+        
+        await sendTg(`${emoji} ${label} detectada — Confirme:\n\n💰 Valor: R$ ${Number(result.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n📝 Descrição: ${result.description || "Sem descrição"}\n📅 Data: ${new Date().toISOString().split("T")[0]}\n🏷️ Categoria: Sem categoria\n🏦 Conta: Sem conta`, {
           reply_markup: {
             inline_keyboard: [
               [{ text: "✅ Confirmar", callback_data: `confirm:${pending.id}` }, { text: "❌ Cancelar", callback_data: `cancel:${pending.id}` }],
@@ -215,13 +234,35 @@ serve(async (req) => {
           }
         });
       } else {
-        await sendTg("🤔 Não entendi o valor. Tente: 'Gastei 50 no mercado'");
+        // Fallback instructions
+        await sendTg("🤖 Não identifiquei uma despesa ou receita nessa mensagem.\n\n*Como usar:*\n• `50,00 gasolina`\n• `Recebi 2000 pix`\n• `Almoço 35,90`\n\nOu use `/saldo` para ver suas contas.");
       }
+    } else {
+      // No text and no callback (maybe a document or photo without caption)
+      await sendTg("🧐 Recebi sua mensagem, mas não consegui processá-la. Envie um texto com o valor ou uma foto do comprovante.");
     }
 
     return new Response(null, { status: 200, headers: corsHeaders });
   } catch (err) {
-    console.error(err);
-    return new Response(null, { status: 200, headers: corsHeaders });
+    console.error("Telegram Webhook Error:", err);
+    // Explicit error response to Telegram chat if possible
+    try {
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      const errorChatId = chatIdStr || payload?.message?.chat?.id || payload?.callback_query?.message?.chat?.id;
+      
+      if (botToken && errorChatId) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            chat_id: errorChatId, 
+            text: "⚠️ Ocorreu um erro interno ao processar sua mensagem. Por favor, tente novamente em instantes." 
+          }),
+        });
+      }
+    } catch (sendErr) {
+      console.error("Failed to send fallback error to Telegram:", sendErr);
+    }
+    return new Response(JSON.stringify({ error: err.message }), { status: 200, headers: corsHeaders });
   }
 });
