@@ -84,8 +84,9 @@ serve(async (req) => {
     return null;
   };
 
-  const analyzeReceipt = async (fileUrl: string) => {
-    const prompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON.";
+  const analyzeReceipt = async (fileUrl: string, promptOverride?: string) => {
+    const defaultPrompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\", \"date\": string}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON. 5. Tente identificar a data no formato YYYY-MM-DD.";
+    const prompt = promptOverride || defaultPrompt;
 
     // Try Gemini First (Better for Vision/PDF context)
     if (GEMINI_API_KEY) {
@@ -98,7 +99,6 @@ serve(async (req) => {
         const imageBuffer = await imageResponse.arrayBuffer();
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
-        // Determine mimeType (assuming image if not specified, but Gemini is flexible)
         const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
 
         const result = await model.generateContent([
@@ -152,7 +152,9 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        return JSON.parse(data.choices[0].message.content);
+        const content = data.choices[0].message.content;
+        const cleanedContent = content.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanedContent);
       } catch (e) {
         console.error("Groq OCR failed:", e);
       }
