@@ -327,15 +327,13 @@ const SettingsPage = () => {
   };
 
   const handleSave = async () => {
-    if (!user) return;
-    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return toast.error("Usuário não autenticado.");
+
     if (chatId && !/^-?\d+$/.test(chatId)) {
       toast.error("O Chat ID deve ser um número válido.");
       return;
     }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return toast.error("Usuário não autenticado.");
 
     setSaving(true);
     
@@ -348,7 +346,7 @@ const SettingsPage = () => {
         telegram_chat_id: cleanChatId,
         telegram_bot_token: cleanToken 
       })
-      .eq('user_id', user.id);
+      .eq('user_id', authUser.id);
 
     if (error) {
       console.error("Erro ao salvar perfil:", error);
