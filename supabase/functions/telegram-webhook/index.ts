@@ -493,7 +493,7 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Falha crítica na leitura.* O comprovante parece ilegível para a IA no momento. Tente uma foto com melhor iluminação ou envie o valor manualmente.");
+        await sendTelegram(chatId, "❌ *Falha crítica na leitura.* O comprovante parece ilegível para a IA no momento. Tente uma foto com melhor iluminação ou envie o valor manualmente. porem o ocmprovante esta nitido e normal, perfeitamente facil de ler");
       } catch (e) {
         console.error("OCR Processing error:", e);
         await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
