@@ -893,28 +893,6 @@ const SettingsPage = () => {
           </div>
         </div>
       )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <p className="text-[11px] font-semibold text-foreground">
-            📸 OCR de Comprovantes via Telegram
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Após ativar, envie uma foto de comprovante para o bot. A IA irá:
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            • Ler o valor, descrição e data automaticamente
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            • Classificar na categoria e conta corretas
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            • Salvar o comprovante como anexo da transação
-          </p>
-        </div>
-      </div>
 
       {/* Backup Local */}
       <div className="glass-card space-y-4 p-5">
