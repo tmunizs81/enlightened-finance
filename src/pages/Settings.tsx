@@ -380,11 +380,14 @@ const SettingsPage = () => {
     }
     setSettingWebhook(true);
     try {
-      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
+      const webhookUrl = `${window.location.origin}/supabase/functions/v1/telegram-webhook`;
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: webhookUrl }),
+        body: JSON.stringify({ 
+          url: webhookUrl,
+          allowed_updates: ["message", "callback_query"]
+        }),
       });
       const data = await resp.json();
       if (data.ok)

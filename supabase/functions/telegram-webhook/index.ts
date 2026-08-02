@@ -168,32 +168,57 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
 
     // --- HANDLE PHOTO ---
     const photo = message.photo;
-    if (!photo || photo.length === 0) {
+    const document = message.document;
+    const isImageDoc = document && document.mime_type?.startsWith("image/");
+
+    if (!photo && !isImageDoc) {
       return new Response("ok");
     }
 
     await sendTg("🔍 Analisando comprovante... Aguarde um momento.");
 
     // Download image
-    const fileId = photo[photo.length - 1].file_id;
+    const fileId = photo ? photo[photo.length - 1].file_id : document.file_id;
     const fileResp = await fetch(
       `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
     );
     const fileData = await fileResp.json();
+    
     if (!fileData.ok || !fileData.result?.file_path) {
-      await sendTg("❌ Não consegui baixar a imagem. Tente novamente.");
+      const errMsg = fileData.description || "Erro desconhecido";
+      console.error("Telegram getFile error:", errMsg);
+      if (errMsg.includes("file is too big")) {
+        await sendTg("⚠️ A imagem é muito grande. O Telegram limita bots a 20MB via API. Tente comprimir ou tirar uma foto com menor resolução.");
+      } else {
+        await sendTg(`❌ Não consegui acessar a imagem (${errMsg}). Tente novamente.`);
+      }
       return new Response("ok");
     }
 
     const imageUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
     const imageResp = await fetch(imageUrl);
-    const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
-    // Convert to base64 in chunks to avoid stack overflow with large images
+    if (!imageResp.ok) {
+      console.error("Telegram file download error:", imageResp.status, await imageResp.text());
+      await sendTg("❌ Erro ao baixar a imagem do Telegram. Tente novamente.");
+      return new Response("ok");
+    }
+
+    const imageBuffer = await imageResp.arrayBuffer();
+    
+    // Check image size (max 15MB for base64 safety in edge functions)
+    if (imageBuffer.byteLength > 15 * 1024 * 1024) {
+      await sendTg("⚠️ Imagem muito grande para processamento. Tente enviar um arquivo menor que 15MB.");
+      return new Response("ok");
+    }
+
+    const imageBytes = new Uint8Array(imageBuffer);
+    
+    // Convert to base64 in chunks to avoid stack overflow (Maximum call stack size exceeded)
     let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < imageBytes.length; i += chunkSize) {
       const chunk = imageBytes.subarray(i, i + chunkSize);
-      binary += String.fromCharCode(...chunk);
+      binary += String.fromCharCode.apply(null, chunk as any);
     }
     const base64Image = btoa(binary);
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
@@ -201,7 +226,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
     // Get categories & accounts
     const [catRes, accRes] = await Promise.all([
       supabase.from("categories").select("id, name, type").eq("user_id", userId),
-      supabase.from("accounts").select("id, name, type").eq("user_id", userId),
+      supabase.from("accounts").select("id, name, type").eq("user_id", userId).eq("status", "active"),
     ]);
 
     const categories = catRes.data || [];
@@ -355,10 +380,11 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
         [
           { text: "✏️ Valor", callback_data: `ocr_edit:${pending.id}:amount` },
           { text: "✏️ Descrição", callback_data: `ocr_edit:${pending.id}:description` },
+          { text: "✏️ Data", callback_data: `ocr_edit:${pending.id}:date` },
         ],
         [
-          { text: "✏️ Data", callback_data: `ocr_edit:${pending.id}:date` },
           { text: "✏️ Categoria", callback_data: `ocr_edit:${pending.id}:category` },
+          { text: "✏️ Conta", callback_data: `ocr_edit:${pending.id}:account` },
         ],
       ],
     };
@@ -367,7 +393,26 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
     return new Response("ok");
   } catch (e) {
-    console.error("Webhook error:", e);
+    console.error("Webhook main catch error:", e);
+    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    if (chatId) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      // Fallback manual notification if the botToken is missing from profile context
+      const fallbackToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      const tokenToUse = botToken || fallbackToken;
+      
+      if (tokenToUse) {
+        await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            chat_id: String(chatId), 
+            text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 150)}\n\nPor favor, tente novamente. Se o erro persistir, verifique se o seu Token do Bot está correto em Configurações.`,
+            parse_mode: "Markdown"
+          }),
+        }).catch(console.error);
+      }
+    }
     return new Response("ok");
   }
 });
