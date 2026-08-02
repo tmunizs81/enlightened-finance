@@ -4,37 +4,57 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json",
 };
 
 /**
- * TELEGRAM ENGINE V4.1 - ROBUST PROTECTION & MULTI-TENANT
+ * TELEGRAM ENGINE V4.3 - MULTI-METHOD & ROBUST CORS
  * Updates:
- * 1. Global Try/Catch with specific JSON error response.
- * 2. Explicit String conversion for Chat ID (including 1000772149 support).
- * 3. SUPABASE_SERVICE_ROLE_KEY enforcement for RLS bypass.
- * 4. Comprehensive CORS headers on all paths.
+ * 1. Support for POST, GET, and OPTIONS.
+ * 2. Mandatory 200/204 status for OPTIONS (CORS preflight).
+ * 3. Fallback message for GET (health check).
+ * 4. Refactored response handling to ensure 200 OK to Telegram.
  */
 serve(async (req) => {
-  // 1. GLOBAL CORS HANDSHAKE
+  // 1. CORS PREFLIGHT HANDSHAKE
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
+  }
+
+  // 2. GET METHOD (Health Check/Browser View)
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({ status: "Telegram Webhook Endpoint Active", engine: "v4.3" }), {
+      status: 200,
+      headers: corsHeaders
+    });
   }
 
   try {
+    // 3. ONLY PROCESS POST REQUESTS
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method Not Allowed" }), { 
+        status: 405, 
+        headers: corsHeaders 
+      });
+    }
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
     
-    // Create Supabase client with Service Role for RLS bypass
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const rawBody = await req.text();
-    console.log("[TELEGRAM-V4.2-INBOUND] Webhook recebido:", rawBody);
+    console.log("[TELEGRAM-V4.3-INBOUND] Webhook received:", rawBody);
     
     if (!rawBody) {
-      return new Response(JSON.stringify({ success: false, error: "Empty Body" }), { 
+      return new Response(JSON.stringify({ success: false, message: "Empty body ignored" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -42,18 +62,18 @@ serve(async (req) => {
     try {
       payload = JSON.parse(rawBody);
     } catch (e) {
-      console.error("[TELEGRAM-V4.2] JSON Parse Error:", e.message);
+      console.error("[TELEGRAM-V4.3] JSON Parse Error:", e.message);
       return new Response(JSON.stringify({ success: false, error: "Invalid JSON" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
-    // --- 2. HEALTH CHECK ---
+    // --- 4. INTERNAL ACTION HANDLER ---
     if (payload.action === "ping") {
-      console.log("[TELEGRAM-V4.1] Health check ping received.");
-      return new Response(JSON.stringify({ success: true, status: "ok", engine: "v4.1-protected" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      console.log("[TELEGRAM-V4.3] Action: ping received.");
+      return new Response(JSON.stringify({ success: true, status: "ok", engine: "v4.3" }), {
+        headers: corsHeaders
       });
     }
 
