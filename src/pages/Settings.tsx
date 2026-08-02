@@ -20,6 +20,7 @@ import {
   BellOff,
   Keyboard,
   KeyRound,
+  Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,6 +216,7 @@ const SettingsPage = () => {
   const [chatId, setChatId] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -398,6 +400,28 @@ const SettingsPage = () => {
       toast.error("Falha ao configurar webhook.");
     } finally {
       setSettingWebhook(false);
+    }
+  };
+
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-webhook", {
+        body: { action: "ping" },
+      });
+      
+      if (error) throw error;
+      
+      if (data && data.status === "ok") {
+        toast.success("Conexão com a Edge Function confirmada!");
+      } else {
+        toast.error("Resposta inesperada da Edge Function.");
+      }
+    } catch (e: any) {
+      console.error("Webhook test error:", e);
+      toast.error(`Falha na Edge Function: ${e.message || "Erro desconhecido"}. Verifique os logs no painel admin.`);
+    } finally {
+      setTestingWebhook(false);
     }
   };
 
@@ -682,7 +706,7 @@ const SettingsPage = () => {
             disabled={!loaded}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={handleSave}
             disabled={saving || !loaded}
@@ -699,6 +723,24 @@ const SettingsPage = () => {
           >
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Testar Envio
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleTestWebhook}
+            disabled={testingWebhook}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Cloud className="h-3 w-3" />}
+            Testar Webhook
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDetectChatId}
+            disabled={testing || !botToken}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            Detectar ID
           </Button>
           <Button
             variant="outline"
