@@ -508,13 +508,16 @@ const SettingsPage = () => {
 
       if (error) throw error;
       
-      const responseText = await data.text();
-      if (!responseText) {
-        toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
-        return;
+      // Check if data is a Response object or if it has a .text() method
+      let responseText = "";
+      if (data && typeof data.text === 'function') {
+        responseText = await data.text();
+      } else if (typeof data === 'string') {
+        responseText = data;
+      } else if (data) {
+        responseText = JSON.stringify(data);
       }
 
-      const parsedData = JSON.parse(responseText);
       toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
