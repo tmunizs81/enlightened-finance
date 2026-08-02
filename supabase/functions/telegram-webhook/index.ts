@@ -84,9 +84,10 @@ serve(async (req) => {
     }
 
     // 2. AUTHENTICATION (ISOLATION)
-    const { data: profile } = await supabase.from("profiles").select("user_id, name").eq("telegram_chat_id", chatIdStr).single();
-    if (!profile) {
-      await sendTg("👋 Seu Telegram não está vinculado ao *SimplyFin*.\n\nVincule em Configurações > Conectar Telegram.");
+    const { data: profile, error: profileErr } = await supabase.from("profiles").select("user_id, name").eq("telegram_chat_id", chatIdStr).single();
+    
+    if (profileErr || !profile) {
+      await sendTg("⚠️ Seu Telegram não está vinculado a nenhuma conta no *T2-SimplyFin*.\n\nPara vincular:\n1. Vá em *Configurações* no painel web.\n2. Clique em *Conectar Telegram*.\n3. Envie o código gerado aqui.");
       return new Response(null, { status: 200, headers: corsHeaders });
     }
     const userId = profile.user_id;
