@@ -173,22 +173,36 @@ serve(async (req) => {
       const action = parts[0];
       const draftId = parts[1];
 
-      const { data: draft, error: draftErr } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+      // For actions that don't pass draftId directly in payload (sct, sac), find active draft by chat
+      let draft = null;
+      if (draftId && draftId.length > 8) {
+        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+        draft = d;
+      } else {
+        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('chat_id', chatId).eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle();
+        draft = d;
+      }
 
-      if (draftErr || !draft) {
+      if (!draft && action !== 'x' && action !== 'c') {
         await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho expirado ou não encontrado.* Envie uma nova mensagem.");
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
       // CONFIRM TRANSACTION
       if (action === 'c') {
+        const { data: targetDraft } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+        if (!targetDraft) {
+          await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho não encontrado.*");
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+
         const { error: insErr } = await supabase.from('transactions').insert({
-          user_id: draft.user_id,
-          type: draft.type,
-          amount: draft.amount,
-          description: draft.description,
-          category_id: draft.category_id,
-          account_id: draft.account_id,
+          user_id: targetDraft.user_id,
+          type: targetDraft.type,
+          amount: targetDraft.amount,
+          description: targetDraft.description,
+          category_id: targetDraft.category_id,
+          account_id: targetDraft.account_id,
           date: new Date().toISOString()
         });
 
@@ -200,8 +214,8 @@ serve(async (req) => {
             chatId,
             messageId,
             `✅ *Lançamento confirmado e registrado no banco!*\n\n` +
-            `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
-            `📝 *Descrição:* ${draft.description}`
+            `💰 *Valor:* R$ ${Number(targetDraft.amount).toFixed(2)}\n` +
+            `📝 *Descrição:* ${targetDraft.description}`
           );
         }
       } 
@@ -220,7 +234,7 @@ serve(async (req) => {
         await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', draftId);
         await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
       }
-      // SHOW CATEGORY LIST
+      // SHOW CATEGORY LIST (Uses short prefix for callback data to avoid 64-byte limit)
       else if (action === 'cat') {
         const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', draft.user_id);
         if (!categories || categories.length === 0) {
@@ -230,13 +244,15 @@ serve(async (req) => {
 
         const keyboardRows: any[] = [];
         for (let i = 0; i < categories.length; i += 2) {
-          const row = [{ text: `🏷️ ${categories[i].name}`, callback_data: `setcat|${draftId}|${categories[i].id}` }];
+          const catId1 = categories[i].id;
+          const row = [{ text: `🏷️ ${categories[i].name}`, callback_data: `sct|${catId1}` }];
           if (categories[i + 1]) {
-            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `setcat|${draftId}|${categories[i + 1].id}` });
+            const catId2 = categories[i + 1].id;
+            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `sct|${catId2}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draft.id}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏷️ *Selecione a Categoria:*", { inline_keyboard: keyboardRows });
       }
@@ -255,35 +271,43 @@ serve(async (req) => {
 
         const keyboardRows: any[] = [];
         for (let i = 0; i < accounts.length; i += 2) {
-          const row = [{ text: `🏦 ${accounts[i].name}`, callback_data: `setacc|${draftId}|${accounts[i].id}` }];
+          const accId1 = accounts[i].id;
+          const row = [{ text: `🏦 ${accounts[i].name}`, callback_data: `sac|${accId1}` }];
           if (accounts[i + 1]) {
-            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `setacc|${draftId}|${accounts[i + 1].id}` });
+            const accId2 = accounts[i + 1].id;
+            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `sac|${accId2}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draft.id}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏦 *Selecione a Conta:*", { inline_keyboard: keyboardRows });
       }
       // SET CATEGORY
-      else if (action === 'setcat') {
-        const catId = parts[2];
-        await supabase.from('telegram_drafts').update({ category_id: catId, status: 'active' }).eq('id', draftId);
-        const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
-        await renderDraftCard(chatId, messageId, updated);
+      else if (action === 'sct') {
+        const catId = parts[1];
+        if (draft) {
+          await supabase.from('telegram_drafts').update({ category_id: catId, status: 'active' }).eq('id', draft.id);
+          const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draft.id).single();
+          if (updated) await renderDraftCard(chatId, messageId, updated);
+        }
       }
       // SET ACCOUNT
-      else if (action === 'setacc') {
-        const accId = parts[2];
-        await supabase.from('telegram_drafts').update({ account_id: accId, status: 'active' }).eq('id', draftId);
-        const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
-        await renderDraftCard(chatId, messageId, updated);
+      else if (action === 'sac') {
+        const accId = parts[1];
+        if (draft) {
+          await supabase.from('telegram_drafts').update({ account_id: accId, status: 'active' }).eq('id', draft.id);
+          const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draft.id).single();
+          if (updated) await renderDraftCard(chatId, messageId, updated);
+        }
       }
       // BACK
       else if (action === 'back') {
-        await supabase.from('telegram_drafts').update({ status: 'active' }).eq('id', draftId);
-        const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
-        await renderDraftCard(chatId, messageId, updated);
+        if (draft) {
+          await supabase.from('telegram_drafts').update({ status: 'active' }).eq('id', draft.id);
+          const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draft.id).single();
+          if (updated) await renderDraftCard(chatId, messageId, updated);
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -307,7 +331,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // Check if user is replying to waiting_amount
+    // Check waiting_amount
     const { data: activeDraft } = await supabase
       .from('telegram_drafts')
       .select('*')
@@ -324,11 +348,11 @@ serve(async (req) => {
       await supabase.from('telegram_drafts').update({ amount: newAmount, status: 'active' }).eq('id', activeDraft.id);
       const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', activeDraft.id).single();
       
-      await sendNewDraftCard(chatId, updated);
+      if (updated) await sendNewDraftCard(chatId, updated);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // Check if user is replying to waiting_description
+    // Check waiting_description
     const { data: descDraft } = await supabase
       .from('telegram_drafts')
       .select('*')
@@ -342,7 +366,7 @@ serve(async (req) => {
       await supabase.from('telegram_drafts').update({ description: text.trim(), status: 'active' }).eq('id', descDraft.id);
       const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', descDraft.id).single();
 
-      await sendNewDraftCard(chatId, updated);
+      if (updated) await sendNewDraftCard(chatId, updated);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
