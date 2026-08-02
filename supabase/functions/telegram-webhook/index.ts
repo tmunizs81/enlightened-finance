@@ -109,18 +109,18 @@ serve(async (req) => {
       .eq("telegram_chat_id", chatIdStr);
 
     if (pErr) {
-      console.error(`[TELEGRAM-V4.1] DB Error searching profile: ${pErr.message}`);
+      console.error(`[TELEGRAM-V4.3] DB Error searching profile: ${pErr.message}`);
       return new Response(JSON.stringify({ success: false, error: `DB Search Error: ${pErr.message}` }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
     if (!profiles || profiles.length === 0) {
-      console.warn(`[TELEGRAM-V4.1] Chat ID "${chatIdStr}" not linked to any account.`);
+      console.warn(`[TELEGRAM-V4.3] Chat ID "${chatIdStr}" not linked to any account.`);
       return new Response(JSON.stringify({ success: false, error: "Unauthorized Chat ID" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -129,10 +129,10 @@ serve(async (req) => {
     const botToken = profile.telegram_bot_token || Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     if (!botToken) {
-      console.error(`[TELEGRAM-V4.1] No Bot Token linked for user ${userId}`);
+      console.error(`[TELEGRAM-V4.3] No Bot Token linked for user ${userId}`);
       return new Response(JSON.stringify({ success: false, error: "Bot Token Missing" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -142,7 +142,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatIdStr, text, parse_mode: "Markdown", ...extra }),
       });
-      if (!res.ok) console.error(`[TELEGRAM-V4.1] TG API Error: ${await res.text()}`);
+      if (!res.ok) console.error(`[TELEGRAM-V4.3] TG API Error: ${await res.text()}`);
       return res;
     };
 
