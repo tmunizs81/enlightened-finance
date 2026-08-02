@@ -77,11 +77,13 @@ serve(async (req) => {
 
     const chatId = String(message.chat.id);
 
-    let { data: profile, error: profileErr } = await supabase
+    let { data: profileResult, error: profileErr } = await supabase
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
-      .single();
+      .limit(1);
+    
+    profile = profileResult?.[0];
 
     if (profileErr) {
       console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
@@ -537,11 +539,13 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
   const chatId = String(cbq.message.chat.id);
   const messageId = cbq.message.message_id;
 
-  const { data: profile } = await supabase
+  const { data: profileResults } = await supabase
     .from("profiles")
     .select("user_id, telegram_bot_token")
     .eq("telegram_chat_id", chatId)
-    .single();
+    .limit(1);
+
+  const profile = profileResults?.[0];
 
   if (!profile) return new Response("ok");
   const botToken = profile.telegram_bot_token;
