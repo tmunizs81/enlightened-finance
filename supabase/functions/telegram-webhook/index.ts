@@ -1219,8 +1219,8 @@ Data de hoje: ${new Date().toISOString().split("T")[0]}
 REGRAS:
 - Se a mensagem descreve uma transação financeira (gasto, compra, recebimento, pagamento, etc.), extraia os dados.
 - Se a mensagem NÃO é sobre uma transação financeira, retorne {"is_transaction": false, "reply": "uma resposta amigável curta"}
-- Palavras como "gastei", "paguei", "comprei", "almocei", "jantei" = despesa
-- Palavras como "recebi", "ganhei", "entrou" = receita
+- Palavras como "gastei", "paguei", "comprei", "almocei", "jantei", "despesa" = despesa
+- Palavras como "recebi", "ganhei", "entrou", "receita" = receita
 - Se o valor não for mencionado, tente inferir ou retorne is_transaction false
 
 Responda APENAS JSON:
@@ -1229,7 +1229,9 @@ ou
 {"is_transaction": false, "reply": "mensagem"}`,
           },
         ],
+        response_format: { type: "json_object" }
       }),
+
     });
 
     if (!aiResp.ok) {
