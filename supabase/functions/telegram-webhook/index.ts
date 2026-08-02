@@ -148,7 +148,7 @@ serve(async (req) => {
 
     // --- 5. CALLBACK HANDLER ---
     if (callbackData && callbackQueryId) {
-      console.log(`[TELEGRAM-V4.1] Processing callback: ${callbackData}`);
+      console.log(`[TELEGRAM-V4.3] Processing callback: ${callbackData}`);
       
       await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
         method: "POST",
@@ -197,7 +197,7 @@ serve(async (req) => {
       }
       return new Response(JSON.stringify({ success: true }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -212,19 +212,19 @@ serve(async (req) => {
         await sendTg(`💰 *Saldo Geral: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n${list || "_Nenhuma conta ativa._"}`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
       if (text.startsWith("/start") || text.startsWith("/help")) {
-        await sendTg(`👋 Olá ${profile.full_name || ""}!\n\n🤖 *SimplyFin Bot V4.1*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
+        await sendTg(`👋 Olá ${profile.full_name || ""}!\n\n🤖 *SimplyFin Bot V4.3*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
-      console.log(`[TELEGRAM-V4.1] Invoking DeepSeek for: "${text}"`);
+      console.log(`[TELEGRAM-V4.3] Invoking DeepSeek for: "${text}"`);
       const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
@@ -246,7 +246,7 @@ serve(async (req) => {
         await sendTg("⚠️ Minha inteligência está instável. Tente novamente.");
         return new Response(JSON.stringify({ success: false, error: "AI API Failure" }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
@@ -278,14 +278,14 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true }), { 
       status: 200, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      headers: corsHeaders 
     });
 
   } catch (err) {
-    console.error("[TELEGRAM-V4.1] GLOBAL CRITICAL ERROR:", err);
+    console.error("[TELEGRAM-V4.3] GLOBAL CRITICAL ERROR:", err);
     return new Response(JSON.stringify({ success: false, error: err.message }), { 
       status: 200, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      headers: corsHeaders 
     });
   }
 });
