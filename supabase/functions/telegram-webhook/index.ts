@@ -110,6 +110,12 @@ serve(async (req) => {
       }
 
     }
+    
+    if (!profile) {
+      console.log("No profile found after fallback for chat_id:", chatId);
+      // Responder 200 para evitar que o Telegram reenvie infinitamente, mas logar o erro
+      return new Response(JSON.stringify({ error: "Profile not found" }), { status: 200 });
+    }
 
     const userId = profile.user_id;
     const botToken = profile.telegram_bot_token;
@@ -344,7 +350,8 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
               ],
         },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      temperature: 0.1,
     };
 
     console.log("Sending request to AI OCR...");
