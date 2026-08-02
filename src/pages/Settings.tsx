@@ -936,43 +936,6 @@ const SettingsPage = () => {
         )}
       </div>
 
-      {/* Test Section */}
-      {isAdmin && botToken && chatId && (
-        <div className="glass-card space-y-4 p-5">
-          <div className="flex items-center gap-3">
-            <RotateCcw className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Depuração de Webhook</h2>
-          </div>
-          <div className="space-y-3">
-            <Input
-              value={testMessage}
-              onChange={(e) => setTestMessage(e.target.value)}
-              placeholder="Mensagem de teste..."
-              className="border-border bg-secondary text-xs"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleTestBotMessage(testMessage)}
-                disabled={testingWebhook}
-                className="text-xs"
-              >
-                {testingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                Simular Mensagem
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTestWebhook}
-                disabled={testingWebhook}
-                className="text-xs"
-              >
-                Testar Função
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Backup Local */}
       <div className="glass-card space-y-4 p-5">
         <div className="flex items-center gap-3">
