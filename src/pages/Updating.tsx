@@ -30,6 +30,7 @@ const Updating = () => {
             <p className="text-red-400">error: Pulling is not possible because you have unmerged files.</p>
             <p className="text-yellow-400">hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'</p>
             <p className="text-yellow-400">hint: as appropriate to mark resolution and make a commit.</p>
+            <p className="mt-2 text-[10px] text-blue-400 opacity-80 italic">itens pendentes (como confirmações/webhooks falhos) para evitar que transações fiquem travadas após falhas de deploy ou merge.</p>
             <div className="mt-4 flex animate-pulse">
               <span className="mr-2">_</span>
             </div>
