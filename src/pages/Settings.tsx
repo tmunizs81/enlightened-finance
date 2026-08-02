@@ -215,6 +215,7 @@ const SettingsPage = () => {
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
+  const [groqKey, setGroqKey] = useState("");
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
