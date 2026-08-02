@@ -372,6 +372,7 @@ const SettingsPage = () => {
     if (cleanToken) {
       try {
         const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
+        console.log("Setting webhook to:", webhookUrl);
         const resp = await fetch(`https://api.telegram.org/bot${cleanToken}/setWebhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
