@@ -20,6 +20,7 @@ import {
   BellOff,
   Keyboard,
   KeyRound,
+  Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,6 +216,7 @@ const SettingsPage = () => {
   const [chatId, setChatId] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -398,6 +400,28 @@ const SettingsPage = () => {
       toast.error("Falha ao configurar webhook.");
     } finally {
       setSettingWebhook(false);
+    }
+  };
+
+  const handleTestWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-webhook", {
+        body: { action: "ping" },
+      });
+      
+      if (error) throw error;
+      
+      if (data && data.status === "ok") {
+        toast.success("Conexão com a Edge Function confirmada!");
+      } else {
+        toast.error("Resposta inesperada da Edge Function.");
+      }
+    } catch (e: any) {
+      console.error("Webhook test error:", e);
+      toast.error(`Falha na Edge Function: ${e.message || "Erro desconhecido"}. Verifique os logs no painel admin.`);
+    } finally {
+      setTestingWebhook(false);
     }
   };
 
