@@ -35,6 +35,13 @@ serve(async (req) => {
     const update = await req.json();
     console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
 
+    // --- HANDLE PING / HEALTH CHECK ---
+    if (update.action === "ping") {
+      return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // --- HANDLE CALLBACK QUERY (button presses) ---
     if (update.callback_query) {
       return await handleCallbackQuery(update.callback_query, supabase);
