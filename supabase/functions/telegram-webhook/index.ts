@@ -69,7 +69,7 @@ serve(async (req) => {
 
     const chatId = String(message.chat.id);
 
-    const { data: profile, error: profileErr } = await supabase
+    let { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
@@ -233,7 +233,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       }
 
       // Natural language processing with AI
-      console.log("DeepSeek NL Request:", text, "User:", userId, "Chat:", chatId);
+      console.log("DeepSeek NL Request:", message.text, "User:", userId, "Chat:", chatId);
       return await handleNaturalLanguage(
         supabase,
         userId,
@@ -364,7 +364,6 @@ Se não conseguir ler: { "error": "Não foi possível ler o comprovante" }`;
       ],
       response_format: { type: "json_object" },
       temperature: 0,
-      temperature: 0.1,
     };
 
     console.log("Sending request to AI OCR...");
@@ -501,12 +500,12 @@ Se não conseguir ler: { "error": "Não foi possível ler o comprovante" }`;
     return new Response("ok");
   } catch (e) {
     console.error("Webhook main catch error:", e);
-    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    const chatId = update?.message?.chat?.id || update?.callback_query?.message?.chat?.id;
     if (chatId) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       // Fallback manual notification if the botToken is missing from profile context
       const fallbackToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-      const tokenToUse = botToken || fallbackToken;
+      const tokenToUse = (profile as any)?.telegram_bot_token || fallbackToken;
       
       if (tokenToUse) {
         await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
@@ -1038,7 +1037,17 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
           const raw = aiData.choices?.[0]?.message?.content || "";
           const jsonMatch = raw.match(/{[\s\S]*}/);
           if (jsonMatch) {
-            try { const parsed = JSON.parse(jsonMatch[0]); handleNLOutcome(parsed); } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
+            try { 
+              const parsed = JSON.parse(jsonMatch[0]); 
+              if (parsed.category_id) {
+                categoryId = parsed.category_id;
+                catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
+              }
+              if (parsed.account_id) {
+                accountId = parsed.account_id;
+                accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
+              }
+            } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
             if (parsed.category_id) {
               categoryId = parsed.category_id;
               catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
@@ -1354,7 +1363,7 @@ ou se não for transação:
     await sendTg(previewMsg, { reply_markup: inlineKeyboard });
     return new Response("ok");
   } catch (e) {
-    console.error("NL processing error detailed:", e.stack || e);
+    console.error("NL processing error detailed:", (e as any).stack || e);
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
@@ -1402,7 +1411,7 @@ async function handleDicasEconomia(supabase: any, userId: string, sendTg: Functi
   const byCat: Record<string, number> = {};
   txs.forEach((t: any) => {
     const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
   });
   const total = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
 
@@ -1514,7 +1523,7 @@ async function handleAnaliseIA(supabase: any, userId: string, sendTg: Function) 
     .filter((t: any) => t.type === "expense")
     .forEach((t: any) => {
       const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-      byCat[name] = (byCat[name] || 0) + Number(t.amount);
+      byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
     });
 
   const context = `
