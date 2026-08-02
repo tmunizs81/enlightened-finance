@@ -507,7 +507,14 @@ const SettingsPage = () => {
       });
 
       if (error) throw error;
+      
+      const responseText = await data.text();
+      if (!responseText) {
+        toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
+        return;
+      }
 
+      const parsedData = JSON.parse(responseText);
       toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
