@@ -1242,7 +1242,9 @@ ou
 
     const aiData = await aiResp.json();
     const raw = aiData.choices?.[0]?.message?.content || "";
+    console.log("AI NL response raw:", raw);
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
+
 
     if (!jsonMatch) {
       await sendTg(
