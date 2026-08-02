@@ -1248,7 +1248,7 @@ REGRAS CRÍTICAS:
 
 
 Retorne ESTRITAMENTE JSON:
-{"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
+{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" }
 ou
 {"is_transaction": false, "reply": "mensagem"}`,
           },
