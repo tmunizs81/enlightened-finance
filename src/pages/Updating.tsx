@@ -30,7 +30,7 @@ const Updating = () => {
             <p className="text-red-400">error: Pulling is not possible because you have unmerged files.</p>
             <p className="text-yellow-400">hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'</p>
             <p className="text-yellow-400">hint: as appropriate to mark resolution and make a commit.</p>
-            <p className="mt-2 text-[10px] text-blue-400 opacity-80 italic">itens pendentes (como confirmações/webhooks falhos) para evitar que transações fiquem travadas após falhas de deploy ou merge.</p>
+            <p className="mt-2 text-[10px] text-blue-400 opacity-80 italic">o deploy não falhar., Adicionar uma etapa no install.sh que verifique e libere (ou interrompa) contêineres que estejam usando a porta 80 antes de subir os serviços.Configurar o proxy reverso para suporte a múltiplos upstreams e permitir fallback para HTTP/HTTPS alternativos quando a porta padrão estiver indisponível.</p>
             <p className="mt-4 text-white font-bold">[+] up 3/4</p>
             <p className="text-green-400"> ✔ Image financeai-financeai           Built                                                                                                                 28.1s</p>
             <p className="text-green-400"> ✔ Network financeai_financeai-network Created                                                                                                               0.1s</p>
