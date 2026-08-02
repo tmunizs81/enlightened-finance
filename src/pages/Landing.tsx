@@ -390,8 +390,8 @@ export default function Landing() {
                 a: "Sim. Utilizamos criptografia, políticas de acesso por linha (RLS) e backups automáticos diários.",
               },
               {
-                q: "e como faço os lançamentos via telegram ?",
-                a: "Após conectar seu bot nas configurações, basta enviar uma mensagem de texto ou foto do comprovante. Nossa IA processa tudo automaticamente em segundos.",
+                q: "Como faço os lançamentos via telegram?",
+                a: "Após conectar seu bot nas configurações, basta enviar uma mensagem de texto (ex: 'Gastei 50 no almoço') ou uma foto do comprovante. Nossa IA processa tudo automaticamente e pede sua confirmação em segundos.",
               },
           ].map((f) => (
             <details
