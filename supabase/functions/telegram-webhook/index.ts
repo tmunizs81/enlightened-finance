@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   if (req.method === "GET") {
-    return new Response(JSON.stringify({ status: "Telegram Webhook Active", engine: "v6.0" }), {
+    return new Response(JSON.stringify({ status: "Telegram Webhook Active", engine: "v7.0" }), {
       status: 200,
       headers: corsHeaders
     });
