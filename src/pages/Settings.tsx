@@ -766,130 +766,119 @@ const SettingsPage = () => {
           Conecte sua conta ao bot do Telegram para registrar despesas e receitas instantaneamente por voz ou texto.
         </p>
 
-        {chatId ? (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border/50 bg-secondary/50 p-3">
-              <p className="text-[11px] text-muted-foreground">
-                Seu Telegram está vinculado com sucesso. Você já pode enviar mensagens para o bot.
-              </p>
-              <p className="mt-1 text-[11px] font-mono text-foreground">
-                Chat ID: {chatId}
-              </p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">
+                Token do Bot
+              </Label>
+              <Input
+                id="telegram-token"
+                value={botToken}
+                onChange={(e) => setBotToken(e.target.value)}
+                placeholder="123456789:ABCDEF..."
+                disabled={!isAdmin}
+                className="h-9 border-border bg-secondary/50 text-xs font-mono"
+              />
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={async () => {
-                if (!user) return;
-                setIsLinking(true);
-                const { error } = await supabase
-                  .from("profiles")
-                  .update({ telegram_chat_id: null, telegram_link_code: null })
-                  .eq("user_id", user.id);
-                
-                if (error) toast.error("Erro ao desconectar");
-                else {
-                  setChatId("");
-                  toast.success("Telegram desconectado com sucesso");
-                }
-                setIsLinking(false);
-              }}
-              disabled={isLinking}
-              className="text-xs"
-            >
-              {isLinking ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Trash2 className="mr-2 h-3 w-3" />}
-              Desconectar Telegram
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">
-                  Token do Bot
-                </Label>
+            <div className="space-y-1">
+              <Label htmlFor="telegram-chat-id" className="text-xs text-muted-foreground">
+                Chat ID do Telegram
+              </Label>
+              <div className="flex gap-2">
                 <Input
-                  id="telegram-token"
-                  value={botToken}
-                  onChange={(e) => setBotToken(e.target.value)}
-                  placeholder="123456789:ABCDEF..."
-                  disabled={!isAdmin}
-                  className="h-9 border-border bg-secondary/50 text-xs font-mono"
+                  id="telegram-chat-id"
+                  value={chatId}
+                  onChange={(e) => setChatId(e.target.value)}
+                  placeholder="Seu ID numérico"
+                  className="h-9 border-border bg-secondary/50 text-xs"
                 />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDetectChatId}
+                  disabled={testing}
+                  className="h-9 shrink-0 text-xs"
+                >
+                  {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Detectar"}
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="telegram-chat-id" className="text-xs text-muted-foreground">
-                  Chat ID do Telegram
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="telegram-chat-id"
-                    value={chatId}
-                    onChange={(e) => setChatId(e.target.value)}
-                    placeholder="Seu ID numérico"
-                    className="h-9 border-border bg-secondary/50 text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleDetectChatId}
-                    disabled={testing}
-                    className="h-9 shrink-0 text-xs"
-                  >
-                    {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Detectar"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="gradient-bg-primary gap-2 text-xs text-primary-foreground"
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Salvar Configuração
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTest}
-                disabled={testing}
-                className="gap-2 text-xs"
-              >
-                <Bot className="h-3.5 w-3.5" /> Testar Conexão
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleSetWebhook}
-                disabled={settingWebhook}
-                className="gap-2 text-xs"
-              >
-                {settingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                Testar Webhook
-              </Button>
-              <Button
-                variant={isOCRActive ? "default" : "outline"}
-                onClick={() => {
-                  setIsOCRActive(!isOCRActive);
-                  toast.success(isOCRActive ? "OCR Desativado" : "OCR Habilitado");
-                }}
-                className="gap-2 text-xs"
-              >
-                <Brain className="h-3.5 w-3.5" /> {isOCRActive ? "OCR Ativo" : "Habilitar OCR"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleTestBotMessage(testMessage)}
-                disabled={testingWebhook}
-                className="gap-2 text-xs"
-              >
-                {testingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Testar Bot (Enviar Mensagem)
-              </Button>
             </div>
           </div>
-        )}
+          
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="gradient-bg-primary gap-2 text-xs text-primary-foreground"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Salvar Configuração
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleTest}
+              disabled={testing}
+              className="gap-2 text-xs"
+            >
+              <Bot className="h-3.5 w-3.5" /> Testar Conexão
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSetWebhook}
+              disabled={settingWebhook}
+              className="gap-2 text-xs"
+            >
+              {settingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Testar Webhook
+            </Button>
+            <Button
+              variant={isOCRActive ? "default" : "outline"}
+              onClick={() => {
+                setIsOCRActive(!isOCRActive);
+                toast.success(isOCRActive ? "OCR Desativado" : "OCR Habilitado");
+              }}
+              className="gap-2 text-xs"
+            >
+              <Brain className="h-3.5 w-3.5" /> {isOCRActive ? "OCR Ativo" : "Habilitar OCR"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleTestBotMessage(testMessage)}
+              disabled={testingWebhook}
+              className="gap-2 text-xs"
+            >
+              {testingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Testar Bot (Enviar Mensagem)
+            </Button>
+            {chatId && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  if (!user) return;
+                  setIsLinking(true);
+                  const { error } = await supabase
+                    .from("profiles")
+                    .update({ telegram_chat_id: null, telegram_link_code: null })
+                    .eq("user_id", user.id);
+                  
+                  if (error) toast.error("Erro ao desconectar");
+                  else {
+                    setChatId("");
+                    toast.success("Telegram desconectado com sucesso");
+                  }
+                  setIsLinking(false);
+                }}
+                disabled={isLinking}
+                className="gap-2 text-xs"
+              >
+                {isLinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Desconectar
+              </Button>
+            )}
+          </div>
+        </div>
 
         {isAdmin && (
           <div className="mt-6 border-t border-border pt-4">
