@@ -102,6 +102,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log("Received body:", JSON.stringify(body));
 
     // 1. CALLBACK QUERIES
     if (body.callback_query) {
