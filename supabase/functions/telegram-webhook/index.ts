@@ -321,6 +321,10 @@ serve(async (req) => {
       `🏦 *Conta:* Sem conta`;
 
     await sendTelegram(cleanChatId, cardText, buildStandardKeyboard(newDraft.id));
+    
+    // Add logging to verify the sent message
+    console.log(`Draft ${newDraft.id} sent to ${cleanChatId}`);
+    
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err: any) {
