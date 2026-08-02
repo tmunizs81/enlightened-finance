@@ -723,6 +723,7 @@ export type Database = {
           id: string
           telegram_bot_token: string | null
           telegram_chat_id: string | null
+          telegram_link_code: string | null
           trial_ends_at: string | null
           updated_at: string
           user_id: string
@@ -734,6 +735,7 @@ export type Database = {
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          telegram_link_code?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           user_id: string
@@ -745,6 +747,7 @@ export type Database = {
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
+          telegram_link_code?: string | null
           trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
