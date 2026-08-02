@@ -4,37 +4,57 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Content-Type": "application/json",
 };
 
 /**
- * TELEGRAM ENGINE V4.1 - ROBUST PROTECTION & MULTI-TENANT
+ * TELEGRAM ENGINE V4.3 - MULTI-METHOD & ROBUST CORS
  * Updates:
- * 1. Global Try/Catch with specific JSON error response.
- * 2. Explicit String conversion for Chat ID (including 1000772149 support).
- * 3. SUPABASE_SERVICE_ROLE_KEY enforcement for RLS bypass.
- * 4. Comprehensive CORS headers on all paths.
+ * 1. Support for POST, GET, and OPTIONS.
+ * 2. Mandatory 200/204 status for OPTIONS (CORS preflight).
+ * 3. Fallback message for GET (health check).
+ * 4. Refactored response handling to ensure 200 OK to Telegram.
  */
 serve(async (req) => {
-  // 1. GLOBAL CORS HANDSHAKE
+  // 1. CORS PREFLIGHT HANDSHAKE
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
+  }
+
+  // 2. GET METHOD (Health Check/Browser View)
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({ status: "Telegram Webhook Endpoint Active", engine: "v4.3" }), {
+      status: 200,
+      headers: corsHeaders
+    });
   }
 
   try {
+    // 3. ONLY PROCESS POST REQUESTS
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method Not Allowed" }), { 
+        status: 405, 
+        headers: corsHeaders 
+      });
+    }
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
     
-    // Create Supabase client with Service Role for RLS bypass
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const rawBody = await req.text();
-    console.log("[TELEGRAM-V4.2-INBOUND] Webhook recebido:", rawBody);
+    console.log("[TELEGRAM-V4.3-INBOUND] Webhook received:", rawBody);
     
     if (!rawBody) {
-      return new Response(JSON.stringify({ success: false, error: "Empty Body" }), { 
+      return new Response(JSON.stringify({ success: false, message: "Empty body ignored" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -42,18 +62,18 @@ serve(async (req) => {
     try {
       payload = JSON.parse(rawBody);
     } catch (e) {
-      console.error("[TELEGRAM-V4.2] JSON Parse Error:", e.message);
+      console.error("[TELEGRAM-V4.3] JSON Parse Error:", e.message);
       return new Response(JSON.stringify({ success: false, error: "Invalid JSON" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
-    // --- 2. HEALTH CHECK ---
+    // --- 4. INTERNAL ACTION HANDLER ---
     if (payload.action === "ping") {
-      console.log("[TELEGRAM-V4.1] Health check ping received.");
-      return new Response(JSON.stringify({ success: true, status: "ok", engine: "v4.1-protected" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      console.log("[TELEGRAM-V4.3] Action: ping received.");
+      return new Response(JSON.stringify({ success: true, status: "ok", engine: "v4.3" }), {
+        headers: corsHeaders
       });
     }
 
@@ -74,7 +94,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[TELEGRAM-V4.1] Normalizing Chat ID to String: "${chatIdStr}"`);
+    console.log(`[TELEGRAM-V4.3] Normalizing Chat ID to String: "${chatIdStr}"`);
 
     const telegramUserIdRaw = payload.message?.from?.id || payload.edited_message?.from?.id || payload.callback_query?.from?.id;
     const messageText = payload.message?.text || payload.message?.caption || payload.edited_message?.text || payload.edited_message?.caption || null;
@@ -89,18 +109,18 @@ serve(async (req) => {
       .eq("telegram_chat_id", chatIdStr);
 
     if (pErr) {
-      console.error(`[TELEGRAM-V4.1] DB Error searching profile: ${pErr.message}`);
+      console.error(`[TELEGRAM-V4.3] DB Error searching profile: ${pErr.message}`);
       return new Response(JSON.stringify({ success: false, error: `DB Search Error: ${pErr.message}` }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
     if (!profiles || profiles.length === 0) {
-      console.warn(`[TELEGRAM-V4.1] Chat ID "${chatIdStr}" not linked to any account.`);
+      console.warn(`[TELEGRAM-V4.3] Chat ID "${chatIdStr}" not linked to any account.`);
       return new Response(JSON.stringify({ success: false, error: "Unauthorized Chat ID" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -109,10 +129,10 @@ serve(async (req) => {
     const botToken = profile.telegram_bot_token || Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     if (!botToken) {
-      console.error(`[TELEGRAM-V4.1] No Bot Token linked for user ${userId}`);
+      console.error(`[TELEGRAM-V4.3] No Bot Token linked for user ${userId}`);
       return new Response(JSON.stringify({ success: false, error: "Bot Token Missing" }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -122,13 +142,13 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatIdStr, text, parse_mode: "Markdown", ...extra }),
       });
-      if (!res.ok) console.error(`[TELEGRAM-V4.1] TG API Error: ${await res.text()}`);
+      if (!res.ok) console.error(`[TELEGRAM-V4.3] TG API Error: ${await res.text()}`);
       return res;
     };
 
     // --- 5. CALLBACK HANDLER ---
     if (callbackData && callbackQueryId) {
-      console.log(`[TELEGRAM-V4.1] Processing callback: ${callbackData}`);
+      console.log(`[TELEGRAM-V4.3] Processing callback: ${callbackData}`);
       
       await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
         method: "POST",
@@ -177,7 +197,7 @@ serve(async (req) => {
       }
       return new Response(JSON.stringify({ success: true }), { 
         status: 200, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: corsHeaders 
       });
     }
 
@@ -192,19 +212,19 @@ serve(async (req) => {
         await sendTg(`💰 *Saldo Geral: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n${list || "_Nenhuma conta ativa._"}`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
       if (text.startsWith("/start") || text.startsWith("/help")) {
-        await sendTg(`👋 Olá ${profile.full_name || ""}!\n\n🤖 *SimplyFin Bot V4.1*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
+        await sendTg(`👋 Olá ${profile.full_name || ""}!\n\n🤖 *SimplyFin Bot V4.3*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
-      console.log(`[TELEGRAM-V4.1] Invoking DeepSeek for: "${text}"`);
+      console.log(`[TELEGRAM-V4.3] Invoking DeepSeek for: "${text}"`);
       const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
@@ -226,7 +246,7 @@ serve(async (req) => {
         await sendTg("⚠️ Minha inteligência está instável. Tente novamente.");
         return new Response(JSON.stringify({ success: false, error: "AI API Failure" }), { 
           status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          headers: corsHeaders 
         });
       }
 
@@ -258,14 +278,14 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true }), { 
       status: 200, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      headers: corsHeaders 
     });
 
   } catch (err) {
-    console.error("[TELEGRAM-V4.1] GLOBAL CRITICAL ERROR:", err);
+    console.error("[TELEGRAM-V4.3] GLOBAL CRITICAL ERROR:", err);
     return new Response(JSON.stringify({ success: false, error: err.message }), { 
       status: 200, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      headers: corsHeaders 
     });
   }
 });
