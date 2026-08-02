@@ -724,6 +724,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           gemini_api_key: string | null
+          groq_api_key: string | null
           id: string
           telegram_bot_token: string | null
           telegram_chat_id: string | null
@@ -737,6 +738,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           gemini_api_key?: string | null
+          groq_api_key?: string | null
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null
@@ -750,6 +752,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           gemini_api_key?: string | null
+          groq_api_key?: string | null
           id?: string
           telegram_bot_token?: string | null
           telegram_chat_id?: string | null

@@ -215,6 +215,7 @@ const SettingsPage = () => {
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
+  const [groqKey, setGroqKey] = useState("");
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -246,7 +247,7 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key, groq_api_key")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -255,6 +256,7 @@ const SettingsPage = () => {
           setChatId(data.telegram_chat_id || "");
           setLinkCode(data.telegram_link_code || "");
           setGeminiKey(data.gemini_api_key || "");
+          setGroqKey(data.groq_api_key || "");
         }
         setLoaded(true);
       });
@@ -347,7 +349,8 @@ const SettingsPage = () => {
       .update({ 
         telegram_chat_id: cleanChatId,
         telegram_bot_token: cleanToken,
-        gemini_api_key: geminiKey.trim()
+        gemini_api_key: geminiKey.trim(),
+        groq_api_key: groqKey.trim()
       })
       .eq('user_id', authUser.id);
 
@@ -736,7 +739,7 @@ const SettingsPage = () => {
               Inteligência Artificial & OCR
             </h2>
           </div>
-          {geminiKey ? (
+          {geminiKey || groqKey ? (
             <Badge
               variant="outline"
               className="border-success/20 bg-success/15 text-[10px] text-success"
@@ -754,7 +757,7 @@ const SettingsPage = () => {
         </div>
         
         <p className="text-xs text-muted-foreground">
-          Configure a API do Google Gemini para habilitar a leitura automática de comprovantes (OCR) via Telegram.
+          Configure as APIs do Google Gemini ou Groq para habilitar a leitura automática de comprovantes (OCR) via Telegram.
         </p>
 
         <div className="space-y-3">
@@ -767,12 +770,42 @@ const SettingsPage = () => {
               type="password"
               value={geminiKey}
               onChange={(e) => setGeminiKey(e.target.value)}
-              placeholder="Digite sua chave do Gemini..."
+              placeholder="Chave do Gemini..."
               className="h-8 text-xs"
             />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="groq-key" className="text-xs text-muted-foreground">
+              Groq API Key (Llama-3 OCR)
+            </Label>
+            <Input
+              id="groq-key"
+              type="password"
+              value={groqKey}
+              onChange={(e) => setGroqKey(e.target.value)}
+              placeholder="gsk_..."
+              className="h-8 text-xs font-mono"
+            />
             <p className="text-[10px] text-muted-foreground">
-              A chave é necessária para a função de leitura de comprovantes (OCR) no Telegram.
+              Fallback de alta velocidade para processamento de texto e OCR.
             </p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              size="sm"
+              className="gradient-bg-primary h-8 flex-1 gap-1.5 text-[11px] text-primary-foreground"
+            >
+              {saving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3 w-3" />
+              )}
+              Salvar Configurações de IA
+            </Button>
           </div>
 
           <div className="rounded-lg border border-border/50 bg-secondary/50 p-3">
@@ -780,7 +813,7 @@ const SettingsPage = () => {
               <strong className="text-foreground">Assistente:</strong> DeepSeek Chat (V3)
             </p>
             <p className="text-[11px] text-muted-foreground">
-              <strong className="text-foreground">OCR / Visão:</strong> Google Gemini 1.5 Flash
+              <strong className="text-foreground">OCR / Visão:</strong> Gemini 1.5 Flash & Groq Llama-3
             </p>
             <p className="text-[11px] text-muted-foreground">
               Integrado via API Keys individuais para máxima precisão e economia.
