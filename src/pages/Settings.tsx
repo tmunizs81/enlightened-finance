@@ -787,20 +787,29 @@ const SettingsPage = () => {
             )}
             Ativar OCR via Telegram
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleTestBotMessage}
-            disabled={testingWebhook || !botToken || !chatId}
-            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
-          >
-            {testingWebhook ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Brain className="h-3 w-3" />
-            )}
-            Simular Comando IA
-          </Button>
+          <div className="flex w-full items-center gap-2 mt-2">
+            <Input
+              value={testMessage}
+              onChange={(e) => setTestMessage(e.target.value)}
+              placeholder="Digite um comando para testar (ex: despesa 10,11 combustivel)"
+              className="border-border bg-secondary text-xs h-9"
+            />
+            <Button
+              variant="outline"
+              onClick={() => handleTestBotMessage(testMessage)}
+              disabled={testingWebhook || !botToken || !chatId || !testMessage}
+              className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary h-9 shrink-0"
+            >
+              {testingWebhook ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Brain className="h-3 w-3" />
+              )}
+              Testar IA
+            </Button>
+          </div>
         </div>
+
         <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-[11px] font-semibold text-foreground">
             📸 OCR de Comprovantes via Telegram
