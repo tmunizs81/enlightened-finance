@@ -94,7 +94,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[TELEGRAM-V4.1] Normalizing Chat ID to String: "${chatIdStr}"`);
+    console.log(`[TELEGRAM-V4.3] Normalizing Chat ID to String: "${chatIdStr}"`);
 
     const telegramUserIdRaw = payload.message?.from?.id || payload.edited_message?.from?.id || payload.callback_query?.from?.id;
     const messageText = payload.message?.text || payload.message?.caption || payload.edited_message?.text || payload.edited_message?.caption || null;
