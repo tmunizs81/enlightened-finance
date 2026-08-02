@@ -235,6 +235,7 @@ const SettingsPage = () => {
   const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
   const [newUserTelegramChatId, setNewUserTelegramChatId] = useState("");
   const [creatingUser, setCreatingUser] = useState(false);
+  const [testMessage, setTestMessage] = useState("despesa 10,11 combustivel");
 
   useEffect(() => {
     if (!user) return;
