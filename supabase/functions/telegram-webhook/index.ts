@@ -30,9 +30,15 @@ serve(async (req) => {
     const update = await req.json().catch(() => ({}));
     console.log("Full Telegram update:", JSON.stringify(update));
     
-    // Add logging to track why processing might stop
     if (!update.message && !update.callback_query && !update.action) {
       console.log("Update received but no message, callback_query or action found. Keys present:", Object.keys(update));
+      // Telegram sometimes sends edited_message
+      if (update.edited_message) {
+        console.log("Detected edited_message, redirecting to message handler");
+        update.message = update.edited_message;
+      } else {
+        return new Response("ok");
+      }
     }
 
     // --- HANDLE PING / HEALTH CHECK ---
