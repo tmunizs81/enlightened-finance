@@ -235,6 +235,7 @@ const SettingsPage = () => {
   const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
   const [newUserTelegramChatId, setNewUserTelegramChatId] = useState("");
   const [creatingUser, setCreatingUser] = useState(false);
+  const [testMessage, setTestMessage] = useState("despesa 10,11 combustivel");
 
   useEffect(() => {
     if (!user) return;
@@ -425,7 +426,7 @@ const SettingsPage = () => {
     }
   };
 
-  const handleTestBotMessage = async () => {
+  const handleTestBotMessage = async (customMessage?: string) => {
     if (!botToken || !chatId) {
       toast.error("Configure o Token e o Chat ID primeiro.");
       return;
@@ -433,12 +434,12 @@ const SettingsPage = () => {
 
     setTestingWebhook(true);
     try {
-      // Simular um comando /help enviado pelo usuário
+      // Simular um comando ou mensagem enviada pelo usuário
       const { error } = await supabase.functions.invoke("telegram-webhook", {
         body: { 
           message: { 
             chat: { id: chatId },
-            text: "/help",
+            text: customMessage || "/help",
             from: { id: chatId, first_name: "Test User" },
             date: Math.floor(Date.now() / 1000)
           } 
@@ -447,7 +448,7 @@ const SettingsPage = () => {
 
       if (error) throw error;
 
-      toast.success("Simulação de mensagem enviada! Verifique seu Telegram.");
+      toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
       toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}.`);
@@ -786,20 +787,29 @@ const SettingsPage = () => {
             )}
             Ativar OCR via Telegram
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleTestBotMessage}
-            disabled={testingWebhook || !botToken || !chatId}
-            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
-          >
-            {testingWebhook ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Brain className="h-3 w-3" />
-            )}
-            Simular Comando IA
-          </Button>
+          <div className="flex w-full items-center gap-2 mt-2">
+            <Input
+              value={testMessage}
+              onChange={(e) => setTestMessage(e.target.value)}
+              placeholder="Digite um comando para testar (ex: despesa 10,11 combustivel)"
+              className="border-border bg-secondary text-xs h-9"
+            />
+            <Button
+              variant="outline"
+              onClick={() => handleTestBotMessage(testMessage)}
+              disabled={testingWebhook || !botToken || !chatId || !testMessage}
+              className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary h-9 shrink-0"
+            >
+              {testingWebhook ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Brain className="h-3 w-3" />
+              )}
+              Testar IA
+            </Button>
+          </div>
         </div>
+
         <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-[11px] font-semibold text-foreground">
             📸 OCR de Comprovantes via Telegram
