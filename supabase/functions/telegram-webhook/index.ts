@@ -202,7 +202,7 @@ serve(async (req) => {
         }
 
         const keyboardRows: any[] = [];
-        const currentData = parts.slice(1).join('|');
+        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
 
         for (let i = 0; i < accounts.length; i += 2) {
           const row = [
