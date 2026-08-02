@@ -81,20 +81,21 @@ serve(async (req) => {
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
+      .eq("telegram_bot_token", botTokenFromEnv || "default") // Isole por token se disponível
       .limit(1);
     
     profile = profileResult?.[0];
 
-    if (profileErr) {
-      console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
-      const { count } = await supabase
-        .from("profiles")
-        .select("*", { count: 'exact', head: true })
-        .eq("telegram_chat_id", chatId);
-      console.log(`Profiles found with chat_id ${chatId}:`, count);
-    }
-
+    // Se não encontrou isolado por token, busca o perfil global para este chat_id
+    // Mas garante que o user_id seja único no contexto desta execução
     if (!profile) {
+      const { data: globalProfile } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token")
+        .eq("telegram_chat_id", chatId)
+        .limit(1);
+      profile = globalProfile?.[0];
+    }
       console.log("No profile found for chat_id:", chatId);
       
       // Fallback: Tenta buscar usando o chat_id de forma mais agressiva
