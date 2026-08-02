@@ -9,9 +9,14 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   
-  // Allow POST (Telegram Webhook) and potentially GET for health checks
-  if (req.method !== "POST") {
+  // Permitir POST e GET (Telegram requer POST, mas alguns proxies fazem health check com GET)
+  if (req.method !== "POST" && req.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
+  }
+
+  // Se for GET, responder OK para health check do Nginx/Cloudflare
+  if (req.method === "GET") {
+    return new Response("SimplyFin Bot API Active", { status: 200, headers: corsHeaders });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -21,6 +26,16 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
+    const update = await req.json().catch(() => ({}));
+    console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
+
+    // --- HANDLE PING / HEALTH CHECK ---
+    if (update.action === "ping") {
+      return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Cleanup expired pending OCR transactions (>24h)
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     await supabase
@@ -31,16 +46,6 @@ serve(async (req) => {
       .then(({ data, error }) => {
         if (error) console.error("Cleanup error:", error.message);
       });
-
-    const update = await req.json();
-    console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
-
-    // --- HANDLE PING / HEALTH CHECK ---
-    if (update.action === "ping") {
-      return new Response(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // --- HANDLE CALLBACK QUERY (button presses) ---
     if (update.callback_query) {
@@ -341,6 +346,7 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
     }
 
     if (parsed.error) {
+      console.log("AI reported error in image:", parsed.error);
       await sendTg(`❌ ${parsed.error}`);
       return new Response("ok");
     }
