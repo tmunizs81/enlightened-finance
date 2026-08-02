@@ -786,6 +786,19 @@ const SettingsPage = () => {
             )}
             Ativar OCR via Telegram
           </Button>
+          <Button
+            variant="outline"
+            onClick={handleTestBotMessage}
+            disabled={testingWebhook || !botToken || !chatId}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testingWebhook ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Brain className="h-3 w-3" />
+            )}
+            Simular Comando IA
+          </Button>
         </div>
         <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <p className="text-[11px] font-semibold text-foreground">
