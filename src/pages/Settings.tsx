@@ -334,37 +334,40 @@ const SettingsPage = () => {
       return;
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return toast.error("Usuário não autenticado.");
+
     setSaving(true);
     
     const cleanChatId = String(chatId).trim();
     const cleanToken = String(botToken).trim();
 
-    // Update Profile with RLS protection
     const { error } = await supabase
-      .from("profiles")
+      .from('profiles')
       .update({ 
-        telegram_bot_token: cleanToken || null, 
-        telegram_chat_id: cleanChatId || null 
+        telegram_chat_id: cleanChatId,
+        telegram_bot_token: cleanToken 
       })
-      .eq("user_id", user.id);
-    
-    if (error) {
-      console.error("Error saving Telegram config:", error);
-      toast.error("Erro ao salvar perfil. Tente novamente.");
-      setSaving(false);
-      return;
-    }
+      .eq('user_id', user.id);
 
-    // Refresh local state
-    const { data: updatedProfile } = await supabase
-      .from("profiles")
-      .select("telegram_chat_id, telegram_bot_token")
-      .eq("user_id", user.id)
-      .single();
+    if (error) {
+      console.error("Erro ao salvar perfil:", error);
+      toast.error(`Erro ao gravar no banco: ${error.message}`);
+      setSaving(false);
+    } else {
+      toast.success("✅ Configuração salva e persistida com sucesso!");
       
-    if (updatedProfile) {
-      setChatId(updatedProfile.telegram_chat_id || "");
-      setBotToken(updatedProfile.telegram_bot_token || "");
+      // Refresh local state
+      const { data: updatedProfile } = await supabase
+        .from("profiles")
+        .select("telegram_chat_id, telegram_bot_token")
+        .eq("user_id", user.id)
+        .single();
+        
+      if (updatedProfile) {
+        setChatId(updatedProfile.telegram_chat_id || "");
+        setBotToken(updatedProfile.telegram_bot_token || "");
+      }
     }
 
     // 2. Automatic setWebhook if token is provided
