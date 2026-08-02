@@ -93,21 +93,32 @@ serve(async (req) => {
 
     // 1. CALLBACK QUERIES (BUTTON CLICKS)
     if (body.callback_query) {
+      console.log("Processing callback_query:", JSON.stringify(body.callback_query));
       const cb = body.callback_query;
       const chatId = String(cb.message.chat.id).trim();
       const messageId = cb.message.message_id;
       const data = String(cb.data);
 
-      await answerCallback(cb.id);
+      // Always answer callback query first to stop loading state in Telegram
+      try {
+        await answerCallback(cb.id);
+      } catch (err) {
+        console.error("Failed to answer callback:", err);
+      }
 
       const parts = data.split('|');
       const action = parts[0];
       const draftId = parts[1];
 
       // Fetch draft from DB
-      const { data: draft, error: draftErr } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+      const { data: draft, error: draftErr } = await supabase
+        .from('telegram_drafts')
+        .select('*')
+        .eq('id', draftId)
+        .maybeSingle();
 
       if (draftErr || !draft) {
+        console.error("Draft not found:", draftId, draftErr);
         await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho expirado ou não encontrado.* Envie uma nova mensagem.");
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
