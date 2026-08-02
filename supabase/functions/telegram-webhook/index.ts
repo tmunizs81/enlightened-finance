@@ -36,7 +36,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "8037475856:AAG_LBcI01kr89gjCWsYd00MOYGejR_u1r8";
     
     if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN missing");
 
