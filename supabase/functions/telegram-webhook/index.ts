@@ -206,7 +206,7 @@ serve(async (req) => {
 
         for (let i = 0; i < accounts.length; i += 2) {
           const row = [
-            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id}|${currentData}` }
+            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id.split('-')[0]}|${currentData}` }
           ];
           if (accounts[i + 1]) {
             row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id}|${currentData}` });
