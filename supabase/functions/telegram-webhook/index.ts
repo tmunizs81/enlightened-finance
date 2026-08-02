@@ -108,7 +108,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log("Received body:", JSON.stringify(body));
+    // console.log("Received body:", JSON.stringify(body)); // Removido log ruidoso
 
     // 1. CALLBACK QUERIES
     if (body.callback_query) {
