@@ -655,6 +655,7 @@ export type Database = {
           receipt_path: string | null
           receipt_url: string | null
           status: string
+          type: string | null
           user_id: string
         }
         Insert: {
@@ -672,6 +673,7 @@ export type Database = {
           receipt_path?: string | null
           receipt_url?: string | null
           status?: string
+          type?: string | null
           user_id: string
         }
         Update: {
@@ -689,6 +691,7 @@ export type Database = {
           receipt_path?: string | null
           receipt_url?: string | null
           status?: string
+          type?: string | null
           user_id?: string
         }
         Relationships: [
