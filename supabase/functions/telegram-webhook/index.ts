@@ -85,7 +85,9 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string) => {
-    // Try Gemini First
+    const prompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON.";
+
+    // Try Gemini First (Better for Vision/PDF context)
     if (GEMINI_API_KEY) {
       try {
         console.log("Attempting OCR with Gemini...");
@@ -94,16 +96,17 @@ serve(async (req) => {
 
         const imageResponse = await fetch(fileUrl);
         const imageBuffer = await imageResponse.arrayBuffer();
-        const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
-        const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
+        // Determine mimeType (assuming image if not specified, but Gemini is flexible)
+        const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
 
         const result = await model.generateContent([
           prompt,
           {
             inlineData: {
-              data: base64Image,
-              mimeType: "image/jpeg"
+              data: base64Data,
+              mimeType: mimeType
             }
           }
         ]);
@@ -116,8 +119,8 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to Groq if Gemini fails or is missing
-    if (GROQ_API_KEY) {
+    // Fallback to Groq
+    if (GROQ_API_KEY && !fileUrl.toLowerCase().includes('.pdf')) {
       try {
         console.log("Attempting OCR with Groq Llama-3-Vision...");
         const imageResponse = await fetch(fileUrl);
@@ -136,12 +139,10 @@ serve(async (req) => {
               {
                 role: "user",
                 content: [
-                  { type: "text", text: "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON." },
+                  { type: "text", text: prompt },
                   {
                     type: "image_url",
-                    image_url: {
-                      url: `data:image/jpeg;base64,${base64Image}`
-                    }
+                    image_url: { url: `data:image/jpeg;base64,${base64Image}` }
                   }
                 ]
               }
@@ -409,9 +410,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // 2. OCR / PHOTO PROCESSING
+    // 2. DOCUMENT / PHOTO PROCESSING
+    const doc = body.message?.document;
     const photo = body.message?.photo;
-    if (photo && photo.length > 0) {
+    
+    if (doc || (photo && photo.length > 0)) {
       const chatId = String(body.message.chat.id).trim();
       const userId = await getUserIdByChatId(chatId);
       
@@ -420,17 +423,23 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
-      // Try to load Gemini & Groq Keys from profile if not in ENV
+      // Try to load Gemini & Groq Keys
       if (!GEMINI_API_KEY || !GROQ_API_KEY) {
         const { data: profile } = await supabase.from('profiles').select('gemini_api_key, groq_api_key').eq('user_id', userId).maybeSingle();
         if (profile?.gemini_api_key) GEMINI_API_KEY = profile.gemini_api_key;
         if (profile?.groq_api_key) GROQ_API_KEY = profile.groq_api_key;
       }
 
-      await sendTelegram(chatId, "🔍 *Processando comprovante com IA...*");
+      await sendTelegram(chatId, "🔍 *Analisando documento com IA...*");
 
       try {
-        const fileId = photo[photo.length - 1].file_id;
+        let fileId = "";
+        if (doc) {
+          fileId = doc.file_id;
+        } else {
+          fileId = photo[photo.length - 1].file_id;
+        }
+
         const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
         const fileData = await fileRes.json();
         
@@ -441,7 +450,6 @@ serve(async (req) => {
           const aiResult = await analyzeReceipt(fileUrl);
           
           if (aiResult) {
-            // Auto-match category for AI result
             let categoryId = null;
             const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
             if (categories && categories.length > 0) {
@@ -449,7 +457,6 @@ serve(async (req) => {
               if (matched) categoryId = matched.id;
             }
 
-            // Auto-match account
             let accountId = null;
             let { data: accounts } = await supabase.from('accounts').select('id').eq('user_id', userId).limit(1);
             if (!accounts || accounts.length === 0) {
@@ -458,12 +465,12 @@ serve(async (req) => {
             }
             if (accounts && accounts.length > 0) accountId = accounts[0].id;
 
-            const { data: newDraft, error: draftErr } = await supabase.from('telegram_drafts').insert({
+            const { data: newDraft } = await supabase.from('telegram_drafts').insert({
               user_id: userId,
               chat_id: chatId,
               type: aiResult.type || 'expense',
               amount: aiResult.amount || 0,
-              description: aiResult.description || "OCR IA",
+              description: aiResult.description || "IA OCR",
               category_id: categoryId,
               account_id: accountId,
               status: 'active'
@@ -475,10 +482,10 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Não consegui ler o comprovante.* Tente enviar uma foto mais nítida ou digite a despesa manualmente.");
+        await sendTelegram(chatId, "❌ *Não consegui extrair os dados.* Certifique-se de que o arquivo é um PDF ou Imagem nítida.");
       } catch (e) {
         console.error("OCR Processing error:", e);
-        await sendTelegram(chatId, "❌ *Erro ao processar imagem.* Tente novamente mais tarde.");
+        await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
