@@ -87,7 +87,7 @@ serve(async (req) => {
     if (!profile) {
       console.log("No profile found for chat_id:", chatId);
       
-      // Fallback: Tenta buscar usando o chat_id de forma mais agressiva (comparação case-insensitive e trim)
+      // Fallback: Tenta buscar usando o chat_id de forma mais agressiva
       console.log("Attempting aggressive fallback lookup for chat_id:", chatId);
       const { data: allProfiles, error: allErr } = await supabase
         .from("profiles")
@@ -96,16 +96,23 @@ serve(async (req) => {
       if (allErr) {
         console.error("Error fetching all profiles for fallback:", allErr.message);
       } else {
-        const matchingProfile = allProfiles?.find(p => 
-          p.telegram_chat_id && String(p.telegram_chat_id).trim() === chatId.trim()
-        );
+        // Log all profile chat IDs to debug comparison
+        console.log("Registered chat IDs in DB:", allProfiles?.map(p => `[${p.telegram_chat_id}]`).join(", "));
+        
+        const matchingProfile = allProfiles?.find(p => {
+          if (!p.telegram_chat_id) return false;
+          const dbId = String(p.telegram_chat_id).trim();
+          const incomingId = chatId.trim();
+          return dbId === incomingId;
+        });
 
         if (matchingProfile) {
-          console.log("Aggressive fallback found matching profile!");
-          (profile as any) = matchingProfile;
+          console.log("Aggressive fallback found matching profile for user:", matchingProfile.user_id);
+          profile = matchingProfile as any;
         } else {
-          console.log("Aggressive fallback found no match in", allProfiles?.length, "profiles");
-          return new Response("ok");
+          console.log("Aggressive fallback found no match for incoming ID:", chatId);
+          // Return 200 so Telegram stops retrying, but we couldn't map the user
+          return new Response(JSON.stringify({ error: "Unauthorized chat ID", received: chatId }), { status: 200 });
         }
       }
 
@@ -222,6 +229,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       }
 
       // Natural language processing with AI
+      console.log("Processing text with AI:", message.text);
       return await handleNaturalLanguage(
         supabase,
         userId,
