@@ -26,8 +26,16 @@ serve(async (req) => {
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY"); // Keep for vision/OCR only
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+  let update: any = {};
+  let profile: any = null;
+  let botToken: any = null;
   try {
-    const update = await req.json().catch(() => ({}));
+    
+    try {
+      update = await req.json();
+    } catch {
+      update = {};
+    }
     console.log("Full Telegram update:", JSON.stringify(update));
     
     if (!update.message && !update.callback_query && !update.action) {
@@ -69,7 +77,7 @@ serve(async (req) => {
 
     const chatId = String(message.chat.id);
 
-    const { data: profile, error: profileErr } = await supabase
+    let { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
@@ -233,7 +241,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       }
 
       // Natural language processing with AI
-      console.log("Processing text with AI:", message.text);
+      console.log("DeepSeek NL Request:", message.text, "User:", userId, "Chat:", chatId);
       return await handleNaturalLanguage(
         supabase,
         userId,
@@ -332,10 +340,10 @@ ${categoryList || "Nenhuma"}
 Contas:
 ${accountList || "Nenhuma"}
 
-Responda APENAS JSON:
-{"amount":150.50,"description":"Compra supermercado","date":"2026-03-08","category_id":"uuid-ou-null","account_id":"uuid-ou-null","confidence":"high|medium|low"}
+Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem \`\`\`json), seguindo este esquema:
+{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" }
 
-Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
+Se não conseguir ler: { "error": "Não foi possível ler o comprovante" }`;
 
     // Use Groq for vision/OCR (DeepSeek doesn't support vision)
     const ocrApiKey = GROQ_API_KEY || DEEPSEEK_API_KEY;
@@ -364,7 +372,6 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
       ],
       response_format: { type: "json_object" },
       temperature: 0,
-      temperature: 0.1,
     };
 
     console.log("Sending request to AI OCR...");
@@ -400,7 +407,7 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
     let parsed: any;
     try {
-      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      const jsonMatch = rawContent.match(/{[\s\S]*}/);
       if (!jsonMatch) throw new Error("No JSON");
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
@@ -501,12 +508,12 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
     return new Response("ok");
   } catch (e) {
     console.error("Webhook main catch error:", e);
-    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    const chatId = update?.message?.chat?.id || update?.callback_query?.message?.chat?.id;
     if (chatId) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       // Fallback manual notification if the botToken is missing from profile context
       const fallbackToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-      const tokenToUse = botToken || fallbackToken;
+      const tokenToUse = (profile as any)?.telegram_bot_token || fallbackToken;
       
       if (tokenToUse) {
         await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
@@ -1036,17 +1043,19 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
         if (aiResp.ok) {
           const aiData = await aiResp.json();
           const raw = aiData.choices?.[0]?.message?.content || "";
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          const jsonMatch = raw.match(/{[\s\S]*}/);
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.category_id) {
-              categoryId = parsed.category_id;
-              catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
-            }
-            if (parsed.account_id) {
-              accountId = parsed.account_id;
-              accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
-            }
+            try { 
+              const parsed = JSON.parse(jsonMatch[0]); 
+              if (parsed.category_id) {
+                categoryId = parsed.category_id;
+                catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
+              }
+              if (parsed.account_id) {
+                accountId = parsed.account_id;
+                accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
+              }
+            } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
           }
         }
       } catch (e) {
@@ -1238,22 +1247,23 @@ ${accList || "Nenhuma"}
 
 Data de hoje: ${new Date().toISOString().split("T")[0]}
 
-REGRAS:
-- Se a mensagem descreve uma transação financeira (gasto, compra, recebimento, pagamento, etc.), extraia os dados.
-- Se a mensagem NÃO é sobre uma transação financeira, retorne {"is_transaction": false, "reply": "uma resposta amigável curta"}
-- Palavras como "gastei", "paguei", "comprei", "almocei", "jantei", "despesa" = despesa
-- Palavras como "recebi", "ganhei", "entrou", "receita" = receita
-- O valor pode conter vírgula como separador decimal (ex: 10,11 -> 10.11).
-- Se o valor não for mencionado, tente inferir ou retorne is_transaction false
+REGRAS CRÍTICAS:
+1. Analise se a mensagem é um lançamento financeiro.
+2. Identifique o tipo: despesa (gasto, compra) ou receita (recebimento, salário).
+3. O valor pode usar vírgula (ex: "10,11" -> 10.11).
+4. Categorias de despesa disponíveis: ${categories.filter((c:any) => c.type === 'expense').map((c:any) => c.name).join(', ')}
+5. Categorias de receita disponíveis: ${categories.filter((c:any) => c.type === 'income').map((c:any) => c.name).join(', ')}
+6. Contas disponíveis: ${accounts.map((a:any) => a.name).join(', ')}
 
 
-Responda APENAS JSON:
-{"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
-ou
-{"is_transaction": false, "reply": "mensagem"}`,
+Retorne ESTRITAMENTE JSON:
+{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" }
+ou se não for transação:
+{ "is_transaction": false, "reply": "mensagem" }`,
           },
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0
       }),
 
     });
@@ -1267,7 +1277,7 @@ ou
     const aiData = await aiResp.json();
     const raw = aiData.choices?.[0]?.message?.content || "";
     console.log("AI NL response raw:", raw);
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const jsonMatch = raw.match(/{[\s\S]*}/);
 
 
     if (!jsonMatch) {
@@ -1353,7 +1363,7 @@ ou
     await sendTg(previewMsg, { reply_markup: inlineKeyboard });
     return new Response("ok");
   } catch (e) {
-    console.error("NL processing error:", e);
+    console.error("NL processing error detailed:", (e as any).stack || e);
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
@@ -1401,7 +1411,7 @@ async function handleDicasEconomia(supabase: any, userId: string, sendTg: Functi
   const byCat: Record<string, number> = {};
   txs.forEach((t: any) => {
     const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
   });
   const total = txs.reduce((s: number, t: any) => s + Number(t.amount), 0);
 
@@ -1513,7 +1523,7 @@ async function handleAnaliseIA(supabase: any, userId: string, sendTg: Function) 
     .filter((t: any) => t.type === "expense")
     .forEach((t: any) => {
       const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-      byCat[name] = (byCat[name] || 0) + Number(t.amount);
+      byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
     });
 
   const context = `
@@ -1629,7 +1639,7 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
   const byCat: Record<string, number> = {};
   expenses.forEach((t: any) => {
     const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
   });
 
   const monthName = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
