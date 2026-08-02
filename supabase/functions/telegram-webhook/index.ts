@@ -380,10 +380,11 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
         [
           { text: "✏️ Valor", callback_data: `ocr_edit:${pending.id}:amount` },
           { text: "✏️ Descrição", callback_data: `ocr_edit:${pending.id}:description` },
+          { text: "✏️ Data", callback_data: `ocr_edit:${pending.id}:date` },
         ],
         [
-          { text: "✏️ Data", callback_data: `ocr_edit:${pending.id}:date` },
           { text: "✏️ Categoria", callback_data: `ocr_edit:${pending.id}:category` },
+          { text: "✏️ Conta", callback_data: `ocr_edit:${pending.id}:account` },
         ],
       ],
     };
