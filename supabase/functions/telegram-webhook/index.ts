@@ -96,13 +96,14 @@ serve(async (req) => {
       if (allErr) {
         console.error("Error fetching all profiles for fallback:", allErr.message);
       } else {
-        // Log all profile chat IDs to debug comparison
+        // Log IDs registrados para debug (sempre úteis no VPS)
         console.log("Registered chat IDs in DB:", allProfiles?.map(p => `[${p.telegram_chat_id}]`).join(", "));
         
+        const incomingId = String(chatId).trim();
         const matchingProfile = allProfiles?.find(p => {
           if (!p.telegram_chat_id) return false;
           const dbId = String(p.telegram_chat_id).trim();
-          const incomingId = chatId.trim();
+          // Comparação case-insensitive e trim para evitar erros de digitação/formatação no VPS
           return dbId === incomingId;
         });
 
@@ -110,9 +111,12 @@ serve(async (req) => {
           console.log("Aggressive fallback found matching profile for user:", matchingProfile.user_id);
           profile = matchingProfile as any;
         } else {
-          console.log("Aggressive fallback found no match for incoming ID:", chatId);
-          // Return 200 so Telegram stops retrying, but we couldn't map the user
-          return new Response(JSON.stringify({ error: "Unauthorized chat ID", received: chatId }), { status: 200 });
+          console.log("Aggressive fallback found no match for incoming ID:", incomingId);
+          // Retornamos 200 para o Telegram parar de tentar, mas avisamos que não autorizado
+          return new Response(JSON.stringify({ error: "Unauthorized chat ID", received: incomingId }), { 
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
         }
       }
 
@@ -359,6 +363,7 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
         },
       ],
       response_format: { type: "json_object" },
+      temperature: 0,
       temperature: 0.1,
     };
 
