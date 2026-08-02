@@ -1085,6 +1085,7 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
   }
 
   // Save as PENDING transaction for confirmation
+  // Busca do chatId específica para este userId para garantir isolamento
   const { data: profileData } = await supabase
     .from("profiles")
     .select("telegram_chat_id")
