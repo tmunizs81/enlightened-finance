@@ -978,6 +978,7 @@ async function handleLancamentoRapido(
 
   // Use AI to classify category and account
   if (categories.length > 0 || accounts.length > 0) {
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (DEEPSEEK_API_KEY) {
       try {
         const catList = categories.map((c: any) => `- "${c.name}" (id: ${c.id})`).join("\n");
