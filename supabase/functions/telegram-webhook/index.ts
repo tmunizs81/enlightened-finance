@@ -1223,7 +1223,9 @@ REGRAS:
 - Se a mensagem NÃO é sobre uma transação financeira, retorne {"is_transaction": false, "reply": "uma resposta amigável curta"}
 - Palavras como "gastei", "paguei", "comprei", "almocei", "jantei", "despesa" = despesa
 - Palavras como "recebi", "ganhei", "entrou", "receita" = receita
+- O valor pode conter vírgula como separador decimal (ex: 10,11 -> 10.11).
 - Se o valor não for mencionado, tente inferir ou retorne is_transaction false
+
 
 Responda APENAS JSON:
 {"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
