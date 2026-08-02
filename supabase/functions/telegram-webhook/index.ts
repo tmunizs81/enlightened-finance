@@ -173,8 +173,8 @@ serve(async (req) => {
         }
 
         const keyboardRows: any[] = [];
-        // Pegamos os dados atuais do payload (ignorando o 'e_cat')
-        const currentData = parts.slice(1).join('|');
+        // Pegamos os dados atuais do payload (ignorando o 'e_cat') e compactamos
+        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
 
         for (let i = 0; i < categories.length; i += 2) {
           const row = [
