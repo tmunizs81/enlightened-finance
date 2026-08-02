@@ -118,11 +118,11 @@ serve(async (req) => {
     }
 
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\\n\\n` +
-      `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\\n` +
-      `📝 *Descrição:* ${draft.description}\\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\\n` +
-      `🏷️ *Categoria:* ${catName}\\n` +
+      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
+      `📝 *Descrição:* ${draft.description}\n` +
+      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
     await editTelegramMessage(chatId, messageId, cardText, buildStandardKeyboard(draft.id));
@@ -270,12 +270,12 @@ serve(async (req) => {
 
     const userId = await getUserIdByChatId(chatId);
     if (!userId) {
-      await sendTelegram(chatId, `⚠️ *Telegram não vinculado.*\\nSeu Chat ID é: \\`${chatId}\\``);
+      await sendTelegram(chatId, `⚠️ *Telegram não vinculado.*\nSeu Chat ID é: \`${chatId}\``);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(chatId, "👋 *Bem-vindo ao T2-SimplyFin!*\\nEnvie: `despesa 1.00 agua`.");
+      await sendTelegram(chatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.00 agua`.");
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
@@ -381,11 +381,11 @@ serve(async (req) => {
     }
 
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\\n\\n` +
-      `💰 *Valor:* R$ ${amount.toFixed(2)}\\n` +
-      `📝 *Descrição:* ${description}\\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\\n` +
-      `🏷️ *Categoria:* ${catName}\\n` +
+      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
+      `📝 *Descrição:* ${description}\n` +
+      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
     await sendTelegram(chatId, cardText, buildStandardKeyboard(newDraft.id));
