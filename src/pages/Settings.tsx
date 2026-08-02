@@ -339,7 +339,7 @@ const SettingsPage = () => {
     const cleanChatId = String(chatId).trim();
     const cleanToken = String(botToken).trim();
 
-    // 1. Update Profile (Explicitly update profiles table for Telegram linking)
+    // Update Profile with RLS protection
     const { error } = await supabase
       .from("profiles")
       .update({ 
@@ -350,12 +350,12 @@ const SettingsPage = () => {
     
     if (error) {
       console.error("Error saving Telegram config:", error);
+      toast.error("Erro ao salvar perfil. Tente novamente.");
       setSaving(false);
-      toast.error("Erro ao salvar no banco. Verifique sua conexão.");
       return;
     }
 
-    // Refresh local state to ensure it matches DB
+    // Refresh local state
     const { data: updatedProfile } = await supabase
       .from("profiles")
       .select("telegram_chat_id, telegram_bot_token")
