@@ -247,7 +247,7 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key, groq_api_key")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
