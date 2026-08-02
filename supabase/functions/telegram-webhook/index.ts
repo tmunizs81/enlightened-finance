@@ -27,7 +27,12 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
-    const update = await req.json().catch(() => ({}));
+    let update: any = {};
+    try {
+      update = await req.json();
+    } catch {
+      update = {};
+    }
     console.log("Full Telegram update:", JSON.stringify(update));
     
     if (!update.message && !update.callback_query && !update.action) {
@@ -1631,7 +1636,7 @@ async function handleResumoCompleto(supabase: any, userId: string, sendTg: Funct
   const byCat: Record<string, number> = {};
   expenses.forEach((t: any) => {
     const name = t.category_id ? catMap.get(t.category_id) || "Outros" : "Sem categoria";
-    byCat[name] = (byCat[name] || 0) + Number(t.amount);
+    byCat[name as string] = (byCat[name as string] || 0) + Number(t.amount);
   });
 
   const monthName = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
