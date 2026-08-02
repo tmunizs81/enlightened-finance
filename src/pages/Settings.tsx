@@ -346,7 +346,8 @@ const SettingsPage = () => {
       .from('profiles')
       .update({ 
         telegram_chat_id: cleanChatId,
-        telegram_bot_token: cleanToken 
+        telegram_bot_token: cleanToken,
+        gemini_api_key: geminiKey.trim()
       })
       .eq('user_id', authUser.id);
 
