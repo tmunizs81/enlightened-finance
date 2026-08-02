@@ -171,15 +171,27 @@ serve(async (req) => {
 
       const parts = data.split('|');
       const action = parts[0];
-      const draftId = parts[1];
+      const payloadId = parts[1];
 
-      // For actions that don't pass draftId directly in payload (sct, sac), find active draft by chat
+      // Logic to resolve the draft:
+      // 1. If the action is a standard menu button (c, x, val, desc, cat, acc, back), payloadId IS the draftId.
+      // 2. If the action is a selection (sct, sac), payloadId IS the item ID (category/account), 
+      //    so we MUST find the active draft by chat_id.
       let draft = null;
-      if (draftId && draftId.length > 8) {
-        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+      const directDraftActions = ['c', 'x', 'val', 'desc', 'cat', 'acc', 'back'];
+      
+      if (directDraftActions.includes(action) && payloadId) {
+        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', payloadId).maybeSingle();
         draft = d;
       } else {
-        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('chat_id', chatId).eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle();
+        // Fallback for sct/sac or if draftId was missing/invalid
+        const { data: d } = await supabase.from('telegram_drafts')
+          .select('*')
+          .eq('chat_id', chatId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         draft = d;
       }
 
@@ -190,7 +202,8 @@ serve(async (req) => {
 
       // CONFIRM TRANSACTION
       if (action === 'c') {
-        const { data: targetDraft } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+        const targetDraftId = parts[1];
+        const { data: targetDraft } = await supabase.from('telegram_drafts').select('*').eq('id', targetDraftId).maybeSingle();
         if (!targetDraft) {
           await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho não encontrado.*");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -209,7 +222,7 @@ serve(async (req) => {
         if (insErr) {
           await editTelegramMessage(chatId, messageId, `❌ *Erro ao salvar no banco:* ${insErr.message}`);
         } else {
-          await supabase.from('telegram_drafts').delete().eq('id', draftId);
+          await supabase.from('telegram_drafts').delete().eq('id', targetDraftId);
           await editTelegramMessage(
             chatId,
             messageId,
@@ -221,17 +234,20 @@ serve(async (req) => {
       } 
       // CANCEL
       else if (action === 'x') {
-        await supabase.from('telegram_drafts').delete().eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').delete().eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
       // EDIT VALUE PROMPT
       else if (action === 'val') {
-        await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
       }
       // EDIT DESCRIPTION PROMPT
       else if (action === 'desc') {
-        await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
       }
       // SHOW CATEGORY LIST (Uses short prefix for callback data to avoid 64-byte limit)
