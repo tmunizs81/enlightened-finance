@@ -19,7 +19,7 @@ serve(async (req) => {
 
   const sendTelegram = async (chatId: number | string, text: string, replyMarkup?: any) => {
     try {
-      return await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'Markdown', reply_markup: replyMarkup }),
@@ -31,7 +31,7 @@ serve(async (req) => {
 
   const editTelegramMessage = async (chatId: number | string, messageId: number, text: string, replyMarkup?: any) => {
     try {
-      return await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'Markdown', reply_markup: replyMarkup }),
@@ -51,6 +51,34 @@ serve(async (req) => {
     } catch (e) {
       console.error("Failed to answer callback:", e);
     }
+  };
+
+  const getUserIdByChatId = async (chatId: string) => {
+    const { data: p1 } = await supabase.from('profiles').select('user_id').eq('telegram_chat_id', chatId).maybeSingle();
+    if (p1?.user_id) return p1.user_id;
+    if (!isNaN(Number(chatId))) {
+      const { data: p2 } = await supabase.from('profiles').select('user_id').eq('telegram_chat_id', Number(chatId)).maybeSingle();
+      if (p2?.user_id) return p2.user_id;
+    }
+    return null;
+  };
+
+  const matchCategory = (description: string, categories: any[]) => {
+    const descLower = description.toLowerCase();
+    for (const cat of categories) {
+      const catName = (cat.name || '').toLowerCase();
+      if (descLower.includes(catName) || catName.includes(descLower)) return cat;
+    }
+    if (/agua|comida|lanche|restaurante|mercado|ifood|padaria/i.test(descLower)) {
+      return categories.find(c => /alimenta|refeic|mercado|comida/i.test(c.name)) || null;
+    }
+    if (/uber|99|gasolina|combustivel|estacionamento|bus/i.test(descLower)) {
+      return categories.find(c => /transporte|veiculo|carro/i.test(c.name)) || null;
+    }
+    if (/luz|energia|internet|aluguel|condominio/i.test(descLower)) {
+      return categories.find(c => /moradia|casa|habita/i.test(c.name)) || null;
+    }
+    return null;
   };
 
   const buildStandardKeyboard = (draftId: string) => {
@@ -89,9 +117,8 @@ serve(async (req) => {
       if (a?.name) accName = a.name;
     }
 
-    const typeLabel = draft.type === 'income' ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
     const cardText =
-      `${typeLabel} — Confirme:\n\n` +
+      `📉 *Despesa detectada — Confirme:*\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
@@ -101,16 +128,11 @@ serve(async (req) => {
     await editTelegramMessage(chatId, messageId, cardText, buildStandardKeyboard(draft.id));
   }
 
-  let targetChatId: string | null = null;
-
   try {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
 
-    if (body.message?.chat?.id) targetChatId = String(body.message.chat.id);
-    if (body.callback_query?.message?.chat?.id) targetChatId = String(body.callback_query.message.chat.id);
-
-    // 1. CALLBACK QUERIES
+    // 1. CALLBACK QUERIES (BUTTON CLICKS)
     if (body.callback_query) {
       const cb = body.callback_query;
       const chatId = String(cb.message.chat.id).trim();
@@ -130,6 +152,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
+      // CONFIRM TRANSACTION
       if (action === 'c') {
         const { error: insErr } = await supabase.from('transactions').insert({
           user_id: draft.user_id,
@@ -142,51 +165,97 @@ serve(async (req) => {
         });
 
         if (insErr) {
-          await editTelegramMessage(chatId, messageId, `❌ *Erro ao salvar:* ${insErr.message}`);
+          await editTelegramMessage(chatId, messageId, `❌ *Erro ao salvar no banco:* ${insErr.message}`);
         } else {
           await supabase.from('telegram_drafts').delete().eq('id', draftId);
-          await editTelegramMessage(chatId, messageId, `✅ *Salvo com sucesso!* \n💰 R$ ${Number(draft.amount).toFixed(2)}\n📝 ${draft.description}`);
+          await editTelegramMessage(
+            chatId,
+            messageId,
+            `✅ *Lançamento confirmado e registrado no banco!*\\n\\n` +
+            `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\\n` +
+            `📝 *Descrição:* ${draft.description}`
+          );
         }
       } 
+      // CANCEL
       else if (action === 'x') {
         await supabase.from('telegram_drafts').delete().eq('id', draftId);
-        await editTelegramMessage(chatId, messageId, "❌ *Cancelado.*");
+        await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
+      // EDIT VALUE PROMPT
+      else if (action === 'val') {
+        await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', draftId);
+        await editTelegramMessage(chatId, messageId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
+      }
+      // EDIT DESCRIPTION PROMPT
+      else if (action === 'desc') {
+        await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', draftId);
+        await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
+      }
+      // SHOW CATEGORY LIST
       else if (action === 'cat') {
-        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', draft.user_id).order('name');
-        const keyboard = {
-          inline_keyboard: (categories || []).map(c => [{ text: `🏷️ ${c.name}`, callback_data: `setcat|${draftId}|${c.id}` }])
-        };
-        keyboard.inline_keyboard.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
-        await editTelegramMessage(chatId, messageId, "🏷️ *Selecione a Categoria:*", keyboard);
+        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', draft.user_id);
+        if (!categories || categories.length === 0) {
+          await answerCallback(cb.id, "Nenhuma categoria cadastrada.");
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+
+        const keyboardRows: any[] = [];
+        for (let i = 0; i < categories.length; i += 2) {
+          const row = [{ text: `🏷️ ${categories[i].name}`, callback_data: `setcat|${draftId}|${categories[i].id}` }];
+          if (categories[i + 1]) {
+            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `setcat|${draftId}|${categories[i + 1].id}` });
+          }
+          keyboardRows.push(row);
+        }
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
+
+        await editTelegramMessage(chatId, messageId, "🏷️ *Selecione a Categoria:*", { inline_keyboard: keyboardRows });
       }
+      // SHOW ACCOUNT LIST
       else if (action === 'acc') {
-        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', draft.user_id).order('name');
+        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', draft.user_id);
         if (!accounts || accounts.length === 0) {
-          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', draft.user_id).order('name');
+          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', draft.user_id);
           accounts = bAccs;
         }
-        const keyboard = {
-          inline_keyboard: (accounts || []).map(a => [{ text: `🏦 ${a.name}`, callback_data: `setacc|${draftId}|${a.id}` }])
-        };
-        keyboard.inline_keyboard.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
-        await editTelegramMessage(chatId, messageId, "🏦 *Selecione a Conta:*", keyboard);
+
+        if (!accounts || accounts.length === 0) {
+          await answerCallback(cb.id, "Nenhuma conta cadastrada.");
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+
+        const keyboardRows: any[] = [];
+        for (let i = 0; i < accounts.length; i += 2) {
+          const row = [{ text: `🏦 ${accounts[i].name}`, callback_data: `setacc|${draftId}|${accounts[i].id}` }];
+          if (accounts[i + 1]) {
+            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `setacc|${draftId}|${accounts[i + 1].id}` });
+          }
+          keyboardRows.push(row);
+        }
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${draftId}` }]);
+
+        await editTelegramMessage(chatId, messageId, "🏦 *Selecione a Conta:*", { inline_keyboard: keyboardRows });
       }
+      // SET CATEGORY
       else if (action === 'setcat') {
-        await supabase.from('telegram_drafts').update({ category_id: parts[2] }).eq('id', draftId);
+        const catId = parts[2];
+        await supabase.from('telegram_drafts').update({ category_id: catId, status: 'active' }).eq('id', draftId);
         const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
         await renderDraftCard(chatId, messageId, updated);
       }
+      // SET ACCOUNT
       else if (action === 'setacc') {
-        await supabase.from('telegram_drafts').update({ account_id: parts[2] }).eq('id', draftId);
+        const accId = parts[2];
+        await supabase.from('telegram_drafts').update({ account_id: accId, status: 'active' }).eq('id', draftId);
         const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
         await renderDraftCard(chatId, messageId, updated);
       }
+      // BACK
       else if (action === 'back') {
-        await renderDraftCard(chatId, messageId, draft);
-      }
-      else if (action === 'val' || action === 'desc') {
-        await answerCallback(cb.id, "Para alterar, envie uma nova mensagem corrigida.");
+        await supabase.from('telegram_drafts').update({ status: 'active' }).eq('id', draftId);
+        const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).single();
+        await renderDraftCard(chatId, messageId, updated);
       }
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -199,22 +268,58 @@ serve(async (req) => {
     const chatId = String(message.chat.id).trim();
     const text = message.text || "";
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .or(`telegram_chat_id.eq.${chatId},telegram_chat_id.eq.${Number(chatId)}`)
-      .maybeSingle();
-
-    if (!profile?.user_id) {
-      await sendTelegram(chatId, `⚠️ *Telegram não vinculado.* Chat ID: \`${chatId}\``);
+    const userId = await getUserIdByChatId(chatId);
+    if (!userId) {
+      await sendTelegram(chatId, `⚠️ *Telegram não vinculado.*\nSeu Chat ID é: \`${chatId}\``);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(chatId, "👋 *SimplyFin Bot!*\nEnvie: `despesa 10.00 mercado`.");
+      await sendTelegram(chatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.00 agua`.");
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
+    // Check if user is replying to a waiting prompt (Value or Description)
+    const { data: activeDraft } = await supabase
+      .from('telegram_drafts')
+      .select('*')
+      .eq('chat_id', chatId)
+      .eq('status', 'waiting_amount')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeDraft) {
+      const amountMatch = text.match(/(\d+[\.,]?\d*)/);
+      const newAmount = amountMatch ? parseFloat(amountMatch[1].replace(',', '.')) : parseFloat(text.replace(',', '.')) || 0;
+      
+      await supabase.from('telegram_drafts').update({ amount: newAmount, status: 'active' }).eq('id', activeDraft.id);
+      const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', activeDraft.id).single();
+      
+      await sendTelegram(chatId, "✅ *Valor atualizado com sucesso!*");
+      await renderDraftCard(chatId, message.message_id - 1, updated); // Try to update previous card if possible, but actually we just send a confirmation.
+      // Better: we just updated it, the user will see the next step.
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    const { data: descDraft } = await supabase
+      .from('telegram_drafts')
+      .select('*')
+      .eq('chat_id', chatId)
+      .eq('status', 'waiting_description')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (descDraft) {
+      await supabase.from('telegram_drafts').update({ description: text.trim(), status: 'active' }).eq('id', descDraft.id);
+      const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', descDraft.id).single();
+
+      await sendTelegram(chatId, "✅ *Descrição atualizada com sucesso!*");
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    // Normal New Transaction Flow
     const isIncome = /^receita/i.test(text);
     const amountMatch = text.match(/(\d+[\.,]?\d*)/);
     let amount = 0;
@@ -228,36 +333,66 @@ serve(async (req) => {
 
     if (!description) description = "Lançamento Telegram";
 
-    const { data: newDraft } = await supabase.from('telegram_drafts').insert({
-      user_id: profile.user_id,
+    // Auto-match category
+    let categoryId = null;
+    const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
+    if (categories && categories.length > 0) {
+      const matched = matchCategory(description, categories);
+      if (matched) categoryId = matched.id;
+    }
+
+    // Auto-match account
+    let accountId = null;
+    let { data: accounts } = await supabase.from('accounts').select('id').eq('user_id', userId).limit(1);
+    if (!accounts || accounts.length === 0) {
+      const { data: bAccs } = await supabase.from('bank_accounts').select('id').eq('user_id', userId).limit(1);
+      accounts = bAccs;
+    }
+    if (accounts && accounts.length > 0) {
+      accountId = accounts[0].id;
+    }
+
+    // Create Draft Record
+    const { data: newDraft, error: draftErr } = await supabase.from('telegram_drafts').insert({
+      user_id: userId,
       chat_id: chatId,
       type: isIncome ? 'income' : 'expense',
       amount: amount,
-      description: description
+      description: description,
+      category_id: categoryId,
+      account_id: accountId,
+      status: 'active'
     }).select().single();
 
-    if (!newDraft) {
-      await sendTelegram(chatId, "❌ Erro ao criar rascunho.");
+    if (draftErr || !newDraft) {
+      await sendTelegram(chatId, `⚠️ *Erro ao criar rascunho:* ${draftErr?.message}`);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    const typeLabel = isIncome ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
+    let catName = "Sem categoria";
+    if (categoryId) {
+      const c = categories?.find(x => x.id === categoryId);
+      if (c) catName = c.name;
+    }
+
+    let accName = "Sem conta";
+    if (accountId) {
+      accName = "Conta principal";
+    }
+
     const cardText =
-      `${typeLabel} — Confirme:\n\n` +
+      `📉 *Despesa detectada — Confirme:*\n\n` +
       `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
       `📝 *Descrição:* ${description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
-      `🏷️ *Categoria:* Sem categoria\n` +
-      `🏦 *Conta:* Sem conta`;
+      `🏷️ *Categoria:* ${catName}\n` +
+      `🏦 *Conta:* ${accName}`;
 
     await sendTelegram(chatId, cardText, buildStandardKeyboard(newDraft.id));
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err: any) {
-    console.error("Fatal Webhook Error:", err);
-    if (targetChatId) {
-      await sendTelegram(targetChatId, `🚨 *Erro:* \`${err.message}\``);
-    }
+    console.error("Webhook Error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 200, headers: corsHeaders });
   }
 });
