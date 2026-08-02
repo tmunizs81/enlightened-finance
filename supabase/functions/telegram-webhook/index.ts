@@ -85,7 +85,9 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string) => {
-    // Try Gemini First
+    const prompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON.";
+
+    // Try Gemini First (Better for Vision/PDF context)
     if (GEMINI_API_KEY) {
       try {
         console.log("Attempting OCR with Gemini...");
@@ -94,16 +96,17 @@ serve(async (req) => {
 
         const imageResponse = await fetch(fileUrl);
         const imageBuffer = await imageResponse.arrayBuffer();
-        const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
-        const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
+        // Determine mimeType (assuming image if not specified, but Gemini is flexible)
+        const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
 
         const result = await model.generateContent([
           prompt,
           {
             inlineData: {
-              data: base64Image,
-              mimeType: "image/jpeg"
+              data: base64Data,
+              mimeType: mimeType
             }
           }
         ]);
@@ -116,8 +119,8 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to Groq if Gemini fails or is missing
-    if (GROQ_API_KEY) {
+    // Fallback to Groq
+    if (GROQ_API_KEY && !fileUrl.toLowerCase().includes('.pdf')) {
       try {
         console.log("Attempting OCR with Groq Llama-3-Vision...");
         const imageResponse = await fetch(fileUrl);
@@ -136,12 +139,10 @@ serve(async (req) => {
               {
                 role: "user",
                 content: [
-                  { type: "text", text: "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON." },
+                  { type: "text", text: prompt },
                   {
                     type: "image_url",
-                    image_url: {
-                      url: `data:image/jpeg;base64,${base64Image}`
-                    }
+                    image_url: { url: `data:image/jpeg;base64,${base64Image}` }
                   }
                 ]
               }
