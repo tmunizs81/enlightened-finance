@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,7 @@ serve(async (req) => {
   const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') || "8837475856:AAG_LBcIO1kr89gjCWsYdO0MOYGejR_u1r8";
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || "https://difwlzancpnvwkiyhmll.supabase.co";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || "";
+  let GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false }
@@ -81,6 +83,41 @@ serve(async (req) => {
     return null;
   };
 
+  const analyzeReceipt = async (fileUrl: string) => {
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not set.");
+      return null;
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const imageResponse = await fetch(fileUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+      const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: "image/jpeg"
+          }
+        }
+      ]);
+
+      const text = result.response.text();
+      const cleanedText = text.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanedText);
+    } catch (e) {
+      console.error("Error analyzing receipt with Gemini:", e);
+      return null;
+    }
+  };
+
   const buildStandardKeyboard = (draftId: string) => {
     return {
       inline_keyboard: [
@@ -118,7 +155,7 @@ serve(async (req) => {
     }
 
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
@@ -146,7 +183,7 @@ serve(async (req) => {
     }
 
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
@@ -329,7 +366,82 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // 2. TEXT MESSAGES
+    // 2. OCR / PHOTO PROCESSING
+    const photo = body.message?.photo;
+    if (photo && photo.length > 0) {
+      const chatId = String(body.message.chat.id).trim();
+      const userId = await getUserIdByChatId(chatId);
+      
+      if (!userId) {
+        await sendTelegram(chatId, `⚠️ *Telegram não vinculado.*\nSeu Chat ID é: \`${chatId}\``);
+        return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+      }
+
+      // Try to load Gemini Key from profile if not in ENV
+      if (!GEMINI_API_KEY) {
+        const { data: profile } = await supabase.from('profiles').select('gemini_api_key').eq('user_id', userId).maybeSingle();
+        if (profile?.gemini_api_key) {
+          GEMINI_API_KEY = profile.gemini_api_key;
+        }
+      }
+
+      await sendTelegram(chatId, "🔍 *Processando comprovante com IA...*");
+
+      try {
+        const fileId = photo[photo.length - 1].file_id;
+        const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const fileData = await fileRes.json();
+        
+        if (fileData.ok) {
+          const filePath = fileData.result.file_path;
+          const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+          
+          const aiResult = await analyzeReceipt(fileUrl);
+          
+          if (aiResult) {
+            // Auto-match category for AI result
+            let categoryId = null;
+            const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
+            if (categories && categories.length > 0) {
+              const matched = matchCategory(aiResult.description, categories);
+              if (matched) categoryId = matched.id;
+            }
+
+            // Auto-match account
+            let accountId = null;
+            let { data: accounts } = await supabase.from('accounts').select('id').eq('user_id', userId).limit(1);
+            if (!accounts || accounts.length === 0) {
+              const { data: bAccs } = await supabase.from('bank_accounts').select('id').eq('user_id', userId).limit(1);
+              accounts = bAccs;
+            }
+            if (accounts && accounts.length > 0) accountId = accounts[0].id;
+
+            const { data: newDraft, error: draftErr } = await supabase.from('telegram_drafts').insert({
+              user_id: userId,
+              chat_id: chatId,
+              type: aiResult.type || 'expense',
+              amount: aiResult.amount || 0,
+              description: aiResult.description || "OCR IA",
+              category_id: categoryId,
+              account_id: accountId,
+              status: 'active'
+            }).select().single();
+
+            if (newDraft) {
+              await sendNewDraftCard(chatId, newDraft);
+              return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+            }
+          }
+        }
+        await sendTelegram(chatId, "❌ *Não consegui ler o comprovante.* Tente enviar uma foto mais nítida ou digite a despesa manualmente.");
+      } catch (e) {
+        console.error("OCR Processing error:", e);
+        await sendTelegram(chatId, "❌ *Erro ao processar imagem.* Tente novamente mais tarde.");
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    // 3. TEXT MESSAGES
     const message = body.message || body.edited_message;
     if (!message) return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 

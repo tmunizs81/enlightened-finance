@@ -214,6 +214,7 @@ const SettingsPage = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -245,7 +246,7 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id, telegram_link_code")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -253,6 +254,7 @@ const SettingsPage = () => {
           setBotToken(data.telegram_bot_token || "");
           setChatId(data.telegram_chat_id || "");
           setLinkCode(data.telegram_link_code || "");
+          setGeminiKey(data.gemini_api_key || "");
         }
         setLoaded(true);
       });
@@ -344,7 +346,8 @@ const SettingsPage = () => {
       .from('profiles')
       .update({ 
         telegram_chat_id: cleanChatId,
-        telegram_bot_token: cleanToken 
+        telegram_bot_token: cleanToken,
+        gemini_api_key: geminiKey.trim()
       })
       .eq('user_id', authUser.id);
 
@@ -730,30 +733,59 @@ const SettingsPage = () => {
           <div className="flex items-center gap-3">
             <Brain className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">
-              Inteligência Artificial — Google Gemini
+              Inteligência Artificial & OCR
             </h2>
           </div>
-          <Badge
-            variant="outline"
-            className="border-success/20 bg-success/15 text-[10px] text-success"
-          >
-            <CheckCircle className="mr-1 h-3 w-3" /> DeepSeek Ativo
-          </Badge>
+          {geminiKey ? (
+            <Badge
+              variant="outline"
+              className="border-success/20 bg-success/15 text-[10px] text-success"
+            >
+              <CheckCircle className="mr-1 h-3 w-3" /> IA & OCR Ativos
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="border-warning/20 bg-warning/15 text-[10px] text-warning"
+            >
+              OCR Desativado
+            </Badge>
+          )}
         </div>
+        
         <p className="text-xs text-muted-foreground">
-          O T2-SimplyFin utiliza o <strong className="text-foreground">DeepSeek</strong> como
-          assistente financeiro inteligente.
+          Configure a API do Google Gemini para habilitar a leitura automática de comprovantes (OCR) via Telegram.
         </p>
-        <div className="space-y-2 rounded-lg border border-border/50 bg-secondary/50 p-3">
-          <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Modelo:</strong> DeepSeek Chat (V3)
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            <strong className="text-foreground">Provedor:</strong> DeepSeek API
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Integrado via API Key — modelo de IA avançado para análise financeira.
-          </p>
+
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="gemini-key" className="text-xs text-muted-foreground">
+              Google Gemini API Key
+            </Label>
+            <Input
+              id="gemini-key"
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder="Digite sua chave do Gemini..."
+              className="h-8 text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              A chave é necessária para a função de leitura de comprovantes (OCR) no Telegram.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border/50 bg-secondary/50 p-3">
+            <p className="text-[11px] text-muted-foreground">
+              <strong className="text-foreground">Assistente:</strong> DeepSeek Chat (V3)
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              <strong className="text-foreground">OCR / Visão:</strong> Google Gemini 1.5 Flash
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Integrado via API Keys individuais para máxima precisão e economia.
+            </p>
+          </div>
         </div>
       </div>
 
