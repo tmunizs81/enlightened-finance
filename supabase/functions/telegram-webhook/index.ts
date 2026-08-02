@@ -386,16 +386,21 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
     const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
     if (chatId) {
       const errorMsg = e instanceof Error ? e.message : String(e);
-      // Don't leak all details, but give a hint
-      await fetch(`https://api.telegram.org/bot${Deno.env.get("TELEGRAM_BOT_TOKEN") || ""}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          chat_id: String(chatId), 
-          text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 100)}\n\nPor favor, tente novamente em instantes.`,
-          parse_mode: "Markdown"
-        }),
-      }).catch(console.error);
+      // Fallback manual notification if the botToken is missing from profile context
+      const fallbackToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      const tokenToUse = botToken || fallbackToken;
+      
+      if (tokenToUse) {
+        await fetch(`https://api.telegram.org/bot${tokenToUse}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            chat_id: String(chatId), 
+            text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 150)}\n\nPor favor, tente novamente. Se o erro persistir, verifique se o seu Token do Bot está correto em Configurações.`,
+            parse_mode: "Markdown"
+          }),
+        }).catch(console.error);
+      }
     }
     return new Response("ok");
   }
