@@ -87,21 +87,28 @@ serve(async (req) => {
     if (!profile) {
       console.log("No profile found for chat_id:", chatId);
       
-      // Fallback: Tenta buscar usando o chat_id como string ou número (caso haja inconsistência de tipo no banco)
-      const { data: altProfile } = await supabase
+      // Fallback: Tenta buscar usando o chat_id de forma mais agressiva (comparação case-insensitive e trim)
+      console.log("Attempting aggressive fallback lookup for chat_id:", chatId);
+      const { data: allProfiles, error: allErr } = await supabase
         .from("profiles")
-        .select("user_id, telegram_bot_token")
-        .filter("telegram_chat_id", "eq", chatId)
-        .maybeSingle();
-
-      if (!altProfile) {
-        console.log("Alternative profile lookup also failed.");
-        return new Response("ok");
-      }
+        .select("user_id, telegram_bot_token, telegram_chat_id");
       
-      console.log("Alternative profile found!");
-      // Assign to profile for downstream usage
-      (profile as any) = altProfile;
+      if (allErr) {
+        console.error("Error fetching all profiles for fallback:", allErr.message);
+      } else {
+        const matchingProfile = allProfiles?.find(p => 
+          p.telegram_chat_id && String(p.telegram_chat_id).trim() === chatId.trim()
+        );
+
+        if (matchingProfile) {
+          console.log("Aggressive fallback found matching profile!");
+          (profile as any) = matchingProfile;
+        } else {
+          console.log("Aggressive fallback found no match in", allProfiles?.length, "profiles");
+          return new Response("ok");
+        }
+      }
+
     }
 
     const userId = profile.user_id;
@@ -319,30 +326,37 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
       : "https://api.deepseek.com/chat/completions";
     const ocrModel = GROQ_API_KEY ? "meta-llama/llama-4-scout-17b-16e-instruct" : "deepseek-chat";
 
+    const aiPayload = {
+      model: ocrModel,
+      messages: [
+        {
+          role: "user",
+          content: GROQ_API_KEY
+            ? [
+                { type: "text", text: aiPrompt },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:${mimeType};base64,${base64Image}` },
+                },
+              ]
+            : [
+                { role: "user", content: aiPrompt }
+              ],
+        },
+      ],
+      response_format: { type: "json_object" }
+    };
+
+    console.log("Sending request to AI OCR...");
     const aiResponse = await fetch(ocrUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ocrApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: ocrModel,
-        messages: [
-          {
-            role: "user",
-            content: GROQ_API_KEY
-              ? [
-                  { type: "text", text: aiPrompt },
-                  {
-                    type: "image_url",
-                    image_url: { url: `data:${mimeType};base64,${base64Image}` },
-                  },
-                ]
-              : aiPrompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(aiPayload),
     });
+
 
     if (!aiResponse.ok) {
       console.error("AI error:", aiResponse.status, await aiResponse.text());
