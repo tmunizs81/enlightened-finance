@@ -103,9 +103,61 @@ serve(async (req) => {
     const messageId = payload.message?.message_id || payload.edited_message?.message_id || payload.callback_query?.message?.message_id || null;
 
     // --- 4. MULTI-TENANT PROFILE SEARCH (Bypass RLS via Service Role) ---
+    // If it's a /start command with a token, we handle authentication/linking
+    if (messageText?.startsWith("/start ")) {
+      const linkCode = messageText.split(" ")[1];
+      console.log(`[TELEGRAM-V4.4] Linking attempt with code: ${linkCode}`);
+      
+      const { data: linkProfile, error: linkErr } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .eq("telegram_link_code", linkCode)
+        .single();
+
+      if (linkErr || !linkProfile) {
+        console.warn(`[TELEGRAM-V4.4] Invalid link code: ${linkCode}`);
+        const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            chat_id: chatIdStr, 
+            text: "❌ Código de vinculação inválido ou expirado. Por favor, gere um novo código no painel web.",
+            parse_mode: "Markdown"
+          }),
+        });
+        return new Response(JSON.stringify({ success: false, error: "Invalid link code" }), { status: 200, headers: corsHeaders });
+      }
+
+      // Update profile with chat_id and clear link_code
+      const { error: updErr } = await supabase
+        .from("profiles")
+        .update({ telegram_chat_id: chatIdStr, telegram_link_code: null })
+        .eq("user_id", linkProfile.user_id);
+
+      if (updErr) {
+        console.error(`[TELEGRAM-V4.4] Error updating profile: ${updErr.message}`);
+        return new Response(JSON.stringify({ success: false, error: "Update profile error" }), { status: 200, headers: corsHeaders });
+      }
+
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          chat_id: chatIdStr, 
+          text: `✅ *Conta Vinculada com Sucesso!*\n\nOlá ${linkProfile.display_name || "usuário"}! Seu Telegram agora está conectado ao *SimplyFin*.\n\nAgora você pode registrar despesas enviando mensagens como: "Gastei 50 no mercado".`,
+          parse_mode: "Markdown"
+        }),
+      });
+
+      return new Response(JSON.stringify({ success: true, message: "Profile linked" }), { status: 200, headers: corsHeaders });
+    }
+
+    // Normal profile search for registered users
     const { data: profiles, error: pErr } = await supabase
       .from("profiles")
-      .select("user_id, telegram_bot_token, full_name")
+      .select("user_id, telegram_bot_token, display_name")
       .eq("telegram_chat_id", chatIdStr);
 
     if (pErr) {
@@ -117,7 +169,17 @@ serve(async (req) => {
     }
 
     if (!profiles || profiles.length === 0) {
-      console.warn(`[TELEGRAM-V4.3] Chat ID "${chatIdStr}" not linked to any account.`);
+      console.warn(`[TELEGRAM-V4.4] Chat ID "${chatIdStr}" not linked. Sending guest message.`);
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          chat_id: chatIdStr, 
+          text: "👋 Olá! Identificamos que seu Telegram ainda não está vinculado ao *SimplyFin*.\n\nPara começar a usar o bot, acesse o painel web em https://fin.t2systems.com.br, vá em Configurações e clique em *Conectar Telegram*.",
+          parse_mode: "Markdown"
+        }),
+      });
       return new Response(JSON.stringify({ success: false, error: "Unauthorized Chat ID" }), { 
         status: 200, 
         headers: corsHeaders 
@@ -217,7 +279,7 @@ serve(async (req) => {
       }
 
       if (text.startsWith("/start") || text.startsWith("/help")) {
-        await sendTg(`👋 Olá ${profile.full_name || ""}!\n\n🤖 *SimplyFin Bot V4.3*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
+        await sendTg(`👋 Olá ${profile.display_name || ""}!\n\n🤖 *SimplyFin Bot V4.4*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
           headers: corsHeaders 
