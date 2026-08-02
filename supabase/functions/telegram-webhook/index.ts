@@ -1001,7 +1001,9 @@ async function handleLancamentoRapido(
     return new Response("ok");
   }
 
-  const amount = Number(match[1].replace(",", "."));
+  // Handle both comma and dot for decimals, but prevent multiple dots issues
+  const valStr = match[1].replace(",", ".");
+  const amount = parseFloat(valStr);
   const description = match[2].trim().slice(0, 50);
 
   if (!amount || isNaN(amount)) {
