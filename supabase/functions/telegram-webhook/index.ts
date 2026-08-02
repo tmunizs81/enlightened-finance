@@ -541,13 +541,27 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
   const chatId = String(cbq.message.chat.id);
   const messageId = cbq.message.message_id;
 
+  // Busca isolada: Prioriza o perfil que possui o token configurado no ambiente para evitar conflitos multi-bot
+  const botTokenFromEnv = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  let profile = null;
+
   const { data: profileResults } = await supabase
     .from("profiles")
     .select("user_id, telegram_bot_token")
     .eq("telegram_chat_id", chatId)
+    .eq("telegram_bot_token", botTokenFromEnv || "default")
     .limit(1);
 
-  const profile = profileResults?.[0];
+  profile = profileResults?.[0];
+
+  if (!profile) {
+    const { data: globalResults } = await supabase
+      .from("profiles")
+      .select("user_id, telegram_bot_token")
+      .eq("telegram_chat_id", chatId)
+      .limit(1);
+    profile = globalResults?.[0];
+  }
 
   if (!profile) return new Response("ok");
   const botToken = profile.telegram_bot_token;
