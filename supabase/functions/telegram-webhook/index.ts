@@ -410,9 +410,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // 2. OCR / PHOTO PROCESSING
+    // 2. DOCUMENT / PHOTO PROCESSING
+    const doc = body.message?.document;
     const photo = body.message?.photo;
-    if (photo && photo.length > 0) {
+    
+    if (doc || (photo && photo.length > 0)) {
       const chatId = String(body.message.chat.id).trim();
       const userId = await getUserIdByChatId(chatId);
       
@@ -421,17 +423,23 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
-      // Try to load Gemini & Groq Keys from profile if not in ENV
+      // Try to load Gemini & Groq Keys
       if (!GEMINI_API_KEY || !GROQ_API_KEY) {
         const { data: profile } = await supabase.from('profiles').select('gemini_api_key, groq_api_key').eq('user_id', userId).maybeSingle();
         if (profile?.gemini_api_key) GEMINI_API_KEY = profile.gemini_api_key;
         if (profile?.groq_api_key) GROQ_API_KEY = profile.groq_api_key;
       }
 
-      await sendTelegram(chatId, "🔍 *Processando comprovante com IA...*");
+      await sendTelegram(chatId, "🔍 *Analisando documento com IA...*");
 
       try {
-        const fileId = photo[photo.length - 1].file_id;
+        let fileId = "";
+        if (doc) {
+          fileId = doc.file_id;
+        } else {
+          fileId = photo[photo.length - 1].file_id;
+        }
+
         const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
         const fileData = await fileRes.json();
         
@@ -442,7 +450,6 @@ serve(async (req) => {
           const aiResult = await analyzeReceipt(fileUrl);
           
           if (aiResult) {
-            // Auto-match category for AI result
             let categoryId = null;
             const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
             if (categories && categories.length > 0) {
@@ -450,7 +457,6 @@ serve(async (req) => {
               if (matched) categoryId = matched.id;
             }
 
-            // Auto-match account
             let accountId = null;
             let { data: accounts } = await supabase.from('accounts').select('id').eq('user_id', userId).limit(1);
             if (!accounts || accounts.length === 0) {
@@ -459,12 +465,12 @@ serve(async (req) => {
             }
             if (accounts && accounts.length > 0) accountId = accounts[0].id;
 
-            const { data: newDraft, error: draftErr } = await supabase.from('telegram_drafts').insert({
+            const { data: newDraft } = await supabase.from('telegram_drafts').insert({
               user_id: userId,
               chat_id: chatId,
               type: aiResult.type || 'expense',
               amount: aiResult.amount || 0,
-              description: aiResult.description || "OCR IA",
+              description: aiResult.description || "IA OCR",
               category_id: categoryId,
               account_id: accountId,
               status: 'active'
@@ -476,10 +482,10 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Não consegui ler o comprovante.* Tente enviar uma foto mais nítida ou digite a despesa manualmente.");
+        await sendTelegram(chatId, "❌ *Não consegui extrair os dados.* Certifique-se de que o arquivo é um PDF ou Imagem nítida.");
       } catch (e) {
         console.error("OCR Processing error:", e);
-        await sendTelegram(chatId, "❌ *Erro ao processar imagem.* Tente novamente mais tarde.");
+        await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
