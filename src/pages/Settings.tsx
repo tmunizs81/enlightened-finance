@@ -451,7 +451,7 @@ const SettingsPage = () => {
       toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
-      toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}.`);
+      toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}. Verifique se o seu bot está configurado no VPS (git pull && docker compose up -d).`);
     } finally {
       setTestingWebhook(false);
     }
