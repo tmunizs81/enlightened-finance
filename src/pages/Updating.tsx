@@ -31,6 +31,13 @@ const Updating = () => {
             <p className="text-yellow-400">hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'</p>
             <p className="text-yellow-400">hint: as appropriate to mark resolution and make a commit.</p>
             <p className="mt-2 text-[10px] text-blue-400 opacity-80 italic">itens pendentes (como confirmações/webhooks falhos) para evitar que transações fiquem travadas após falhas de deploy ou merge.</p>
+            <p className="mt-4 text-white font-bold">[+] up 3/4</p>
+            <p className="text-green-400"> ✔ Image financeai-financeai           Built                                                                                                                 28.1s</p>
+            <p className="text-green-400"> ✔ Network financeai_financeai-network Created                                                                                                               0.1s</p>
+            <p className="text-green-400"> ✔ Container uptime-kuma               Started                                                                                                               0.7s</p>
+            <p className="text-blue-400"> ⠇ Container financeai-app             Starting                                                                                                              0.8s</p>
+            <p className="mt-2 text-red-500 font-bold underline">Error response from daemon:</p>
+            <p className="text-red-400 text-[11px] leading-tight">failed to set up container networking: driver failed programming external connectivity on endpoint financeai-app (8c58f2dcb2ac8c5cd3d7551a3b8a1d4647b6e3eed4d2e05b84af607b97ebbc61): failed to bind host port 0.0.0.0:80/tcp: address already in use</p>
             <div className="mt-4 flex animate-pulse">
               <span className="mr-2">_</span>
             </div>
