@@ -382,7 +382,21 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
     return new Response("ok");
   } catch (e) {
-    console.error("Webhook error:", e);
+    console.error("Webhook main catch error:", e);
+    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+    if (chatId) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      // Don't leak all details, but give a hint
+      await fetch(`https://api.telegram.org/bot${Deno.env.get("TELEGRAM_BOT_TOKEN") || ""}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          chat_id: String(chatId), 
+          text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 100)}\n\nPor favor, tente novamente em instantes.`,
+          parse_mode: "Markdown"
+        }),
+      }).catch(console.error);
+    }
     return new Response("ok");
   }
 });
