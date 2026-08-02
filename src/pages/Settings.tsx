@@ -455,7 +455,7 @@ const SettingsPage = () => {
       
 Verifique o Rebuild: git pull && docker compose up -d --build
 Confira o Chat ID: Ele deve ser exatamente o mesmo no Telegram e no Perfil.
-Logs do Servidor: docker compose logs -f supabase-edge-functions`);
+Logs do Servidor: docker compose logs -f financeai-app`);
     } finally {
       setTestingWebhook(false);
     }
