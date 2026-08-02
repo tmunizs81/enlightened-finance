@@ -71,7 +71,7 @@ serve(async (req) => {
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('user_id, name')
-      .or(`telegram_chat_id.eq.${chatId},telegram_chat_id.eq.${Number(chatId) || 0}`)
+      .or(`telegram_chat_id.eq.${chatId},telegram_chat_id.eq."${chatId}",telegram_chat_id.eq.${Number(chatId) || 0}`)
       .maybeSingle();
 
     if (profileErr || !profile) {

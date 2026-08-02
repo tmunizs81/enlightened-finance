@@ -336,10 +336,13 @@ const SettingsPage = () => {
 
     setSaving(true);
     
-    // 1. Update Profile
+    // 1. Update Profile (Explicitly update profiles table for Telegram linking)
     const { error } = await supabase
       .from("profiles")
-      .update({ telegram_bot_token: botToken || null, telegram_chat_id: chatId || null })
+      .update({ 
+        telegram_bot_token: botToken ? String(botToken).trim() : null, 
+        telegram_chat_id: chatId ? String(chatId).trim() : null 
+      })
       .eq("user_id", user.id);
     
     if (error) {
