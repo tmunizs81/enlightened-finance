@@ -304,7 +304,17 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
     if (!aiResponse.ok) {
       console.error("AI error:", aiResponse.status, await aiResponse.text());
-      await sendTg("❌ Erro ao analisar o comprovante. Tente novamente.");
+      const errorMsg = "❌ Erro ao analisar o comprovante. Tente novamente ou verifique se a imagem está legível.";
+      await sendTg(errorMsg);
+      
+      // Log failure for audit
+      await supabase.from("ai_insights").insert({
+        user_id: userId,
+        type: "system",
+        title: "Falha no OCR Telegram",
+        content: `Erro na API de IA: ${aiResponse.status}. Sugestão: Tente uma foto mais nítida ou com menos reflexo.`,
+        metadata: { error_code: "AI_API_FAILURE", action: "retry_photo" }
+      });
       return new Response("ok");
     }
 
@@ -318,7 +328,15 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
       if (!jsonMatch) throw new Error("No JSON");
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      await sendTg("❌ Não consegui interpretar. Envie uma foto mais nítida.");
+      const errorMsg = "❌ Não consegui interpretar os dados do comprovante. Envie uma foto mais nítida e centralizada.";
+      await sendTg(errorMsg);
+      await supabase.from("ai_insights").insert({
+        user_id: userId,
+        type: "system",
+        title: "Erro de Interpretação OCR",
+        content: "A IA não conseguiu extrair dados estruturados. Próxima ação: Tire a foto em um local bem iluminado.",
+        metadata: { error_code: "PARSE_FAILURE", action: "better_lighting" }
+      });
       return new Response("ok");
     }
 
@@ -419,7 +437,7 @@ Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             chat_id: String(chatId), 
-            text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 150)}\n\nPor favor, tente novamente. Se o erro persistir, verifique se o seu Token do Bot está correto em Configurações.`,
+            text: `❌ *Erro no processamento:* ${errorMsg.slice(0, 150)}\n\n*Ação sugerida:* Verifique sua conexão e se o Bot Token nas configurações do SimplyFin ainda é válido. Se o erro persistir, consulte o suporte com o código: ERR-WEBHOOK-MAIN.`,
             parse_mode: "Markdown"
           }),
         }).catch(console.error);
