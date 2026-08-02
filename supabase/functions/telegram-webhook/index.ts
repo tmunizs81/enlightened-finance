@@ -366,7 +366,74 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // 2. TEXT MESSAGES
+    // 2. OCR / PHOTO PROCESSING
+    const photo = body.message?.photo;
+    if (photo && photo.length > 0) {
+      const chatId = String(body.message.chat.id).trim();
+      const userId = await getUserIdByChatId(chatId);
+      
+      if (!userId) {
+        await sendTelegram(chatId, `⚠️ *Telegram não vinculado.*\nSeu Chat ID é: \`${chatId}\``);
+        return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+      }
+
+      await sendTelegram(chatId, "🔍 *Processando comprovante com IA...*");
+
+      try {
+        const fileId = photo[photo.length - 1].file_id;
+        const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const fileData = await fileRes.json();
+        
+        if (fileData.ok) {
+          const filePath = fileData.result.file_path;
+          const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+          
+          const aiResult = await analyzeReceipt(fileUrl);
+          
+          if (aiResult) {
+            // Auto-match category for AI result
+            let categoryId = null;
+            const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
+            if (categories && categories.length > 0) {
+              const matched = matchCategory(aiResult.description, categories);
+              if (matched) categoryId = matched.id;
+            }
+
+            // Auto-match account
+            let accountId = null;
+            let { data: accounts } = await supabase.from('accounts').select('id').eq('user_id', userId).limit(1);
+            if (!accounts || accounts.length === 0) {
+              const { data: bAccs } = await supabase.from('bank_accounts').select('id').eq('user_id', userId).limit(1);
+              accounts = bAccs;
+            }
+            if (accounts && accounts.length > 0) accountId = accounts[0].id;
+
+            const { data: newDraft, error: draftErr } = await supabase.from('telegram_drafts').insert({
+              user_id: userId,
+              chat_id: chatId,
+              type: aiResult.type || 'expense',
+              amount: aiResult.amount || 0,
+              description: aiResult.description || "OCR IA",
+              category_id: categoryId,
+              account_id: accountId,
+              status: 'active'
+            }).select().single();
+
+            if (newDraft) {
+              await sendNewDraftCard(chatId, newDraft);
+              return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+            }
+          }
+        }
+        await sendTelegram(chatId, "❌ *Não consegui ler o comprovante.* Tente enviar uma foto mais nítida ou digite a despesa manualmente.");
+      } catch (e) {
+        console.error("OCR Processing error:", e);
+        await sendTelegram(chatId, "❌ *Erro ao processar imagem.* Tente novamente mais tarde.");
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    // 3. TEXT MESSAGES
     const message = body.message || body.edited_message;
     if (!message) return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
