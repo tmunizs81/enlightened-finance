@@ -717,21 +717,33 @@ const SettingsPage = () => {
             <Bot className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Integração Telegram</h2>
           </div>
-          {chatId ? (
-            <Badge
-              variant="outline"
-              className="border-success/20 bg-success/15 text-[10px] text-success"
-            >
-              <CheckCircle className="mr-1 h-3 w-3" /> Conectado
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="border-warning/20 bg-warning/15 text-[10px] text-warning"
-            >
-              Não Conectado
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {chatId ? (
+              <Badge
+                variant="outline"
+                className="border-success/20 bg-success/15 text-[10px] text-success"
+              >
+                <CheckCircle className="mr-1 h-3 w-3" /> Conectado
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="border-warning/20 bg-warning/15 text-[10px] text-warning"
+              >
+                Não Conectado
+              </Badge>
+            )}
+            {webhookStatus && (
+              <Badge
+                variant="outline"
+                className={webhookStatus.ok 
+                  ? "border-primary/20 bg-primary/15 text-[10px] text-primary"
+                  : "border-destructive/20 bg-destructive/15 text-[10px] text-destructive"}
+              >
+                Webhook {webhookStatus.ok ? "Ativo" : "Falhou"}
+              </Badge>
+            )}
+          </div>
         </div>
         
         <p className="text-xs text-muted-foreground">
