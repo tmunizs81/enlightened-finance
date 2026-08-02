@@ -257,6 +257,21 @@ const SettingsPage = () => {
       });
   }, [user]);
 
+  useEffect(() => {
+    if (botToken) {
+      fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.result.url) {
+            setWebhookStatus({ ok: true });
+          } else if (data.ok && !data.result.url) {
+            setWebhookStatus(null);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [botToken]);
+
   const loadCloudBackups = useCallback(async () => {
     setLoadingBackups(true);
     try {
