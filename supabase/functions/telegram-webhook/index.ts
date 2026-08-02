@@ -1048,14 +1048,6 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
                 accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
               }
             } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
-            if (parsed.category_id) {
-              categoryId = parsed.category_id;
-              catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
-            }
-            if (parsed.account_id) {
-              accountId = parsed.account_id;
-              accName = accounts.find((a: any) => a.id === accountId)?.name || "Sem conta";
-            }
           }
         }
       } catch (e) {
