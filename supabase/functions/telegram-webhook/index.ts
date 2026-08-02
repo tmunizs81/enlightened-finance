@@ -333,7 +333,7 @@ Contas:
 ${accountList || "Nenhuma"}
 
 Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema:
-{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" }
+\{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" \}
 
 Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
 
