@@ -425,6 +425,37 @@ const SettingsPage = () => {
     }
   };
 
+  const handleTestBotMessage = async () => {
+    if (!telegramBotToken || !telegramChatId) {
+      toast.error("Configure o Token e o Chat ID primeiro.");
+      return;
+    }
+
+    setTestingWebhook(true);
+    try {
+      // Simular um comando /help enviado pelo usuário
+      const { error } = await supabase.functions.invoke("telegram-webhook", {
+        body: { 
+          message: { 
+            chat: { id: telegramChatId },
+            text: "/help",
+            from: { id: telegramChatId, first_name: "Test User" },
+            date: Math.floor(Date.now() / 1000)
+          } 
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Simulação de mensagem enviada! Verifique seu Telegram.");
+    } catch (e: any) {
+      console.error("Test bot message error:", e);
+      toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}.`);
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
   // === BACKUP: Export ===
   const handleExport = async () => {
     if (!user) return;
