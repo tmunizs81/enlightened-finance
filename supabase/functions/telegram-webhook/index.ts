@@ -325,13 +325,13 @@ serve(async (req) => {
       else if (action === 'val') {
         const targetDraftId = parts[1];
         await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', targetDraftId);
-        await editTelegramMessage(chatId, messageId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
+        await sendTelegram(chatId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
       }
       // EDIT DESCRIPTION PROMPT
       else if (action === 'desc') {
         const targetDraftId = parts[1];
         await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', targetDraftId);
-        await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
+        await sendTelegram(chatId, "📝 *Envie a nova descrição no chat:*");
       }
       // SHOW CATEGORY LIST (Uses short prefix for callback data to avoid 64-byte limit)
       else if (action === 'cat') {
