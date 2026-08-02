@@ -426,7 +426,7 @@ const SettingsPage = () => {
   };
 
   const handleTestBotMessage = async () => {
-    if (!telegramBotToken || !telegramChatId) {
+    if (!botToken || !chatId) {
       toast.error("Configure o Token e o Chat ID primeiro.");
       return;
     }
@@ -437,9 +437,9 @@ const SettingsPage = () => {
       const { error } = await supabase.functions.invoke("telegram-webhook", {
         body: { 
           message: { 
-            chat: { id: telegramChatId },
+            chat: { id: chatId },
             text: "/help",
-            from: { id: telegramChatId, first_name: "Test User" },
+            from: { id: chatId, first_name: "Test User" },
             date: Math.floor(Date.now() / 1000)
           } 
         },
