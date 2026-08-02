@@ -40,6 +40,7 @@ const CheckoutCancel = lazy(() => import("./pages/CheckoutCancel"));
 const AIChatPanel = lazy(() =>
   import("./components/chat/AIChatPanel").then((m) => ({ default: m.AIChatPanel })),
 );
+const Updating = lazy(() => import("./pages/Updating"));
 
 
 // Optimized QueryClient with better caching
@@ -176,6 +177,7 @@ const App = () => (
               </Suspense>
             }
           />
+          <Route path="/updating" element={<Updating />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </BrowserRouter>
