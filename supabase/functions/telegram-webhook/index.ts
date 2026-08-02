@@ -171,15 +171,27 @@ serve(async (req) => {
 
       const parts = data.split('|');
       const action = parts[0];
-      const draftId = parts[1];
+      const payloadId = parts[1];
 
-      // For actions that don't pass draftId directly in payload (sct, sac), find active draft by chat
+      // Logic to resolve the draft:
+      // 1. If the action is a standard menu button (c, x, val, desc, cat, acc, back), payloadId IS the draftId.
+      // 2. If the action is a selection (sct, sac), payloadId IS the item ID (category/account), 
+      //    so we MUST find the active draft by chat_id.
       let draft = null;
-      if (draftId && draftId.length > 8) {
-        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+      const directDraftActions = ['c', 'x', 'val', 'desc', 'cat', 'acc', 'back'];
+      
+      if (directDraftActions.includes(action) && payloadId) {
+        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', payloadId).maybeSingle();
         draft = d;
       } else {
-        const { data: d } = await supabase.from('telegram_drafts').select('*').eq('chat_id', chatId).eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle();
+        // Fallback for sct/sac or if draftId was missing/invalid
+        const { data: d } = await supabase.from('telegram_drafts')
+          .select('*')
+          .eq('chat_id', chatId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         draft = d;
       }
 
