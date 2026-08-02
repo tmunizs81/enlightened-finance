@@ -859,6 +859,34 @@ const SettingsPage = () => {
               >
                 <Bot className="h-3.5 w-3.5" /> Testar Conexão
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleSetWebhook}
+                disabled={settingWebhook}
+                className="gap-2 text-xs"
+              >
+                {settingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                Testar Webhook
+              </Button>
+              <Button
+                variant={isOCRActive ? "default" : "outline"}
+                onClick={() => {
+                  setIsOCRActive(!isOCRActive);
+                  toast.success(isOCRActive ? "OCR Desativado" : "OCR Habilitado");
+                }}
+                className="gap-2 text-xs"
+              >
+                <Brain className="h-3.5 w-3.5" /> {isOCRActive ? "OCR Ativo" : "Habilitar OCR"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleTestBotMessage(testMessage)}
+                disabled={testingWebhook}
+                className="gap-2 text-xs"
+              >
+                {testingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Testar Bot (Enviar Mensagem)
+              </Button>
             </div>
           </div>
         )}
