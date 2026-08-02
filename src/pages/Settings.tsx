@@ -224,6 +224,7 @@ const SettingsPage = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [isOCRActive, setIsOCRActive] = useState(true);
   const [webhookStatus, setWebhookStatus] = useState<{ ok: boolean; description?: string } | null>(null);
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
