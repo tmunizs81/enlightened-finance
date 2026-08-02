@@ -312,6 +312,12 @@ const SettingsPage = () => {
 
   const handleSave = async () => {
     if (!user) return;
+    
+    if (chatId && !/^-?\d+$/.test(chatId)) {
+      toast.error("O Chat ID deve ser um número válido.");
+      return;
+    }
+
     setSaving(true);
     
     // 1. Update Profile
@@ -330,7 +336,6 @@ const SettingsPage = () => {
     if (botToken) {
       try {
         const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
-        console.log("Setting webhook to:", webhookUrl);
         const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -341,16 +346,17 @@ const SettingsPage = () => {
         });
         const data = await resp.json();
         if (data.ok) {
-          toast.success("Perfil salvo e Webhook registrado com sucesso!");
+          toast.success("Perfil salvo e Webhook registrado!");
+          setWebhookStatus({ ok: true });
         } else {
           toast.warning(`Perfil salvo, mas falha no Webhook: ${data.description}`);
+          setWebhookStatus({ ok: false, description: data.description });
         }
       } catch (err) {
-        console.error("Webhook registration error:", err);
-        toast.warning("Perfil salvo, mas não foi possível registrar o Webhook automaticamente.");
+        toast.warning("Perfil salvo, mas não foi possível registrar o Webhook.");
       }
     } else {
-      toast.success("Configuração do Telegram salva!");
+      toast.success("Configuração salva!");
     }
     
     setSaving(false);
