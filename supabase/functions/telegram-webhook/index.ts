@@ -204,6 +204,13 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
     }
 
     const imageBuffer = await imageResp.arrayBuffer();
+    
+    // Check image size (max 15MB for base64 safety in edge functions)
+    if (imageBuffer.byteLength > 15 * 1024 * 1024) {
+      await sendTg("⚠️ Imagem muito grande para processamento. Tente enviar um arquivo menor que 15MB.");
+      return new Response("ok");
+    }
+
     const imageBytes = new Uint8Array(imageBuffer);
     
     // Convert to base64 in chunks to avoid stack overflow (Maximum call stack size exceeded)
@@ -219,7 +226,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
     // Get categories & accounts
     const [catRes, accRes] = await Promise.all([
       supabase.from("categories").select("id, name, type").eq("user_id", userId),
-      supabase.from("accounts").select("id, name, type").eq("user_id", userId),
+      supabase.from("accounts").select("id, name, type").eq("user_id", userId).eq("status", "active"),
     ]);
 
     const categories = catRes.data || [];
