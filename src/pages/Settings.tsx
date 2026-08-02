@@ -451,11 +451,12 @@ const SettingsPage = () => {
       toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
-      toast.error(`Erro técnico: ${e.message || "A função não respondeu"}.
-      
-Verifique o Rebuild: git pull && docker compose up -d --build
-Confira o Chat ID: Ele deve ser exatamente o mesmo no Telegram e no Perfil.
-Logs do Servidor: docker compose logs -f financeai-app`);
+      toast.error(`Falha na Edge Function: ${e.message || "Sem resposta"}.
+
+1. O serviço Docker está rodando? (docker compose ps)
+2. O rebuild foi feito? (git pull && docker compose up -d --build)
+3. O Chat ID no Telegram é exatamente: ${chatId}?
+4. Logs: docker compose logs -f financeai-app`);
     } finally {
       setTestingWebhook(false);
     }
