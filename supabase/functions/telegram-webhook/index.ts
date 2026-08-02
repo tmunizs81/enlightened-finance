@@ -61,12 +61,13 @@ serve(async (req) => {
 
         // Busca de usuário blindada (string + número)
         let userProfile = null;
-        const { data: p1 } = await supabase.from('profiles').select('user_id').eq('telegram_chat_id', chatId).maybeSingle();
-        userProfile = p1;
-        if (!userProfile && !isNaN(Number(chatId))) {
-          const { data: p2 } = await supabase.from('profiles').select('user_id').eq('telegram_chat_id', Number(chatId)).maybeSingle();
-          userProfile = p2;
-        }
+        const cleanIdNum = Number(chatId);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .or(`telegram_chat_id.eq.${chatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
+        
+        userProfile = profiles?.[0];
 
         if (userProfile?.user_id) {
           const { error: insErr } = await supabase.from('transactions').insert({
@@ -74,7 +75,8 @@ serve(async (req) => {
             type: transactionType,
             amount: amount,
             description: description,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            status: 'confirmed'
           });
 
           if (insErr) {
@@ -108,23 +110,27 @@ serve(async (req) => {
 
     const cleanChatId = String(chatId).trim();
 
-    // BUSCA BLINDADA DE USUARIO (Garante busca por String e por Número)
+    // BUSCA BLINDADA DE USUÁRIO (Garante busca por String e por Número)
     let userProfile = null;
-    const { data: p1 } = await supabase.from('profiles').select('user_id, name').eq('telegram_chat_id', cleanChatId).maybeSingle();
-    userProfile = p1;
-    if (!userProfile && !isNaN(Number(cleanChatId))) {
-      const { data: p2 } = await supabase.from('profiles').select('user_id, name').eq('telegram_chat_id', Number(cleanChatId)).maybeSingle();
-      userProfile = p2;
-    }
+    const cleanIdNum = Number(cleanChatId);
+    
+    // Busca profile
+    const { data: profiles, error: pErr } = await supabase
+      .from('profiles')
+      .select('user_id, name, telegram_chat_id')
+      .or(`telegram_chat_id.eq.${cleanChatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
+
+    if (pErr) console.error("Erro na busca de perfil:", pErr);
+    userProfile = profiles?.[0];
 
     if (!userProfile) {
       console.error("Usuário não encontrado para o chat_id:", cleanChatId);
       await sendTelegram(cleanChatId, 
-        `⚠️ *Atenção:* Seu Telegram não está vinculado.\n\n` +
-        `Seu ID: \`${cleanChatId}\`\n` +
-        `Vincule-o em Configurações no painel.`
+        `⚠️ *Atenção:* Seu Telegram não está vinculado a nenhuma conta no T2-SimplyFin.\n\n` +
+        `Seu ID: \`${cleanChatId}\`\n\n` +
+        `Vincule-o em Configurações no painel digitando este ID no campo "Chat ID do Telegram".`
       );
-      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, message: "Unlinked user" }), { headers: corsHeaders });
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
