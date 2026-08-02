@@ -154,22 +154,18 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, message: "Profile linked" }), { status: 200, headers: corsHeaders });
     }
 
-    // Normal profile search for registered users
-    const { data: profiles, error: pErr } = await supabase
+    // Normal profile search for registered users - MULTI-TENANT ISOLATION
+    const { data: profile, error: pErr } = await supabase
       .from("profiles")
-      .select("user_id, telegram_bot_token, display_name")
-      .eq("telegram_chat_id", chatIdStr);
+      .select("user_id, display_name")
+      .eq("telegram_chat_id", chatIdStr)
+      .single();
 
-    if (pErr) {
-      console.error(`[TELEGRAM-V4.3] DB Error searching profile: ${pErr.message}`);
-      return new Response(JSON.stringify({ success: false, error: `DB Search Error: ${pErr.message}` }), { 
-        status: 200, 
-        headers: corsHeaders 
-      });
-    }
-
-    if (!profiles || profiles.length === 0) {
-      console.warn(`[TELEGRAM-V4.4] Chat ID "${chatIdStr}" not linked. Sending guest message.`);
+    if (pErr || !profile) {
+      if (pErr && pErr.code !== "PGRST116") {
+        console.error(`[TELEGRAM-V5.0] DB Error: ${pErr.message}`);
+      }
+      console.warn(`[TELEGRAM-V5.0] Chat ID "${chatIdStr}" not linked. Sending guest message.`);
       const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
@@ -186,13 +182,12 @@ serve(async (req) => {
       });
     }
 
-    const profile = profiles[0];
     const userId = profile.user_id;
-    const botToken = profile.telegram_bot_token || Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     if (!botToken) {
-      console.error(`[TELEGRAM-V4.3] No Bot Token linked for user ${userId}`);
-      return new Response(JSON.stringify({ success: false, error: "Bot Token Missing" }), { 
+      console.error(`[TELEGRAM-V5.0] Global TELEGRAM_BOT_TOKEN missing in env`);
+      return new Response(JSON.stringify({ success: false, error: "Global Bot Token Missing" }), { 
         status: 200, 
         headers: corsHeaders 
       });
@@ -204,13 +199,13 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatIdStr, text, parse_mode: "Markdown", ...extra }),
       });
-      if (!res.ok) console.error(`[TELEGRAM-V4.3] TG API Error: ${await res.text()}`);
+      if (!res.ok) console.error(`[TELEGRAM-V5.0] TG API Error: ${await res.text()}`);
       return res;
     };
 
     // --- 5. CALLBACK HANDLER ---
     if (callbackData && callbackQueryId) {
-      console.log(`[TELEGRAM-V4.3] Processing callback: ${callbackData}`);
+      console.log(`[TELEGRAM-V5.0] Processing callback: ${callbackData} for user ${userId}`);
       
       await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
         method: "POST",
@@ -218,22 +213,28 @@ serve(async (req) => {
         body: JSON.stringify({ callback_query_id: callbackQueryId }),
       });
 
-      const [action, id, type] = callbackData.split(":");
+      const [action, id] = callbackData.split(":");
       
       if (action === "confirm") {
-        const { data: pending } = await supabase.from("pending_ocr_transactions").select("*").eq("id", id).single();
+        const { data: pending } = await supabase
+          .from("pending_ocr_transactions")
+          .select("*")
+          .eq("id", id)
+          .eq("user_id", userId) // STRICT ISOLATION
+          .single();
+
         if (pending) {
           const { error: insErr } = await supabase.from("transactions").insert({
             user_id: userId,
             amount: pending.amount,
             description: pending.description,
             date: pending.date,
-            type: type || "expense",
+            type: pending.type || "expense",
             status: "paid"
           });
           
           if (!insErr) {
-            await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", id);
+            await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", id).eq("user_id", userId);
             await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -246,7 +247,7 @@ serve(async (req) => {
           }
         }
       } else if (action === "cancel") {
-        await supabase.from("pending_ocr_transactions").update({ status: "cancelled" }).eq("id", id);
+        await supabase.from("pending_ocr_transactions").update({ status: "cancelled" }).eq("id", id).eq("user_id", userId);
         await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -279,14 +280,14 @@ serve(async (req) => {
       }
 
       if (text.startsWith("/start") || text.startsWith("/help")) {
-        await sendTg(`👋 Olá ${profile.display_name || ""}!\n\n🤖 *SimplyFin Bot V4.4*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
+        await sendTg(`👋 Olá ${profile.display_name || ""}!\n\n🤖 *SimplyFin Bot V5.0*\nEstou pronto para registrar suas finanças.\n\n💡 *Exemplos:*\n• "Gastei 50 no mercado"\n• "Recebi 2500 de salário"\n\nCommands: /saldo`);
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
           headers: corsHeaders 
         });
       }
 
-      console.log(`[TELEGRAM-V4.3] Invoking DeepSeek for: "${text}"`);
+      console.log(`[TELEGRAM-V5.0] AI Analysis for user ${userId}: "${text}"`);
       const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
@@ -294,7 +295,7 @@ serve(async (req) => {
           model: "deepseek-chat",
           messages: [{ 
             role: "system",
-            content: "Extraia dados financeiros brasileiros. 'expense' ou 'income'. Retorne JSON."
+            content: "Extraia dados financeiros brasileiros. 'expense' ou 'income'. Retorne JSON puro."
           }, { 
             role: "user", 
             content: `Analise: "${text}". Data: ${new Date().toISOString().split('T')[0]}. JSON: {"is_transaction": boolean, "type": "expense"|"income", "amount": number, "description": string}` 
@@ -316,21 +317,44 @@ serve(async (req) => {
       const result = JSON.parse(aiData.choices[0].message.content);
 
       if (result.is_transaction && result.amount) {
-        const { data: pending } = await supabase.from("pending_ocr_transactions").insert({
+        const { data: pending, error: insErr } = await supabase.from("pending_ocr_transactions").insert({
           user_id: userId,
           chat_id: chatIdStr,
           amount: Number(result.amount),
           description: result.description || "Lançamento via Telegram",
           status: "pending",
+          type: result.type || "expense",
           date: new Date().toISOString().split("T")[0]
         }).select("id").single();
 
-        await sendTg(`🤖 *IA SimplyFin:* \n\n💰 *R$ ${Number(result.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n📝 ${result.description}`, {
+        if (insErr) {
+          console.error(`[TELEGRAM-V5.0] Insert Pending Error: ${insErr.message}`);
+          await sendTg("⚠️ Erro ao preparar o lançamento. Tente novamente.");
+          return new Response(JSON.stringify({ success: false }), { status: 200, headers: corsHeaders });
+        }
+
+        const valorFormatado = Number(result.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        const emoji = result.type === 'income' ? '📈' : '📉';
+        const label = result.type === 'income' ? 'Receita' : 'Despesa';
+
+        const message = `${emoji} ${label} detectada — Confirme:\n\n💰 Valor: R$ ${valorFormatado}\n📝 Descrição: ${result.description}\n📅 Data: ${new Date().toISOString().split('T')[0]}\n🏷️ Categoria: Sem categoria\n🏦 Conta: Sem conta`;
+
+        await sendTg(message, {
           reply_markup: {
-            inline_keyboard: [[
-              { text: "✅ Confirmar", callback_data: `confirm:${pending.id}:${result.type}` },
-              { text: "❌ Cancelar", callback_data: `cancel:${pending.id}` }
-            ]]
+            inline_keyboard: [
+              [
+                { text: "✅ Confirmar", callback_data: `confirm:${pending.id}` },
+                { text: "❌ Cancelar", callback_data: `cancel:${pending.id}` }
+              ],
+              [
+                { text: "✏️ Categoria", callback_data: `edit_cat:${pending.id}` },
+                { text: "✏️ Conta", callback_data: `edit_acc:${pending.id}` }
+              ],
+              [
+                { text: "✏️ Valor", callback_data: `edit_val:${pending.id}` },
+                { text: "✏️ Descrição", callback_data: `edit_desc:${pending.id}` }
+              ]
+            ]
           }
         });
       } else {
@@ -344,7 +368,7 @@ serve(async (req) => {
     });
 
   } catch (err) {
-    console.error("[TELEGRAM-V4.3] GLOBAL CRITICAL ERROR:", err);
+    console.error("[TELEGRAM-V5.0] GLOBAL CRITICAL ERROR:", err);
     return new Response(JSON.stringify({ success: false, error: err.message }), { 
       status: 200, 
       headers: corsHeaders 
