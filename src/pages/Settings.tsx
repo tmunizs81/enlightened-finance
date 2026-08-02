@@ -380,7 +380,8 @@ const SettingsPage = () => {
     }
     setSettingWebhook(true);
     try {
-      const webhookUrl = `${window.location.origin}/supabase/functions/v1/telegram-webhook`;
+      // Use /functions/v1 direct endpoint which is usually allowed on VPS Nginx configs
+      const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
