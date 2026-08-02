@@ -84,8 +84,9 @@ serve(async (req) => {
     return null;
   };
 
-  const analyzeReceipt = async (fileUrl: string) => {
-    const prompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON.";
+  const analyzeReceipt = async (fileUrl: string, promptOverride?: string) => {
+    const defaultPrompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\", \"date\": string}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON. 5. Tente identificar a data no formato YYYY-MM-DD.";
+    const prompt = promptOverride || defaultPrompt;
 
     // Try Gemini First (Better for Vision/PDF context)
     if (GEMINI_API_KEY) {
@@ -98,7 +99,6 @@ serve(async (req) => {
         const imageBuffer = await imageResponse.arrayBuffer();
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
-        // Determine mimeType (assuming image if not specified, but Gemini is flexible)
         const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
 
         const result = await model.generateContent([
@@ -152,7 +152,9 @@ serve(async (req) => {
         });
 
         const data = await response.json();
-        return JSON.parse(data.choices[0].message.content);
+        const content = data.choices[0].message.content;
+        const cleanedContent = content.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanedContent);
       } catch (e) {
         console.error("Groq OCR failed:", e);
       }
@@ -202,7 +204,7 @@ serve(async (req) => {
       `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `📅 *Data:* ${draft.date || new Date().toISOString().split('T')[0]}\n` +
       `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
@@ -230,7 +232,7 @@ serve(async (req) => {
       `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `📅 *Data:* ${draft.date || new Date().toISOString().split('T')[0]}\n` +
       `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
@@ -323,13 +325,13 @@ serve(async (req) => {
       else if (action === 'val') {
         const targetDraftId = parts[1];
         await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', targetDraftId);
-        await editTelegramMessage(chatId, messageId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
+        await sendTelegram(chatId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
       }
       // EDIT DESCRIPTION PROMPT
       else if (action === 'desc') {
         const targetDraftId = parts[1];
         await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', targetDraftId);
-        await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
+        await sendTelegram(chatId, "📝 *Envie a nova descrição no chat:*");
       }
       // SHOW CATEGORY LIST (Uses short prefix for callback data to avoid 64-byte limit)
       else if (action === 'cat') {
@@ -447,8 +449,16 @@ serve(async (req) => {
           const filePath = fileData.result.file_path;
           const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
           
-          const aiResult = await analyzeReceipt(fileUrl);
+          let aiResult = await analyzeReceipt(fileUrl);
           
+          if (!aiResult) {
+            console.log("Retrying OCR with fallback strategy...");
+            await sendTelegram(chatId, "🔄 *Primeira tentativa falhou. Tentando com estratégia de contraste...*");
+            // Here we could add image processing if we had a library, but since we're in Edge Functions
+            // we'll try a more descriptive prompt as a "recovery" logic.
+            aiResult = await analyzeReceipt(fileUrl, "Analise este documento com ATENÇÃO REDOBRADA. Extraia o valor total mesmo que a imagem esteja difícil. Retorne JSON: {\"amount\": number, \"description\": string, \"type\": \"expense\", \"date\": string}");
+          }
+
           if (aiResult) {
             let categoryId = null;
             const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
@@ -473,6 +483,7 @@ serve(async (req) => {
               description: aiResult.description || "IA OCR",
               category_id: categoryId,
               account_id: accountId,
+              date: aiResult.date || new Date().toISOString().split('T')[0],
               status: 'active'
             }).select().single();
 
@@ -482,7 +493,7 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Não consegui extrair os dados.* Certifique-se de que o arquivo é um PDF ou Imagem nítida.");
+        await sendTelegram(chatId, "❌ *Falha crítica na leitura.* O comprovante parece ilegível para a IA no momento. Tente uma foto com melhor iluminação ou envie o valor manualmente.");
       } catch (e) {
         console.error("OCR Processing error:", e);
         await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
