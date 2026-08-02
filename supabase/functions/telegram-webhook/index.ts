@@ -332,7 +332,7 @@ ${categoryList || "Nenhuma"}
 Contas:
 ${accountList || "Nenhuma"}
 
-Responda APENAS JSON:
+Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema:
 {"amount":150.50,"description":"Compra supermercado","date":"2026-03-08","category_id":"uuid-ou-null","account_id":"uuid-ou-null","confidence":"high|medium|low"}
 
 Se não conseguir ler: {"error":"Não foi possível ler o comprovante"}`;
@@ -1025,7 +1025,7 @@ ${catList || "Nenhuma"}
 Contas disponíveis:
 ${accList || "Nenhuma"}
 
-Responda APENAS JSON: {"category_id":"uuid-ou-null","account_id":"uuid-ou-null"}
+Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema: {"category_id":"uuid-ou-null","account_id":"uuid-ou-null"}
 Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
               },
             ],
@@ -1038,7 +1038,7 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
           const raw = aiData.choices?.[0]?.message?.content || "";
           const jsonMatch = raw.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
+            try { const parsed = JSON.parse(jsonMatch[0]); handleNLOutcome(parsed); } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
             if (parsed.category_id) {
               categoryId = parsed.category_id;
               catName = categories.find((c: any) => c.id === categoryId)?.name || "Sem categoria";
@@ -1247,7 +1247,7 @@ REGRAS:
 - Se o valor não for mencionado, tente inferir ou retorne is_transaction false
 
 
-Responda APENAS JSON:
+Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema:
 {"is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null"}
 ou
 {"is_transaction": false, "reply": "mensagem"}`,
@@ -1277,7 +1277,7 @@ ou
       return new Response("ok");
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    try { const parsed = JSON.parse(jsonMatch[0]); handleNLOutcome(parsed); } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
 
     if (!parsed.is_transaction) {
       await sendTg(
@@ -1353,7 +1353,7 @@ ou
     await sendTg(previewMsg, { reply_markup: inlineKeyboard });
     return new Response("ok");
   } catch (e) {
-    console.error("NL processing error:", e);
+    console.error("NL processing error detailed:", e.stack || e);
     await sendTg("📸 Envie uma *foto de comprovante* ou digite /ajuda para ver os comandos.");
     return new Response("ok");
   }
