@@ -327,8 +327,9 @@ const SettingsPage = () => {
   };
 
   const handleSave = async () => {
-    if (!user) return;
-    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return toast.error("Usuário não autenticado.");
+
     if (chatId && !/^-?\d+$/.test(chatId)) {
       toast.error("O Chat ID deve ser um número válido.");
       return;
@@ -339,32 +340,32 @@ const SettingsPage = () => {
     const cleanChatId = String(chatId).trim();
     const cleanToken = String(botToken).trim();
 
-    // Update Profile with RLS protection
     const { error } = await supabase
-      .from("profiles")
+      .from('profiles')
       .update({ 
-        telegram_bot_token: cleanToken || null, 
-        telegram_chat_id: cleanChatId || null 
+        telegram_chat_id: cleanChatId,
+        telegram_bot_token: cleanToken 
       })
-      .eq("user_id", user.id);
-    
-    if (error) {
-      console.error("Error saving Telegram config:", error);
-      toast.error("Erro ao salvar perfil. Tente novamente.");
-      setSaving(false);
-      return;
-    }
+      .eq('user_id', authUser.id);
 
-    // Refresh local state
-    const { data: updatedProfile } = await supabase
-      .from("profiles")
-      .select("telegram_chat_id, telegram_bot_token")
-      .eq("user_id", user.id)
-      .single();
+    if (error) {
+      console.error("Erro ao salvar perfil:", error);
+      toast.error(`Erro ao gravar no banco: ${error.message}`);
+      setSaving(false);
+    } else {
+      toast.success("✅ Configuração salva e persistida com sucesso!");
       
-    if (updatedProfile) {
-      setChatId(updatedProfile.telegram_chat_id || "");
-      setBotToken(updatedProfile.telegram_bot_token || "");
+      // Refresh local state
+      const { data: updatedProfile } = await supabase
+        .from("profiles")
+        .select("telegram_chat_id, telegram_bot_token")
+        .eq("user_id", user.id)
+        .single();
+        
+      if (updatedProfile) {
+        setChatId(updatedProfile.telegram_chat_id || "");
+        setBotToken(updatedProfile.telegram_bot_token || "");
+      }
     }
 
     // 2. Automatic setWebhook if token is provided
