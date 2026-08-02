@@ -86,7 +86,7 @@ serve(async (req) => {
     const safeAccId = accId || 'none';
     // Telegram callback_data tem limite de 64 bytes. Vamos encurtar o payload.
     // Formato: act|type|amt|cat|acc|desc
-    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 15)}`;
+    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 5)}`;
     
     return {
       inline_keyboard: [
@@ -108,7 +108,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    // console.log("Received body:", JSON.stringify(body)); // Removido log ruidoso
+    console.log("LOG: Incoming request body:", JSON.stringify(body));
 
     // 1. CALLBACK QUERIES
     if (body.callback_query) {
@@ -130,9 +130,23 @@ serve(async (req) => {
       if (action === 'c') {
         const type = parts[1] === 'INC' ? 'income' : 'expense';
         const amount = parseFloat(parts[2] || '0');
-        const catId = (parts[3] && parts[3] !== 'none') ? parts[3] : null;
-        const accId = (parts[4] && parts[4] !== 'none') ? parts[4] : null;
+        let catId = (parts[3] && parts[3] !== 'none') ? parts[3] : null;
+        let accId = (parts[4] && parts[4] !== 'none') ? parts[4] : null;
         const description = parts[5] || 'Lançamento Telegram';
+
+        // Busca o ID completo se estiver abreviado
+        if (catId && catId.length < 36) {
+          const { data: c } = await supabase.from('categories').select('id').ilike('id', `${catId}%`).eq('user_id', userId).maybeSingle();
+          if (c) catId = c.id;
+        }
+        if (accId && accId.length < 36) {
+          let { data: a } = await supabase.from('accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+          if (!a) {
+            const { data: ba } = await supabase.from('bank_accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+            a = ba;
+          }
+          if (a) accId = a.id;
+        }
 
         const insertPayload: any = {
           user_id: userId,
@@ -159,6 +173,7 @@ serve(async (req) => {
           );
         }
       } 
+
       else if (action === 'x') {
         await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
@@ -173,15 +188,15 @@ serve(async (req) => {
         }
 
         const keyboardRows: any[] = [];
-        // Pegamos os dados atuais do payload (ignorando o 'e_cat')
-        const currentData = parts.slice(1).join('|');
+        // Pegamos os dados atuais do payload (ignorando o 'e_cat') e compactamos
+        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
 
         for (let i = 0; i < categories.length; i += 2) {
           const row = [
-            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id}|${currentData}` }
+            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id.split('-')[0]}|${currentData}` }
           ];
           if (categories[i + 1]) {
-            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id}|${currentData}` });
+            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id.split('-')[0]}|${currentData}` });
           }
           keyboardRows.push(row);
         }
@@ -202,14 +217,14 @@ serve(async (req) => {
         }
 
         const keyboardRows: any[] = [];
-        const currentData = parts.slice(1).join('|');
+        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
 
         for (let i = 0; i < accounts.length; i += 2) {
           const row = [
-            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id}|${currentData}` }
+            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id.split('-')[0]}|${currentData}` }
           ];
           if (accounts[i + 1]) {
-            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id}|${currentData}` });
+            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id.split('-')[0]}|${currentData}` });
           }
           keyboardRows.push(row);
         }
@@ -234,18 +249,24 @@ serve(async (req) => {
 
         let catName = "Sem categoria";
         if (newCatId !== 'none') {
-          const { data: c } = await supabase.from('categories').select('name').eq('id', newCatId).maybeSingle();
-          if (c?.name) catName = c.name;
+          const { data: c } = await supabase.from('categories').select('name, id').ilike('id', `${newCatId}%`).eq('user_id', userId).maybeSingle();
+          if (c?.name) {
+            catName = c.name;
+            newCatId = c.id; // Garante o ID completo para o teclado
+          }
         }
 
         let accName = "Sem conta";
         if (newAccId !== 'none') {
-          let { data: a } = await supabase.from('accounts').select('name').eq('id', newAccId).maybeSingle();
+          let { data: a } = await supabase.from('accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
           if (!a) {
-            const { data: ba } = await supabase.from('bank_accounts').select('name').eq('id', newAccId).maybeSingle();
+            const { data: ba } = await supabase.from('bank_accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
             a = ba;
           }
-          if (a?.name) accName = a.name;
+          if (a?.name) {
+            accName = a.name;
+            newAccId = a.id;
+          }
         }
 
         const typeLabel = typeCode === 'INC' ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
@@ -260,6 +281,7 @@ serve(async (req) => {
         const inlineKeyboard = buildStandardKeyboard(typeCode, amount, newCatId, newAccId, description);
         await editTelegramMessage(chatId, messageId, cardText, inlineKeyboard);
       }
+
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
