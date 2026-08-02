@@ -80,42 +80,17 @@ serve(async (req) => {
     return null;
   };
 
-  const buildStandardKeyboard = (typeCode: string, amount: number, catId: string, accId: string, desc: string) => {
-    // Garantir que os IDs sejam strings limpas ou 'none'
-    const safeCatId = catId || 'none';
-    const safeAccId = accId || 'none';
-    // Telegram callback_data tem limite de 64 bytes. Vamos encurtar o payload.
-    // Formato: act|type|amt|cat|acc|desc
-    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 5)}`;
-    
-    return {
-      inline_keyboard: [
-        [
-          { text: "✅ Confirmar", callback_data: `c|${navPayload}` },
-          { text: "❌ Cancelar", callback_data: "x|cancel" }
-        ],
-        [
-          { text: "✏️ Categoria", callback_data: `e_cat|${navPayload}` },
-          { text: "✏️ Conta", callback_data: `e_acc|${navPayload}` }
-        ],
-        [
-          { text: "✏️ Valor", callback_data: `e_val|${navPayload}` },
-          { text: "✏️ Descrição", callback_data: `e_desc|${navPayload}` }
-        ]
-      ]
-    };
-  };
-
   try {
     const body = await req.json();
-    console.log("LOG: Incoming request body:", JSON.stringify(body));
 
-    // 1. CALLBACK QUERIES
+    // 1. HANDLE BUTTON CLICKS (CALLBACK QUERIES)
     if (body.callback_query) {
       const cb = body.callback_query;
       const chatId = String(cb.message.chat.id).trim();
       const messageId = cb.message.message_id;
       const data = String(cb.data);
+
+      // ALWAYS Answer callback query FIRST to prevent frozen buttons
       await answerCallback(cb.id);
 
       const userId = await getUserIdByChatId(chatId);
@@ -127,25 +102,33 @@ serve(async (req) => {
       const parts = data.split('|');
       const action = parts[0];
 
+      // ACTION: CONFIRM TRANSACTION
       if (action === 'c') {
-        const type = parts[1] === 'INC' ? 'income' : 'expense';
+        const type = parts[1] === 'I' ? 'income' : 'expense';
         const amount = parseFloat(parts[2] || '0');
-        let catId = (parts[3] && parts[3] !== 'none') ? parts[3] : null;
-        let accId = (parts[4] && parts[4] !== 'none') ? parts[4] : null;
-        const description = parts[5] || 'Lançamento Telegram';
+        const catShort = parts[3] !== '0' ? parts[3] : null;
+        const accShort = parts[4] !== '0' ? parts[4] : null;
 
-        // Busca o ID completo se estiver abreviado
-        if (catId && catId.length < 36) {
-          const { data: c } = await supabase.from('categories').select('id').ilike('id', `${catId}%`).eq('user_id', userId).maybeSingle();
-          if (c) catId = c.id;
+        // Extract description from existing message card text
+        const cardText = cb.message.text || '';
+        const descMatch = cardText.match(/Descrição:\s*(.+)/i);
+        const description = descMatch ? descMatch[1].trim() : "Lançamento Telegram";
+
+        // Resolve Full UUIDs if short codes were passed
+        let fullCatId = null;
+        if (catShort) {
+          const { data: c } = await supabase.from('categories').select('id').eq('user_id', userId).ilike('id', `${catShort}%`).maybeSingle();
+          if (c?.id) fullCatId = c.id;
         }
-        if (accId && accId.length < 36) {
-          let { data: a } = await supabase.from('accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+
+        let fullAccId = null;
+        if (accShort) {
+          let { data: a } = await supabase.from('accounts').select('id').eq('user_id', userId).ilike('id', `${accShort}%`).maybeSingle();
           if (!a) {
-            const { data: ba } = await supabase.from('bank_accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+            const { data: ba } = await supabase.from('bank_accounts').select('id').eq('user_id', userId).ilike('id', `${accShort}%`).maybeSingle();
             a = ba;
           }
-          if (a) accId = a.id;
+          if (a?.id) fullAccId = a.id;
         }
 
         const insertPayload: any = {
@@ -154,134 +137,152 @@ serve(async (req) => {
           amount: amount,
           description: description,
           date: new Date().toISOString(),
-          category_id: catId,
-          account_id: accId
+          category_id: fullCatId,
+          account_id: fullAccId
         };
 
         const { error: insErr } = await supabase.from('transactions').insert(insertPayload);
 
         if (insErr) {
           console.error("Insert Error:", insErr);
-          await editTelegramMessage(chatId, messageId, `⚠️ *Erro ao registrar no banco:* ${insErr.message}`);
+          await editTelegramMessage(chatId, messageId, `⚠️ *Erro ao registrar:* ${insErr.message}`);
         } else {
           await editTelegramMessage(
             chatId, 
             messageId, 
-            `✅ *Lançamento confirmado e registrado no banco com sucesso!*\n\n` +
+            `✅ *Lançamento confirmado e registrado no banco!*\n\n` +
             `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
             `📝 *Descrição:* ${description}`
           );
         }
       } 
-
+      // ACTION: CANCEL
       else if (action === 'x') {
         await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
-      else if (action === 'e_val' || action === 'e_desc') {
-        await answerCallback(cb.id, "Para alterar, basta enviar uma nova mensagem corrigida no chat.");
+      // ACTION: PROMPT FOR MANUAL EDITING
+      else if (action === 'eval' || action === 'edesc') {
+        await answerCallback(cb.id, "Envie uma nova mensagem com o valor/descrição corrigidos.");
       }
-      else if (action === 'e_cat') {
-        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId).order('name');
+      // ACTION: SHOW CATEGORIES
+      else if (action === 'ecat') {
+        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
         if (!categories || categories.length === 0) {
-          await answerCallback(cb.id, "Nenhuma categoria encontrada.");
+          await answerCallback(cb.id, "Nenhuma categoria cadastrada.");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
 
         const keyboardRows: any[] = [];
-        // Pegamos os dados atuais do payload (ignorando o 'e_cat') e compactamos
-        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
-
         for (let i = 0; i < categories.length; i += 2) {
+          const cat1 = categories[i];
+          const shortId1 = cat1.id.substring(0, 8);
           const row = [
-            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id.split('-')[0]}|${currentData}` }
+            { text: `🏷️ ${cat1.name}`, callback_data: `scat|${shortId1}|${parts.slice(1).join('|')}` }
           ];
           if (categories[i + 1]) {
-            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id.split('-')[0]}|${currentData}` });
+            const cat2 = categories[i + 1];
+            const shortId2 = cat2.id.substring(0, 8);
+            row.push({ text: `🏷️ ${cat2.name}`, callback_data: `scat|${shortId2}|${parts.slice(1).join('|')}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${currentData}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `b|${parts.slice(1).join('|')}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏷️ *Selecione a Categoria:*", { inline_keyboard: keyboardRows });
       }
-      else if (action === 'e_acc') {
-        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', userId).order('name');
+      // ACTION: SHOW ACCOUNTS
+      else if (action === 'eacc') {
+        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', userId);
         if (!accounts || accounts.length === 0) {
-          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', userId).order('name');
+          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', userId);
           accounts = bAccs;
         }
 
         if (!accounts || accounts.length === 0) {
-          await answerCallback(cb.id, "Nenhuma conta encontrada.");
+          await answerCallback(cb.id, "Nenhuma conta cadastrada.");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
 
         const keyboardRows: any[] = [];
-        const currentData = parts.slice(1).map(p => p.substring(0, 5)).join('|');
-
         for (let i = 0; i < accounts.length; i += 2) {
+          const acc1 = accounts[i];
+          const shortId1 = acc1.id.substring(0, 8);
           const row = [
-            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id.split('-')[0]}|${currentData}` }
+            { text: `🏦 ${acc1.name}`, callback_data: `sacc|${shortId1}|${parts.slice(1).join('|')}` }
           ];
           if (accounts[i + 1]) {
-            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id.split('-')[0]}|${currentData}` });
+            const acc2 = accounts[i + 1];
+            const shortId2 = acc2.id.substring(0, 8);
+            row.push({ text: `🏦 ${acc2.name}`, callback_data: `sacc|${shortId2}|${parts.slice(1).join('|')}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${currentData}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `b|${parts.slice(1).join('|')}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏦 *Selecione a Conta:*", { inline_keyboard: keyboardRows });
       }
-      else if (action === 's_cat' || action === 's_acc' || action === 'back') {
-        let newCatId = parts[3] || 'none';
-        let newAccId = parts[4] || 'none';
+      // ACTION: SELECT CATEGORY/ACCOUNT & REDRAW CARD
+      else if (action === 'scat' || action === 'sacc' || action === 'b') {
+        let catShort = parts[3] || '0';
+        let accShort = parts[4] || '0';
 
-        if (action === 's_cat') newCatId = parts[1];
-        if (action === 's_acc') newAccId = parts[1];
+        if (action === 'scat') catShort = parts[1];
+        if (action === 'sacc') accShort = parts[1];
 
-        // Se action é s_cat ou s_acc, os parâmetros originais foram deslocados para frente
-        const idx = (action === 's_cat' || action === 's_acc') ? 2 : 1;
+        const idx = (action === 'scat' || action === 'sacc') ? 2 : 1;
         const typeCode = parts[idx];
         const amount = parseFloat(parts[idx + 1] || '0');
-        
-        // Categoria e Conta foram movidas para cima (novos valores ou mantidos)
-        const description = parts[idx + 4] || 'Lançamento Telegram';
+
+        // Extract description from card text
+        const cardTextOld = cb.message.text || '';
+        const descMatch = cardTextOld.match(/Descrição:\s*(.+)/i);
+        const description = descMatch ? descMatch[1].trim() : "Lançamento Telegram";
 
         let catName = "Sem categoria";
-        if (newCatId !== 'none') {
-          const { data: c } = await supabase.from('categories').select('name, id').ilike('id', `${newCatId}%`).eq('user_id', userId).maybeSingle();
-          if (c?.name) {
-            catName = c.name;
-            newCatId = c.id; // Garante o ID completo para o teclado
-          }
+        if (catShort !== '0') {
+          const { data: c } = await supabase.from('categories').select('name').eq('user_id', userId).ilike('id', `${catShort}%`).maybeSingle();
+          if (c?.name) catName = c.name;
         }
 
         let accName = "Sem conta";
-        if (newAccId !== 'none') {
-          let { data: a } = await supabase.from('accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
+        if (accShort !== '0') {
+          let { data: a } = await supabase.from('accounts').select('name').eq('user_id', userId).ilike('id', `${accShort}%`).maybeSingle();
           if (!a) {
-            const { data: ba } = await supabase.from('bank_accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
+            const { data: ba } = await supabase.from('bank_accounts').select('name').eq('user_id', userId).ilike('id', `${accShort}%`).maybeSingle();
             a = ba;
           }
-          if (a?.name) {
-            accName = a.name;
-            newAccId = a.id;
-          }
+          if (a?.name) accName = a.name;
         }
 
-        const typeLabel = typeCode === 'INC' ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
-        const cardText =
-          `${typeLabel} — Confirme:\n\n` +
-          `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
-          `📝 *Descrição:* ${description}\n` +
-          `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
-          `🏷️ *Categoria:* ${catName}\n` +
-          `🏦 *Conta:* ${accName}`;
+        const navPayload = `${typeCode}|${amount}|${catShort}|${accShort}`;
 
-        const inlineKeyboard = buildStandardKeyboard(typeCode, amount, newCatId, newAccId, description);
+        const cardText =
+          `📉 *Despesa detectada — Confirme:*` +
+          `\n\n💰 *Valor:* R$ ${amount.toFixed(2)}` +
+          `\n📝 *Descrição:* ${description}` +
+          `\n📅 *Data:* ${new Date().toISOString().split('T')[0]}` +
+          `\n🏷️ *Categoria:* ${catName}` +
+          `\n🏦 *Conta:* ${accName}`;
+
+        const inlineKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "✅ Confirmar", callback_data: `c|${navPayload}` },
+              { text: "❌ Cancelar", callback_data: "x|cancel" }
+            ],
+            [
+              { text: "✏️ Categoria", callback_data: `ecat|${navPayload}` },
+              { text: "✏️ Conta", callback_data: `eacc|${navPayload}` }
+            ],
+            [
+              { text: "✏️ Valor", callback_data: `eval|${navPayload}` },
+              { text: "✏️ Descrição", callback_data: `edesc|${navPayload}` }
+            ]
+          ]
+        };
+
         await editTelegramMessage(chatId, messageId, cardText, inlineKeyboard);
       }
-
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
@@ -302,7 +303,7 @@ serve(async (req) => {
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(cleanChatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.11 agua mineral`.");
+      await sendTelegram(cleanChatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.00 agua`.");
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
@@ -321,19 +322,19 @@ serve(async (req) => {
 
     // Auto Match Category
     const { data: userCategories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
-    let autoCatId = 'none';
+    let autoCatShort = '0';
     let autoCatName = 'Sem categoria';
 
     if (userCategories && userCategories.length > 0) {
       const matchedCat = matchCategory(description, userCategories);
       if (matchedCat) {
-        autoCatId = matchedCat.id;
+        autoCatShort = matchedCat.id.substring(0, 8);
         autoCatName = matchedCat.name;
       }
     }
 
     // Auto Match Account
-    let autoAccId = 'none';
+    let autoAccShort = '0';
     let autoAccName = 'Sem conta';
     let { data: userAccounts } = await supabase.from('accounts').select('id, name').eq('user_id', userId).limit(1);
     if (!userAccounts || userAccounts.length === 0) {
@@ -341,21 +342,37 @@ serve(async (req) => {
       userAccounts = bAccs;
     }
     if (userAccounts && userAccounts.length > 0) {
-      autoAccId = userAccounts[0].id;
+      autoAccShort = userAccounts[0].id.substring(0, 8);
       autoAccName = userAccounts[0].name;
     }
 
-    const typeCode = isIncome ? 'INC' : 'EXP';
-    const typeLabel = isIncome ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
-    const cardText =
-      `${typeLabel} — Confirme:\n\n` +
-      `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
-      `📝 *Descrição:* ${description}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
-      `🏷️ *Categoria:* ${autoCatName}\n` +
-      `🏦 *Conta:* ${autoAccName}`;
+    const typeCode = isIncome ? 'I' : 'E';
+    const navPayload = `${typeCode}|${amount}|${autoCatShort}|${autoAccShort}`;
 
-    const inlineKeyboard = buildStandardKeyboard(typeCode, amount, autoCatId, autoAccId, description);
+    const cardText =
+      `📉 *Despesa detectada — Confirme:*` +
+      `\n\n💰 *Valor:* R$ ${amount.toFixed(2)}` +
+      `\n📝 *Descrição:* ${description}` +
+      `\n📅 *Data:* ${new Date().toISOString().split('T')[0]}` +
+      `\n🏷️ *Categoria:* ${autoCatName}` +
+      `\n🏦 *Conta:* ${autoAccName}`;
+
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Confirmar", callback_data: `c|${navPayload}` },
+          { text: "❌ Cancelar", callback_data: "x|cancel" }
+        ],
+        [
+          { text: "✏️ Categoria", callback_data: `ecat|${navPayload}` },
+          { text: "✏️ Conta", callback_data: `eacc|${navPayload}` }
+        ],
+        [
+          { text: "✏️ Valor", callback_data: `eval|${navPayload}` },
+          { text: "✏️ Descrição", callback_data: `edesc|${navPayload}` }
+        ]
+      ]
+    };
 
     await sendTelegram(cleanChatId, cardText, inlineKeyboard);
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
