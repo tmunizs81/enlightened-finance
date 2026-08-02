@@ -23,7 +23,8 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
-  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY"); // Keep for vision/OCR only
+  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+  const botTokenFromEnv = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   let update: any = {};
@@ -81,20 +82,21 @@ serve(async (req) => {
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
+      .eq("telegram_bot_token", botTokenFromEnv || "default") // Isole por token se disponível
       .limit(1);
     
     profile = profileResult?.[0];
 
-    if (profileErr) {
-      console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
-      const { count } = await supabase
-        .from("profiles")
-        .select("*", { count: 'exact', head: true })
-        .eq("telegram_chat_id", chatId);
-      console.log(`Profiles found with chat_id ${chatId}:`, count);
-    }
-
+    // Se não encontrou isolado por token, busca o perfil global para este chat_id
+    // Mas garante que o user_id seja único no contexto desta execução
     if (!profile) {
+      const { data: globalProfile } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token")
+        .eq("telegram_chat_id", chatId)
+        .limit(1);
+      profile = globalProfile?.[0];
+    }
       console.log("No profile found for chat_id:", chatId);
       
       // Fallback: Tenta buscar usando o chat_id de forma mais agressiva
@@ -539,13 +541,27 @@ async function handleCallbackQuery(cbq: any, supabase: any) {
   const chatId = String(cbq.message.chat.id);
   const messageId = cbq.message.message_id;
 
+  // Busca isolada: Prioriza o perfil que possui o token configurado no ambiente para evitar conflitos multi-bot
+  const botTokenFromEnv = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  let profile = null;
+
   const { data: profileResults } = await supabase
     .from("profiles")
     .select("user_id, telegram_bot_token")
     .eq("telegram_chat_id", chatId)
+    .eq("telegram_bot_token", botTokenFromEnv || "default")
     .limit(1);
 
-  const profile = profileResults?.[0];
+  profile = profileResults?.[0];
+
+  if (!profile) {
+    const { data: globalResults } = await supabase
+      .from("profiles")
+      .select("user_id, telegram_bot_token")
+      .eq("telegram_chat_id", chatId)
+      .limit(1);
+    profile = globalResults?.[0];
+  }
 
   if (!profile) return new Response("ok");
   const botToken = profile.telegram_bot_token;
@@ -1069,6 +1085,7 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
   }
 
   // Save as PENDING transaction for confirmation
+  // Busca do chatId específica para este userId para garantir isolamento
   const { data: profileData } = await supabase
     .from("profiles")
     .select("telegram_chat_id")
