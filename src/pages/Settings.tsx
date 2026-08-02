@@ -451,12 +451,11 @@ const SettingsPage = () => {
       toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
-      toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}. 
+      toast.error(`Erro técnico: ${e.message || "A função não respondeu"}.
       
-Causas possíveis:
-1. Rebuild pendente no VPS: git pull && docker compose up -d --build
-2. Chat ID não vinculado: Clique em "Detectar Chat ID" e depois "Salvar".
-3. Token do Bot inválido.`);
+Verifique o Rebuild: git pull && docker compose up -d --build
+Confira o Chat ID: Ele deve ser exatamente o mesmo no Telegram e no Perfil.
+Logs do Servidor: docker compose logs -f supabase-edge-functions`);
     } finally {
       setTestingWebhook(false);
     }
