@@ -1253,7 +1253,8 @@ ou se não for transação:
 { "is_transaction": false, "reply": "mensagem" }`,
           },
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0
       }),
 
     });
