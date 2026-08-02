@@ -706,7 +706,7 @@ const SettingsPage = () => {
             disabled={!loaded}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={handleSave}
             disabled={saving || !loaded}
@@ -723,6 +723,24 @@ const SettingsPage = () => {
           >
             {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             Testar Envio
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleTestWebhook}
+            disabled={testingWebhook}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Cloud className="h-3 w-3" />}
+            Testar Webhook
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDetectChatId}
+            disabled={testing || !botToken}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            Detectar ID
           </Button>
           <Button
             variant="outline"
