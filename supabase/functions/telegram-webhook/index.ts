@@ -1277,7 +1277,7 @@ ou
       return new Response("ok");
     }
 
-    try { const parsed = JSON.parse(jsonMatch[0]); handleNLOutcome(parsed); } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
+    const parsed = JSON.parse(jsonMatch[0]);
 
     if (!parsed.is_transaction) {
       await sendTg(
