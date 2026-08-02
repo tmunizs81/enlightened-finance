@@ -27,6 +27,7 @@ serve(async (req) => {
     });
   }
 
+  let payload: any = null;
   try {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method Not Allowed" }), { status: 405, headers: corsHeaders });
