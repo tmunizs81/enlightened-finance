@@ -333,9 +333,9 @@ Contas:
 ${accountList || "Nenhuma"}
 
 Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema:
-\{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" \}
+{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" }
 
-Se não conseguir ler: \{ "error": "Não foi possível ler o comprovante" \}`;
+Se não conseguir ler: { "error": "Não foi possível ler o comprovante" }`;
 
     // Use Groq for vision/OCR (DeepSeek doesn't support vision)
     const ocrApiKey = GROQ_API_KEY || DEEPSEEK_API_KEY;
@@ -400,7 +400,7 @@ Se não conseguir ler: \{ "error": "Não foi possível ler o comprovante" \}`;
 
     let parsed: any;
     try {
-      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      const jsonMatch = rawContent.match(/{[\s\S]*}/);
       if (!jsonMatch) throw new Error("No JSON");
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
@@ -1036,7 +1036,7 @@ Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
         if (aiResp.ok) {
           const aiData = await aiResp.json();
           const raw = aiData.choices?.[0]?.message?.content || "";
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          const jsonMatch = raw.match(/{[\s\S]*}/);
           if (jsonMatch) {
             try { const parsed = JSON.parse(jsonMatch[0]); handleNLOutcome(parsed); } catch (e) { console.error("JSON Parse error:", e, "Raw:", raw); throw e; }
             if (parsed.category_id) {
@@ -1248,9 +1248,9 @@ REGRAS CRÍTICAS:
 
 
 Retorne ESTRITAMENTE JSON:
-\{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" \}
+{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" }
 ou se não for transação:
-\{ "is_transaction": false, "reply": "mensagem" \}\`,
+{ "is_transaction": false, "reply": "mensagem" }\`,
           },
         ],
         response_format: { type: "json_object" },
@@ -1268,7 +1268,7 @@ ou se não for transação:
     const aiData = await aiResp.json();
     const raw = aiData.choices?.[0]?.message?.content || "";
     console.log("AI NL response raw:", raw);
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const jsonMatch = raw.match(/{[\s\S]*}/);
 
 
     if (!jsonMatch) {
