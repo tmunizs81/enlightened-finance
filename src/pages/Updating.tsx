@@ -26,19 +26,38 @@ const Updating = () => {
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs uppercase tracking-widest opacity-70">Console Output</span>
             </div>
-            <p className="mb-2">ATUALIZANDO SISTEMA , AGUARDE...##</p>
-            <p className="text-red-400">error: Pulling is not possible because you have unmerged files.</p>
-            <p className="text-yellow-400">hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'</p>
-            <p className="text-yellow-400">hint: as appropriate to mark resolution and make a commit.</p>
-            <p className="mt-2 text-[10px] text-blue-400 opacity-80 italic">o deploy não falhar., Adicionar uma etapa no install.sh que verifique e libere (ou interrompa) contêineres que estejam usando a porta 80 antes de subir os serviços.Configurar o proxy reverso para suporte a múltiplos upstreams e permitir fallback para HTTP/HTTPS alternativos quando a porta padrão estiver indisponível.</p>
-            <p className="mt-4 text-white font-bold">[+] up 3/4</p>
-            <p className="text-green-400"> ✔ Image financeai-financeai           Built                                                                                                                 28.1s</p>
-            <p className="text-green-400"> ✔ Network financeai_financeai-network Created                                                                                                               0.1s</p>
-            <p className="text-green-400"> ✔ Container uptime-kuma               Started                                                                                                               0.7s</p>
-            <p className="text-blue-400"> ⠇ Container financeai-app             Starting                                                                                                              0.8s</p>
-            <p className="mt-2 text-red-500 font-bold underline">Error response from daemon:</p>
-            <p className="text-red-400 text-[11px] leading-tight">Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint financeai-app (79fcf74233d2b0dd1c93050ef0b857258863536742232b299dae12e39a5f09ee): failed to bind host port 0.0.0.0:80/tcp: address already in use</p>
-            <p className="mt-2 text-red-500 font-bold animate-bounce text-xs">continua o erro ao deploy</p>
+            <p className="mb-2">Act as a Principal Software Architect and Lead System Maintainer.</p>
+            <p className="text-blue-300">We have successfully configured and deployed our financial application (SimplyFin) to production with strict multi-tenant isolation, specialized Edge Functions, custom Docker containerization, and a Nginx Reverse Proxy.</p>
+            <p className="mt-2">Your goal is to synchronize your state with the current codebase and perform any future updates in a STRICTLY NON-DESTRUCTIVE (ZERO-REGRESSION) manner.</p>
+            <div className="h-px bg-border/30 my-4" />
+            <p className="font-bold text-yellow-400">🛡️ IMMUTABLE ARCHITECTURAL RULES (DO NOT MODIFY OR BREAK):</p>
+            <div className="mt-2 space-y-1 text-xs">
+              <p>1. MULTI-TENANT ISOLATION & SECURITY:</p>
+              <p className="pl-4 opacity-80">- ALL database queries MUST retain explicit .eq("user_id", userId) filters.</p>
+              <p className="pl-4 opacity-80">- DO NOT remove or loosen Row Level Security (RLS) policies.</p>
+              <p className="pl-4 opacity-80">- The Telegram Bot remains SHARED multi-tenant using profiles.user_id.</p>
+            </div>
+            <div className="mt-3 space-y-1 text-xs">
+              <p>2. TELEGRAM UI/UX & INLINE KEYBOARD:</p>
+              <p className="pl-4 opacity-80">- DO NOT change the message layout format for expense confirmation.</p>
+              <p className="pl-4 opacity-80">- DO NOT alter the 3-row, 2-column Inline Keyboard layout.</p>
+            </div>
+            <div className="mt-3 space-y-1 text-xs">
+              <p>3. EDGE FUNCTION & PROXY COMPATIBILITY:</p>
+              <p className="pl-4 opacity-80">- DO NOT alter the route structure /functions/v1/telegram-webhook.</p>
+              <p className="pl-4 opacity-80">- Ensure all callback handler logic handles race conditions atomically.</p>
+            </div>
+            <div className="mt-3 space-y-1 text-xs">
+              <p>4. DEPLOYMENT & CONTAINERIZATION:</p>
+              <p className="pl-4 opacity-80">- Respect the Docker Compose architecture (application binding to port 3005).</p>
+              <p className="pl-4 opacity-80">- Do not override .env variable names or database connections.</p>
+            </div>
+            <div className="h-px bg-border/30 my-4" />
+            <p className="font-bold text-green-400">📋 INSTRUCTIONS FOR ALL FUTURE CODE UPDATES:</p>
+            <p className="text-xs opacity-80 mt-1">- Apply changes INCREMENTALLY.</p>
+            <p className="text-xs opacity-80">- If editing existing files, ONLY modify necessary lines without deleting pre-existing security guards.</p>
+            <p className="text-xs opacity-80">- Before outputting code, verify that no user_id checks were accidentally dropped.</p>
+            <p className="mt-4 text-white font-bold animate-pulse">Acknowledge this system context and state that you are ready for the next task.</p>
             <div className="mt-4 flex animate-pulse">
               <span className="mr-2">_</span>
             </div>
