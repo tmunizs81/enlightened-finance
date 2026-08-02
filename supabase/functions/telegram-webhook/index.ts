@@ -1275,7 +1275,8 @@ Data de hoje: ${new Date().toISOString().split("T")[0]}
 REGRAS CRÍTICAS:
 1. Analise se a mensagem é um lançamento financeiro.
 2. Identifique o tipo: despesa (gasto, compra) ou receita (recebimento, salário).
-3. O valor pode usar vírgula (ex: "10,11" -> 10.11).
+3. O valor pode usar vírgula (ex: "10,11" ou "1.11" -> 1.11). Aceite formatos como "1.11", "1,11", "11.11".
+3b. Se o usuário digitar algo como "1.11" ou "1,11", interprete como o valor decimal.
 4. Categorias de despesa disponíveis: ${categories.filter((c:any) => c.type === 'expense').map((c:any) => c.name).join(', ')}
 5. Categorias de receita disponíveis: ${categories.filter((c:any) => c.type === 'income').map((c:any) => c.name).join(', ')}
 6. Contas disponíveis: ${accounts.map((a:any) => a.name).join(', ')}
