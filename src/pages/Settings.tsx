@@ -425,6 +425,37 @@ const SettingsPage = () => {
     }
   };
 
+  const handleTestBotMessage = async () => {
+    if (!botToken || !chatId) {
+      toast.error("Configure o Token e o Chat ID primeiro.");
+      return;
+    }
+
+    setTestingWebhook(true);
+    try {
+      // Simular um comando /help enviado pelo usuário
+      const { error } = await supabase.functions.invoke("telegram-webhook", {
+        body: { 
+          message: { 
+            chat: { id: chatId },
+            text: "/help",
+            from: { id: chatId, first_name: "Test User" },
+            date: Math.floor(Date.now() / 1000)
+          } 
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Simulação de mensagem enviada! Verifique seu Telegram.");
+    } catch (e: any) {
+      console.error("Test bot message error:", e);
+      toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}.`);
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
   // === BACKUP: Export ===
   const handleExport = async () => {
     if (!user) return;
@@ -754,6 +785,19 @@ const SettingsPage = () => {
               <Bot className="h-3 w-3" />
             )}
             Ativar OCR via Telegram
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleTestBotMessage}
+            disabled={testingWebhook || !botToken || !chatId}
+            className="gap-1.5 border-border text-xs text-muted-foreground hover:text-primary"
+          >
+            {testingWebhook ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Brain className="h-3 w-3" />
+            )}
+            Simular Comando IA
           </Button>
         </div>
         <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">

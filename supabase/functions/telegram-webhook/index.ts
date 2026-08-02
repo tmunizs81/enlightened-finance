@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,18 @@ serve(async (req) => {
 
   try {
     const update = await req.json().catch(() => ({}));
-    console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
+    console.log("Full Telegram update:", JSON.stringify(update));
+    
+    if (!update.message && !update.callback_query && !update.action) {
+      console.log("Update received but no message, callback_query or action found. Keys present:", Object.keys(update));
+      // Telegram sometimes sends edited_message
+      if (update.edited_message) {
+        console.log("Detected edited_message, redirecting to message handler");
+        update.message = update.edited_message;
+      } else {
+        return new Response("ok");
+      }
+    }
 
     // --- HANDLE PING / HEALTH CHECK ---
     if (update.action === "ping") {
@@ -57,15 +69,39 @@ serve(async (req) => {
 
     const chatId = String(message.chat.id);
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
       .single();
 
+    if (profileErr) {
+      console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
+      const { count } = await supabase
+        .from("profiles")
+        .select("*", { count: 'exact', head: true })
+        .eq("telegram_chat_id", chatId);
+      console.log(`Profiles found with chat_id ${chatId}:`, count);
+    }
+
     if (!profile) {
-      console.log("No profile for chat_id:", chatId);
-      return new Response("ok");
+      console.log("No profile found for chat_id:", chatId);
+      
+      // Fallback: Tenta buscar usando o chat_id como string ou número (caso haja inconsistência de tipo no banco)
+      const { data: altProfile } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token")
+        .filter("telegram_chat_id", "eq", chatId)
+        .maybeSingle();
+
+      if (!altProfile) {
+        console.log("Alternative profile lookup also failed.");
+        return new Response("ok");
+      }
+      
+      console.log("Alternative profile found!");
+      // Assign to profile for downstream usage
+      (profile as any) = altProfile;
     }
 
     const userId = profile.user_id;
@@ -230,7 +266,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
 
     const imageBytes = new Uint8Array(imageBuffer);
     
-    // Convert to base64 in chunks to avoid stack overflow (Maximum call stack size exceeded)
+    // Robust base64 conversion for Deno edge environment
     let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < imageBytes.length; i += chunkSize) {
@@ -238,6 +274,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       binary += String.fromCharCode.apply(null, chunk as any);
     }
     const base64Image = btoa(binary);
+    
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
 
     // Get categories & accounts
