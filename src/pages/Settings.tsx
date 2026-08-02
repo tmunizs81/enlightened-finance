@@ -214,6 +214,8 @@ const SettingsPage = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
+  const [linkCode, setLinkCode] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
@@ -241,13 +243,14 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setBotToken(data.telegram_bot_token || "");
           setChatId(data.telegram_chat_id || "");
+          setLinkCode(data.telegram_link_code || "");
         }
         setLoaded(true);
       });
