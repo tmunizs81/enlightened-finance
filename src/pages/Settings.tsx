@@ -768,47 +768,62 @@ const SettingsPage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-1.5 rounded-lg border border-border/50 bg-secondary/50 p-3">
-              <p className="text-[11px] font-semibold text-foreground">Passo a passo:</p>
-              <p className="text-[11px] text-muted-foreground">
-                1. Clique no botão abaixo para gerar seu código de vinculação.
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                2. Você será redirecionado para o bot no Telegram.
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                3. Clique em "Começar" (ou Start) no Telegram para finalizar a conexão.
-              </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="telegram-token" className="text-xs text-muted-foreground">
+                  Token do Bot
+                </Label>
+                <Input
+                  id="telegram-token"
+                  value={botToken}
+                  onChange={(e) => setBotToken(e.target.value)}
+                  placeholder="123456789:ABCDEF..."
+                  className="h-9 border-border bg-secondary/50 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="telegram-chat-id" className="text-xs text-muted-foreground">
+                  Chat ID do Telegram
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="telegram-chat-id"
+                    value={chatId}
+                    onChange={(e) => setChatId(e.target.value)}
+                    placeholder="Seu ID numérico"
+                    className="h-9 border-border bg-secondary/50 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDetectChatId}
+                    disabled={testing}
+                    className="h-9 shrink-0 text-xs"
+                  >
+                    {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : "Detectar"}
+                  </Button>
+                </div>
+              </div>
             </div>
-            <Button
-              onClick={async () => {
-                if (!user) return;
-                setIsLinking(true);
-                const newCode = crypto.randomUUID();
-                const { error } = await supabase
-                  .from("profiles")
-                  .update({ telegram_link_code: newCode })
-                  .eq("user_id", user.id);
-                
-                if (error) {
-                  toast.error("Erro ao gerar código de vinculação");
-                  setIsLinking(false);
-                  return;
-                }
-
-                setLinkCode(newCode);
-                // Redirect to Telegram Deep Link
-                const botName = "simplyfin_t2_bot";
-                window.open(`https://t.me/${botName}?start=${newCode}`, "_blank");
-                setIsLinking(false);
-                toast.success("Código gerado! Finalize a conexão no Telegram.");
-              }}
-              disabled={isLinking}
-              className="gradient-bg-primary gap-2 text-xs text-primary-foreground"
-            >
-              {isLinking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
-              Conectar Telegram
-            </Button>
+            
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="gradient-bg-primary gap-2 text-xs text-primary-foreground"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Salvar Configuração
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTest}
+                disabled={testing}
+                className="gap-2 text-xs"
+              >
+                <Bot className="h-3.5 w-3.5" /> Testar Conexão
+              </Button>
+            </div>
           </div>
         )}
 
