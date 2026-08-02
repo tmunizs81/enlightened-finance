@@ -246,7 +246,7 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id, telegram_link_code")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -254,6 +254,7 @@ const SettingsPage = () => {
           setBotToken(data.telegram_bot_token || "");
           setChatId(data.telegram_chat_id || "");
           setLinkCode(data.telegram_link_code || "");
+          setGeminiKey(data.gemini_api_key || "");
         }
         setLoaded(true);
       });
