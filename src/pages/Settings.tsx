@@ -224,6 +224,7 @@ const SettingsPage = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<{ ok: boolean; description?: string } | null>(null);
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
   const [restoringCloud, setRestoringCloud] = useState<string | null>(null);
@@ -255,6 +256,21 @@ const SettingsPage = () => {
         setLoaded(true);
       });
   }, [user]);
+
+  useEffect(() => {
+    if (botToken) {
+      fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.result.url) {
+            setWebhookStatus({ ok: true });
+          } else if (data.ok && !data.result.url) {
+            setWebhookStatus(null);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [botToken]);
 
   const loadCloudBackups = useCallback(async () => {
     setLoadingBackups(true);
@@ -311,6 +327,12 @@ const SettingsPage = () => {
 
   const handleSave = async () => {
     if (!user) return;
+    
+    if (chatId && !/^-?\d+$/.test(chatId)) {
+      toast.error("O Chat ID deve ser um número válido.");
+      return;
+    }
+
     setSaving(true);
     
     // 1. Update Profile
@@ -329,7 +351,6 @@ const SettingsPage = () => {
     if (botToken) {
       try {
         const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
-        console.log("Setting webhook to:", webhookUrl);
         const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -340,16 +361,17 @@ const SettingsPage = () => {
         });
         const data = await resp.json();
         if (data.ok) {
-          toast.success("Perfil salvo e Webhook registrado com sucesso!");
+          toast.success("Perfil salvo e Webhook registrado!");
+          setWebhookStatus({ ok: true });
         } else {
           toast.warning(`Perfil salvo, mas falha no Webhook: ${data.description}`);
+          setWebhookStatus({ ok: false, description: data.description });
         }
       } catch (err) {
-        console.error("Webhook registration error:", err);
-        toast.warning("Perfil salvo, mas não foi possível registrar o Webhook automaticamente.");
+        toast.warning("Perfil salvo, mas não foi possível registrar o Webhook.");
       }
     } else {
-      toast.success("Configuração do Telegram salva!");
+      toast.success("Configuração salva!");
     }
     
     setSaving(false);
@@ -710,21 +732,33 @@ const SettingsPage = () => {
             <Bot className="h-5 w-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Integração Telegram</h2>
           </div>
-          {chatId ? (
-            <Badge
-              variant="outline"
-              className="border-success/20 bg-success/15 text-[10px] text-success"
-            >
-              <CheckCircle className="mr-1 h-3 w-3" /> Conectado
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="border-warning/20 bg-warning/15 text-[10px] text-warning"
-            >
-              Não Conectado
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {chatId ? (
+              <Badge
+                variant="outline"
+                className="border-success/20 bg-success/15 text-[10px] text-success"
+              >
+                <CheckCircle className="mr-1 h-3 w-3" /> Conectado
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="border-warning/20 bg-warning/15 text-[10px] text-warning"
+              >
+                Não Conectado
+              </Badge>
+            )}
+            {webhookStatus && (
+              <Badge
+                variant="outline"
+                className={webhookStatus.ok 
+                  ? "border-primary/20 bg-primary/15 text-[10px] text-primary"
+                  : "border-destructive/20 bg-destructive/15 text-[10px] text-destructive"}
+              >
+                Webhook {webhookStatus.ok ? "Ativo" : "Falhou"}
+              </Badge>
+            )}
+          </div>
         </div>
         
         <p className="text-xs text-muted-foreground">
@@ -778,7 +812,8 @@ const SettingsPage = () => {
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
                   placeholder="123456789:ABCDEF..."
-                  className="h-9 border-border bg-secondary/50 text-xs"
+                  disabled={!isAdmin}
+                  className="h-9 border-border bg-secondary/50 text-xs font-mono"
                 />
               </div>
               <div className="space-y-1">
