@@ -10,8 +10,12 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') || "8837475856:AAG_LBcIO1kr89gjCWsYdO0MOYGejR_u1r8";
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || "https://difwlzancpnvwkiyhmll.supabase.co";
-  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: "Missing environment variables" }), { status: 500, headers: corsHeaders });
+  }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false }
@@ -93,21 +97,32 @@ serve(async (req) => {
 
     // 1. CALLBACK QUERIES (BUTTON CLICKS)
     if (body.callback_query) {
+      console.log("Processing callback_query:", JSON.stringify(body.callback_query));
       const cb = body.callback_query;
       const chatId = String(cb.message.chat.id).trim();
       const messageId = cb.message.message_id;
       const data = String(cb.data);
 
-      await answerCallback(cb.id);
+      // Always answer callback query first to stop loading state in Telegram
+      try {
+        await answerCallback(cb.id);
+      } catch (err) {
+        console.error("Failed to answer callback:", err);
+      }
 
       const parts = data.split('|');
       const action = parts[0];
       const draftId = parts[1];
 
       // Fetch draft from DB
-      const { data: draft, error: draftErr } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+      const { data: draft, error: draftErr } = await supabase
+        .from('telegram_drafts')
+        .select('*')
+        .eq('id', draftId)
+        .maybeSingle();
 
       if (draftErr || !draft) {
+        console.error("Draft not found:", draftId, draftErr);
         await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho expirado ou não encontrado.* Envie uma nova mensagem.");
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
@@ -265,7 +280,11 @@ serve(async (req) => {
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(cleanChatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.00 agua`.");
+      const helpText = "👋 *Bem-vindo ao T2-SimplyFin!*\n\n" +
+        "Envie uma despesa ou receita assim:\n" +
+        "`despesa 50 padaria` ou `receita 1000 bonus`\n\n" +
+        "O sistema irá detectar o valor e a descrição, e você poderá confirmar ou ajustar via botões.";
+      await sendTelegram(cleanChatId, helpText);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
@@ -306,6 +325,10 @@ serve(async (req) => {
       `🏦 *Conta:* Sem conta`;
 
     await sendTelegram(cleanChatId, cardText, buildStandardKeyboard(newDraft.id));
+    
+    // Add logging to verify the sent message
+    console.log(`Draft ${newDraft.id} sent to ${cleanChatId}`);
+    
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err: any) {
