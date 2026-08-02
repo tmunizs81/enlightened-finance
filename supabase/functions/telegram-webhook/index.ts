@@ -44,7 +44,7 @@ serve(async (req) => {
     const rawBody = await req.text();
     if (!rawBody) return new Response(null, { status: 200, headers: corsHeaders });
 
-    const payload = JSON.parse(rawBody);
+    payload = JSON.parse(rawBody);
 
     const chatIdStr = String(
       payload.message?.chat?.id || 
