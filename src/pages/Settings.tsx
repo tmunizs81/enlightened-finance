@@ -214,6 +214,7 @@ const SettingsPage = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
