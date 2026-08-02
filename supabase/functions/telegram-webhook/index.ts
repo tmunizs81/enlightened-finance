@@ -221,7 +221,23 @@ serve(async (req) => {
 
     return new Response(null, { status: 200, headers: corsHeaders });
   } catch (err) {
-    console.error(err);
-    return new Response(null, { status: 200, headers: corsHeaders });
+    console.error("Telegram Webhook Error:", err);
+    // Explicit error response to Telegram chat if possible
+    try {
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      if (botToken) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            chat_id: payload?.message?.chat?.id || payload?.callback_query?.message?.chat?.id, 
+            text: "⚠️ Ocorreu um erro interno ao processar sua mensagem." 
+          }),
+        });
+      }
+    } catch (sendErr) {
+      console.error("Failed to send fallback error to Telegram:", sendErr);
+    }
+    return new Response(JSON.stringify({ error: err.message }), { status: 200, headers: corsHeaders });
   }
 });
