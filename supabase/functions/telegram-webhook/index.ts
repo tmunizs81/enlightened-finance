@@ -155,7 +155,7 @@ serve(async (req) => {
     }
 
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
