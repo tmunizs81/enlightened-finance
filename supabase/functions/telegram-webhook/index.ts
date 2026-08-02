@@ -148,16 +148,19 @@ serve(async (req) => {
       }
 
       // AI Recognition for simple text
-      console.log("[AI-PROCESS] Processing text with DeepSeek...");
+      console.log("[AI-PROCESS] Processing text with DeepSeek:", text);
       const aiResp = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "deepseek-chat",
           messages: [{ 
+            role: "system",
+            content: "Você é um extrator de dados financeiros. Extraia valores monetários e descrições. Para despesas o tipo é 'expense', para ganhos é 'income'. Retorne APENAS JSON."
+          }, { 
             role: "user", 
-            content: `Analise a frase e extraia dados financeiros: "${text}". 
-            Retorne APENAS um JSON plano com estas chaves: 
+            content: `Analise: "${text}". 
+            Retorne um JSON plano com estas chaves (amount deve ser numérico, use ponto para decimal): 
             {"is_transaction": boolean, "type": "expense" ou "income", "amount": number, "description": string}` 
           }],
           response_format: { type: "json_object" },
