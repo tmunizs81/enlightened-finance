@@ -233,7 +233,7 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       }
 
       // Natural language processing with AI
-      console.log("Processing text with AI:", message.text); console.log("User ID:", userId); console.log("Chat ID:", chatId);
+      console.log("DeepSeek NL Request:", text, "User:", userId, "Chat:", chatId);
       return await handleNaturalLanguage(
         supabase,
         userId,
