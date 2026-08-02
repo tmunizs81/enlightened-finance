@@ -261,20 +261,13 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
     const imageBytes = new Uint8Array(imageBuffer);
     
     // Robust base64 conversion for Deno edge environment
-    let base64Image = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < imageBytes.length; i += chunkSize) {
-      const chunk = imageBytes.subarray(i, i + chunkSize);
-      base64Image += btoa(String.fromCharCode.apply(null, chunk as any));
-    }
-    // Wait, btoa of chunks is not right because of padding. Correct way for Deno:
-    // Let's use the native approach if possible or a safe loop
     let binary = "";
+    const chunkSize = 8192;
     for (let i = 0; i < imageBytes.length; i += chunkSize) {
       const chunk = imageBytes.subarray(i, i + chunkSize);
       binary += String.fromCharCode.apply(null, chunk as any);
     }
-    base64Image = btoa(binary);
+    const base64Image = btoa(binary);
     
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
 
