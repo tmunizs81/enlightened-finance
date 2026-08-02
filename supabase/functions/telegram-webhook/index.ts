@@ -178,7 +178,7 @@ serve(async (req) => {
 
         for (let i = 0; i < categories.length; i += 2) {
           const row = [
-            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id}|${currentData}` }
+            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id.split('-')[0]}|${currentData}` }
           ];
           if (categories[i + 1]) {
             row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id}|${currentData}` });
