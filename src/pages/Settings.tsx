@@ -256,6 +256,7 @@ const SettingsPage = () => {
           setChatId(data.telegram_chat_id || "");
           setLinkCode(data.telegram_link_code || "");
           setGeminiKey(data.gemini_api_key || "");
+          setGroqKey(data.groq_api_key || "");
         }
         setLoaded(true);
       });
