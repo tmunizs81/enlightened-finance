@@ -797,7 +797,8 @@ const SettingsPage = () => {
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
                   placeholder="123456789:ABCDEF..."
-                  className="h-9 border-border bg-secondary/50 text-xs"
+                  disabled={!isAdmin}
+                  className="h-9 border-border bg-secondary/50 text-xs font-mono"
                 />
               </div>
               <div className="space-y-1">
