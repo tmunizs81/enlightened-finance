@@ -86,7 +86,7 @@ serve(async (req) => {
     const safeAccId = accId || 'none';
     // Telegram callback_data tem limite de 64 bytes. Vamos encurtar o payload.
     // Formato: act|type|amt|cat|acc|desc
-    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 15)}`;
+    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 5)}`;
     
     return {
       inline_keyboard: [
