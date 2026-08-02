@@ -128,6 +128,34 @@ serve(async (req) => {
     await editTelegramMessage(chatId, messageId, cardText, buildStandardKeyboard(draft.id));
   }
 
+  async function sendNewDraftCard(chatId: string, draft: any) {
+    let catName = "Sem categoria";
+    if (draft.category_id) {
+      const { data: c } = await supabase.from('categories').select('name').eq('id', draft.category_id).maybeSingle();
+      if (c?.name) catName = c.name;
+    }
+
+    let accName = "Sem conta";
+    if (draft.account_id) {
+      let { data: a } = await supabase.from('accounts').select('name').eq('id', draft.account_id).maybeSingle();
+      if (!a) {
+        const { data: ba } = await supabase.from('bank_accounts').select('name').eq('id', draft.account_id).maybeSingle();
+        a = ba;
+      }
+      if (a?.name) accName = a.name;
+    }
+
+    const cardText =
+      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
+      `📝 *Descrição:* ${draft.description}\n` +
+      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `🏷️ *Categoria:* ${catName}\n` +
+      `🏦 *Conta:* ${accName}`;
+
+    await sendTelegram(chatId, cardText, buildStandardKeyboard(draft.id));
+  }
+
   try {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
@@ -171,8 +199,8 @@ serve(async (req) => {
           await editTelegramMessage(
             chatId,
             messageId,
-            `✅ *Lançamento confirmado e registrado no banco!*\\n\\n` +
-            `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\\n` +
+            `✅ *Lançamento confirmado e registrado no banco!*\n\n` +
+            `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
             `📝 *Descrição:* ${draft.description}`
           );
         }
@@ -279,7 +307,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // Check if user is replying to a waiting prompt (Value or Description)
+    // Check if user is replying to waiting_amount
     const { data: activeDraft } = await supabase
       .from('telegram_drafts')
       .select('*')
@@ -296,12 +324,11 @@ serve(async (req) => {
       await supabase.from('telegram_drafts').update({ amount: newAmount, status: 'active' }).eq('id', activeDraft.id);
       const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', activeDraft.id).single();
       
-      await sendTelegram(chatId, "✅ *Valor atualizado com sucesso!*");
-      await renderDraftCard(chatId, message.message_id - 1, updated); // Try to update previous card if possible, but actually we just send a confirmation.
-      // Better: we just updated it, the user will see the next step.
+      await sendNewDraftCard(chatId, updated);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
+    // Check if user is replying to waiting_description
     const { data: descDraft } = await supabase
       .from('telegram_drafts')
       .select('*')
@@ -315,7 +342,7 @@ serve(async (req) => {
       await supabase.from('telegram_drafts').update({ description: text.trim(), status: 'active' }).eq('id', descDraft.id);
       const { data: updated } = await supabase.from('telegram_drafts').select('*').eq('id', descDraft.id).single();
 
-      await sendTelegram(chatId, "✅ *Descrição atualizada com sucesso!*");
+      await sendNewDraftCard(chatId, updated);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
@@ -369,26 +396,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    let catName = "Sem categoria";
-    if (categoryId) {
-      const c = categories?.find(x => x.id === categoryId);
-      if (c) catName = c.name;
-    }
-
-    let accName = "Sem conta";
-    if (accountId) {
-      accName = "Conta principal";
-    }
-
-    const cardText =
-      `📉 *Despesa detectada — Confirme:*\n\n` +
-      `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
-      `📝 *Descrição:* ${description}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
-      `🏷️ *Categoria:* ${catName}\n` +
-      `🏦 *Conta:* ${accName}`;
-
-    await sendTelegram(chatId, cardText, buildStandardKeyboard(newDraft.id));
+    await sendNewDraftCard(chatId, newDraft);
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err: any) {
