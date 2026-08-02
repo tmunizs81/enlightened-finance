@@ -9,26 +9,48 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  // FIXED TOKEN AS FALLBACK
   const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') || "8837475856:AAG_LBcIO1kr89gjCWsYdO0MOYGejR_u1r8";
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || "https://difwlzancpnvwkiyhmll.supabase.co";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  // Cliente Supabase usando SERVICE_ROLE para ignorar trava de RLS
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false }
   });
 
   const sendTelegram = async (chatId: number | string, text: string, replyMarkup?: any) => {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'Markdown',
-        reply_markup: replyMarkup
-      }),
-    });
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: replyMarkup
+        }),
+      });
+    } catch (e) {
+      console.error("Error sending message to Telegram:", e);
+    }
+  };
+
+  const editTelegram = async (chatId: number | string, messageId: number, text: string, replyMarkup?: any) => {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: replyMarkup
+        }),
+      });
+    } catch (e) {
+      console.error("Error editing message on Telegram:", e);
+    }
   };
 
   const answerCallback = async (callbackQueryId: string) => {
@@ -41,150 +63,148 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log("Telegram Webhook received body:", JSON.stringify(body));
 
-    // -------------------------------------------------------------
-    // 1. TRATAMENTO DE BOTAO "CONFIRMAR" / "CANCELAR" (CALLBACK)
-    // -------------------------------------------------------------
+    // 1. CALLBACK QUERIES (Confirm/Cancel/Edit)
     if (body.callback_query) {
       const cb = body.callback_query;
       const chatId = String(cb.message.chat.id).trim();
-      const data = String(cb.data); 
+      const messageId = cb.message.message_id;
+      const data = String(cb.data);
       await answerCallback(cb.id);
 
       const parts = data.split('|');
       const action = parts[0];
 
-      if (action === 'c') { // Confirmar lançamento no Banco
-        const transactionType = parts[1] === 'INC' ? 'income' : 'expense';
-        const amount = parseFloat(parts[2] || '0');
-        const description = parts[3] || 'Despesa Telegram';
+      // Atomic security check: Verify user first
+      let userProfile = null;
+      const cleanIdNum = Number(chatId);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .or(`telegram_chat_id.eq.${chatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
+      
+      userProfile = profiles?.[0];
 
-        // Busca de usuário blindada (string + número)
-        let userProfile = null;
-        const cleanIdNum = Number(chatId);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .or(`telegram_chat_id.eq.${chatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
-        
-        userProfile = profiles?.[0];
-
-        if (userProfile?.user_id) {
-          const { error: insErr } = await supabase.from('transactions').insert({
-            user_id: userProfile.user_id,
-            type: transactionType,
-            amount: amount,
-            description: description,
-            date: new Date().toISOString(),
-            status: 'confirmed'
-          });
-
-          if (insErr) {
-            console.error("Erro no INSERT:", insErr);
-            await sendTelegram(chatId, `⚠️ *Erro ao salvar no banco:* ${insErr.message}`);
-          } else {
-            await sendTelegram(chatId, `✅ *Lançamento confirmado e registrado com sucesso!*\n\n💰 *Valor:* R$ ${amount.toFixed(2)}\n📝 *Descrição:* ${description}`);
-          }
-        } else {
-          await sendTelegram(chatId, "⚠️ *Erro:* Usuário não encontrado no sistema.");
-        }
-      } else if (action === 'x') {
-        await sendTelegram(chatId, "❌ *Lançamento cancelado.*");
-      } else if (action === 'e') {
-        await sendTelegram(chatId, `✏️ Para alterar, envie uma nova mensagem com os dados corretos.`);
+      if (!userProfile) {
+         await editTelegram(chatId, messageId, "⚠️ *Erro:* Vínculo não encontrado.");
+         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
+      const userId = userProfile.user_id;
+
+      if (action === 'c') { // Confirm
+        const type = parts[1] === 'INC' ? 'income' : 'expense';
+        const amount = parseFloat(parts[2] || '0');
+        const desc = parts[3] || 'Transação Telegram';
+
+        const { error } = await supabase.from('transactions').insert({
+          user_id: userId,
+          type: type,
+          amount: amount,
+          description: desc,
+          date: new Date().toISOString(),
+          status: 'confirmed'
+        });
+
+        if (error) {
+          await editTelegram(chatId, messageId, `⚠️ *Falha ao registrar:* ${error.message}`);
+        } else {
+          await editTelegram(chatId, messageId, `✅ *Lançamento Realizado!* \n\n💰 *Valor:* R$ ${amount.toFixed(2)}\n📝 *Desc:* ${desc}`);
+        }
+      } else if (action === 'x') {
+        await editTelegram(chatId, messageId, "❌ *Operação cancelada.*");
+      } else {
+        await editTelegram(chatId, messageId, "✏️ Para alterar, envie uma nova mensagem.");
+      }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // -------------------------------------------------------------
-    // 2. RECEBIMENTO DE MENSAGENS DE TEXTO
-    // -------------------------------------------------------------
+    // 2. TEXT MESSAGES
     const message = body.message || body.edited_message;
-    const chatId = message?.chat?.id || body.chat_id;
-    const text = message?.text || body.text || "";
+    if (!message || !message.chat) return new Response("OK", { headers: corsHeaders });
 
-    if (!chatId) {
-      return new Response(JSON.stringify({ error: "No chat_id" }), { status: 400, headers: corsHeaders });
-    }
-
-    const cleanChatId = String(chatId).trim();
-
-    // BUSCA BLINDADA DE USUÁRIO (Garante busca por String e por Número)
-    let userProfile = null;
-    const cleanIdNum = Number(cleanChatId);
+    const chatId = String(message.chat.id).trim();
+    const text = message.text || "";
     
-    // Busca profile
-    const { data: profiles, error: pErr } = await supabase
+    // Find User
+    const cleanIdNum = Number(chatId);
+    const { data: profiles } = await supabase
       .from('profiles')
-      .select('user_id, name, telegram_chat_id')
-      .or(`telegram_chat_id.eq.${cleanChatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
+      .select('user_id, name')
+      .or(`telegram_chat_id.eq.${chatId}${!isNaN(cleanIdNum) ? `,telegram_chat_id.eq.${cleanIdNum}` : ''}`);
 
-    if (pErr) console.error("Erro na busca de perfil:", pErr);
-    userProfile = profiles?.[0];
+    const profile = profiles?.[0];
 
-    if (!userProfile) {
-      console.error("Usuário não encontrado para o chat_id:", cleanChatId);
-      await sendTelegram(cleanChatId, 
-        `⚠️ *Atenção:* Seu Telegram não está vinculado a nenhuma conta no T2-SimplyFin.\n\n` +
-        `Seu ID: \`${cleanChatId}\`\n\n` +
-        `Vincule-o em Configurações no painel digitando este ID no campo "Chat ID do Telegram".`
+    if (!profile) {
+      await sendTelegram(chatId, 
+        `⚠️ *Atenção:* Seu Telegram não está vinculado.\n\n` +
+        `Chat ID: \`${chatId}\`\n\n` +
+        `Vincule este ID no painel SimplyFin em Configurações.`
       );
-      return new Response(JSON.stringify({ success: true, message: "Unlinked user" }), { headers: corsHeaders });
+      return new Response("OK", { headers: corsHeaders });
     }
 
-    if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(cleanChatId, `👋 *Olá ${userProfile.name || ''}!* Envie uma despesa como: \`despesa 15.50 almoço\`.`);
-      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    if (text.startsWith('/start')) {
+      await sendTelegram(chatId, `🚀 *SimplyFin Online!* \nOlá ${profile.name || 'usuário'}.\nEnvie: \`despesa 50 pizza\` ou apenas \`100 freela\`.`);
+      return new Response("OK", { headers: corsHeaders });
     }
 
-    // Lógica de Parser
+    // Advanced Parser
     let type = 'expense';
     let amount = 0;
     let description = '';
 
-    const parts = text.split(/\s+/);
-    if (parts.length >= 2) {
-      const first = parts[0].toLowerCase();
-      if (first === 'despesa' || first === 'receita') {
-        type = first === 'receita' ? 'income' : 'expense';
-        amount = parseFloat(parts[1].replace(',', '.')) || 0;
-        description = parts.slice(2).join(' ') || 'Lançamento Telegram';
-      } else {
-        amount = parseFloat(parts[0].replace(',', '.')) || 0;
-        description = parts.slice(1).join(' ') || 'Lançamento Telegram';
-      }
+    const lowerText = text.toLowerCase();
+    const match = text.match(/([\d.,]+)/); // Find first number
+    
+    if (match) {
+        amount = parseFloat(match[0].replace(',', '.'));
+        
+        if (lowerText.includes('receita') || lowerText.includes('ganho') || lowerText.includes('recebi')) {
+            type = 'income';
+        }
+        
+        description = text.replace(match[0], '').replace(/despesa|receita|ganho|recebi/gi, '').trim() || 'Telegram';
     }
 
     if (amount > 0) {
-      const shortDesc = description.substring(0, 30);
+      const typeLabel = type === 'income' ? 'Receita' : 'Despesa';
       const typeCode = type === 'income' ? 'INC' : 'EXP';
-      
-      const cardText = 
-        `📉 *${type === 'income' ? 'Receita' : 'Despesa'} detectada — Confirme:*\\n\\n` +
-        `💰 *Valor:* R$ ${amount.toFixed(2)}\\n` +
-        `📝 *Descrição:* ${description}\\n` +
-        `📅 *Data:* ${new Date().toISOString().split('T')[0]}`;
+      const safeDesc = description.substring(0, 30);
 
-      const replyMarkup = {
+      const responseText = 
+        `📉 *${typeLabel} detectada — Confirme:* \n\n` +
+        `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
+        `📝 *Descrição:* ${description}\n` +
+        `📅 *Data:* ${new Date().toLocaleDateString('pt-BR')}`;
+
+      const keyboard = {
         inline_keyboard: [
           [
-            { text: "✅ Confirmar", callback_data: `c|${typeCode}|${amount}|${shortDesc}` },
-            { text: "❌ Cancelar", callback_data: `x|draft` }
+            { text: "✅ Confirmar", callback_data: `c|${typeCode}|${amount}|${safeDesc}` },
+            { text: "❌ Cancelar", callback_data: `x|0` }
           ],
           [
-            { text: "✏️ Editar", callback_data: `e|edit` }
+            { text: "✏️ Categoria", callback_data: `e|cat` },
+            { text: "✏️ Conta", callback_data: `e|acc` }
+          ],
+          [
+            { text: "✏️ Valor", callback_data: `e|val` },
+            { text: "✏️ Descrição", callback_data: `e|desc` }
           ]
         ]
       };
 
-      await sendTelegram(cleanChatId, cardText, replyMarkup);
+      await sendTelegram(chatId, responseText, keyboard);
+    } else {
+        await sendTelegram(chatId, "❓ Não entendi. Tente: `despesa 25.50 mercado` ou `receita 1000 bonus`.");
     }
 
-    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    return new Response("OK", { headers: corsHeaders });
 
-  } catch (err: any) {
-    console.error("Erro interno no Webhook:", err);
+  } catch (err) {
+    console.error("Edge Function Error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
