@@ -118,7 +118,7 @@ export default function Landing() {
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button asChild size="sm" className="gradient-bg-primary text-primary-foreground">
-              <Link to="/updating">
+              <Link to="/signup">
                 Começar
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
@@ -147,7 +147,7 @@ export default function Landing() {
                   <Link to="/auth" onClick={() => setMobileOpen(false)}>Entrar</Link>
                 </Button>
                 <Button asChild size="sm" className="gradient-bg-primary text-primary-foreground">
-                  <Link to="/updating" onClick={() => setMobileOpen(false)}>Começar</Link>
+                  <Link to="/signup" onClick={() => setMobileOpen(false)}>Começar</Link>
                 </Button>
               </div>
             </nav>
@@ -185,7 +185,7 @@ export default function Landing() {
             </p>
             <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-8 sm:flex-row sm:items-center">
               <Button asChild size="lg" className="gradient-bg-primary text-primary-foreground">
-                <Link to="/updating">
+                <Link to="/signup">
                   Começar teste grátis
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -335,7 +335,7 @@ export default function Landing() {
                   className={`w-full ${p.highlight ? "gradient-bg-primary text-primary-foreground" : ""}`}
                   variant={p.highlight ? "default" : "outline"}
                 >
-                  <Link to={`/updating?plan=${p.name === "Família" ? "family" : "individual"}`}>Assinar {p.name}</Link>
+                  <Link to={`/signup?plan=${p.name === "Família" ? "family" : "individual"}`}>Assinar {p.name}</Link>
                 </Button>
               </CardContent>
             </Card>
