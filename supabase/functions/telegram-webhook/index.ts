@@ -180,20 +180,35 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
       `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
     );
     const fileData = await fileResp.json();
+    
     if (!fileData.ok || !fileData.result?.file_path) {
-      await sendTg("❌ Não consegui baixar a imagem. Tente novamente.");
+      const errMsg = fileData.description || "Erro desconhecido";
+      console.error("Telegram getFile error:", errMsg);
+      if (errMsg.includes("file is too big")) {
+        await sendTg("⚠️ A imagem é muito grande. O Telegram limita bots a 20MB via API. Tente comprimir ou tirar uma foto com menor resolução.");
+      } else {
+        await sendTg(`❌ Não consegui acessar a imagem (${errMsg}). Tente novamente.`);
+      }
       return new Response("ok");
     }
 
     const imageUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
     const imageResp = await fetch(imageUrl);
-    const imageBytes = new Uint8Array(await imageResp.arrayBuffer());
-    // Convert to base64 in chunks to avoid stack overflow with large images
+    if (!imageResp.ok) {
+      console.error("Telegram file download error:", imageResp.status, await imageResp.text());
+      await sendTg("❌ Erro ao baixar a imagem do Telegram. Tente novamente.");
+      return new Response("ok");
+    }
+
+    const imageBuffer = await imageResp.arrayBuffer();
+    const imageBytes = new Uint8Array(imageBuffer);
+    
+    // Convert to base64 in chunks to avoid stack overflow (Maximum call stack size exceeded)
     let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < imageBytes.length; i += chunkSize) {
       const chunk = imageBytes.subarray(i, i + chunkSize);
-      binary += String.fromCharCode(...chunk);
+      binary += String.fromCharCode.apply(null, chunk as any);
     }
     const base64Image = btoa(binary);
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
