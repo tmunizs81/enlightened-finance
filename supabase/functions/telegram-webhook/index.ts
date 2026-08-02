@@ -204,7 +204,7 @@ serve(async (req) => {
       `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
+      `📅 *Data:* ${draft.date || new Date().toISOString().split('T')[0]}\n` +
       `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
