@@ -455,7 +455,7 @@ const SettingsPage = () => {
 
 1. O serviço Docker está rodando? (docker compose ps)
 2. O rebuild foi feito? (git pull && docker compose up -d --build)
-3. O Chat ID no Telegram é exatamente: ${chatId}?
+3. O Chat ID no Telegram é exatamente: 1000772149?
 4. Logs: docker compose logs -f financeai-app`);
     } finally {
       setTestingWebhook(false);
