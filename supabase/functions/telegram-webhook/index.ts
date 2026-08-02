@@ -276,7 +276,11 @@ serve(async (req) => {
     }
 
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(cleanChatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie: `despesa 1.00 agua`.");
+      const helpText = "👋 *Bem-vindo ao T2-SimplyFin!*\n\n" +
+        "Envie uma despesa ou receita assim:\n" +
+        "`despesa 50 padaria` ou `receita 1000 bonus`\n\n" +
+        "O sistema irá detectar o valor e a descrição, e você poderá confirmar ou ajustar via botões.";
+      await sendTelegram(cleanChatId, helpText);
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
