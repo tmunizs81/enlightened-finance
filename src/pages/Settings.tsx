@@ -236,7 +236,6 @@ const SettingsPage = () => {
   const [newUserTelegramChatId, setNewUserTelegramChatId] = useState("");
   const [creatingUser, setCreatingUser] = useState(false);
   const [testMessage, setTestMessage] = useState("despesa 10,11 combustivel");
-  const [testMessage, setTestMessage] = useState("despesa 10,11 combustivel");
 
   useEffect(() => {
     if (!user) return;
@@ -427,7 +426,7 @@ const SettingsPage = () => {
     }
   };
 
-  const handleTestBotMessage = async () => {
+  const handleTestBotMessage = async (customMessage?: string) => {
     if (!botToken || !chatId) {
       toast.error("Configure o Token e o Chat ID primeiro.");
       return;
@@ -435,12 +434,12 @@ const SettingsPage = () => {
 
     setTestingWebhook(true);
     try {
-      // Simular um comando /help enviado pelo usuário
+      // Simular um comando ou mensagem enviada pelo usuário
       const { error } = await supabase.functions.invoke("telegram-webhook", {
         body: { 
           message: { 
             chat: { id: chatId },
-            text: "/help",
+            text: customMessage || "/help",
             from: { id: chatId, first_name: "Test User" },
             date: Math.floor(Date.now() / 1000)
           } 
@@ -449,7 +448,7 @@ const SettingsPage = () => {
 
       if (error) throw error;
 
-      toast.success("Simulação de mensagem enviada! Verifique seu Telegram.");
+      toast.success(`Simulação de "${customMessage || "/help"}" enviada! Verifique seu Telegram.`);
     } catch (e: any) {
       console.error("Test bot message error:", e);
       toast.error(`Falha ao simular mensagem: ${e.message || "A função retornou erro"}.`);
