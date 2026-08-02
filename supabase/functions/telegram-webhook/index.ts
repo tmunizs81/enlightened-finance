@@ -1009,6 +1009,7 @@ Responda APENAS JSON: {"category_id":"uuid-ou-null","account_id":"uuid-ou-null"}
 Escolha a categoria e conta mais adequadas. Se nenhuma se encaixar, use null.`,
               },
             ],
+            response_format: { type: "json_object" }
           }),
         });
 
