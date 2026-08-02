@@ -309,13 +309,47 @@ const SettingsPage = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    
+    // 1. Update Profile
     const { error } = await supabase
       .from("profiles")
       .update({ telegram_bot_token: botToken || null, telegram_chat_id: chatId || null })
       .eq("user_id", user.id);
+    
+    if (error) {
+      setSaving(false);
+      toast.error("Erro ao salvar perfil: " + error.message);
+      return;
+    }
+
+    // 2. Automatic setWebhook if token is provided
+    if (botToken) {
+      try {
+        const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
+        console.log("Setting webhook to:", webhookUrl);
+        const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            url: webhookUrl,
+            allowed_updates: ["message", "callback_query", "edited_message"]
+          }),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          toast.success("Perfil salvo e Webhook registrado com sucesso!");
+        } else {
+          toast.warning(`Perfil salvo, mas falha no Webhook: ${data.description}`);
+        }
+      } catch (err) {
+        console.error("Webhook registration error:", err);
+        toast.warning("Perfil salvo, mas não foi possível registrar o Webhook automaticamente.");
+      }
+    } else {
+      toast.success("Configuração do Telegram salva!");
+    }
+    
     setSaving(false);
-    if (error) toast.error("Erro ao salvar: " + error.message);
-    else toast.success("Configuração do Telegram salva!");
   };
 
   const handleDetectChatId = async () => {

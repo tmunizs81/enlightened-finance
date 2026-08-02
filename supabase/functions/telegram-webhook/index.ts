@@ -29,7 +29,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const rawBody = await req.text();
-    console.log("[TELEGRAM-V4.1] Inbound raw payload:", rawBody);
+    console.log("[TELEGRAM-V4.2-INBOUND] Webhook recebido:", rawBody);
     
     if (!rawBody) {
       return new Response(JSON.stringify({ success: false, error: "Empty Body" }), { 
@@ -42,7 +42,7 @@ serve(async (req) => {
     try {
       payload = JSON.parse(rawBody);
     } catch (e) {
-      console.error("[TELEGRAM-V4.1] JSON Parse Error:", e.message);
+      console.error("[TELEGRAM-V4.2] JSON Parse Error:", e.message);
       return new Response(JSON.stringify({ success: false, error: "Invalid JSON" }), { 
         status: 200, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
