@@ -340,10 +340,10 @@ ${categoryList || "Nenhuma"}
 Contas:
 ${accountList || "Nenhuma"}
 
-Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem \`\`\`json), seguindo este esquema:
-{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" }
+Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem json), seguindo este esquema:
+\{ "amount": 150.50, "description": "Compra supermercado", "date": "2026-03-08", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null", "confidence": "high" \}
 
-Se não conseguir ler: { "error": "Não foi possível ler o comprovante" }`;
+Se não conseguir ler: \{ "error": "Não foi possível ler o comprovante" \}`;
 
     // Use Groq for vision/OCR (DeepSeek doesn't support vision)
     const ocrApiKey = GROQ_API_KEY || DEEPSEEK_API_KEY;
@@ -1257,9 +1257,9 @@ REGRAS CRÍTICAS:
 
 
 Retorne ESTRITAMENTE JSON:
-{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" }
+\{ "is_transaction": true, "type": "expense|income", "amount": 50.00, "description": "Descrição curta", "date": "YYYY-MM-DD", "category_id": "uuid-ou-null", "account_id": "uuid-ou-null" \}
 ou se não for transação:
-{ "is_transaction": false, "reply": "mensagem" }`,
+\{ "is_transaction": false, "reply": "mensagem" \}`,
           },
         ],
         response_format: { type: "json_object" },
