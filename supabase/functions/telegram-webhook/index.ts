@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -259,14 +260,12 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
 
     const imageBytes = new Uint8Array(imageBuffer);
     
-    // Convert to base64 in chunks to avoid stack overflow (Maximum call stack size exceeded)
-    let binary = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < imageBytes.length; i += chunkSize) {
-      const chunk = imageBytes.subarray(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, chunk as any);
-    }
-    const base64Image = btoa(binary);
+    // Convert to base64 more reliably
+    const base64Image = btoa(
+      Array.from(new Uint8Array(imageBuffer))
+        .map(byte => String.fromCharCode(byte))
+        .join('')
+    );
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
 
     // Get categories & accounts
