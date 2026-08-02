@@ -249,18 +249,24 @@ serve(async (req) => {
 
         let catName = "Sem categoria";
         if (newCatId !== 'none') {
-          const { data: c } = await supabase.from('categories').select('name').eq('id', newCatId).maybeSingle();
-          if (c?.name) catName = c.name;
+          const { data: c } = await supabase.from('categories').select('name, id').ilike('id', `${newCatId}%`).eq('user_id', userId).maybeSingle();
+          if (c?.name) {
+            catName = c.name;
+            newCatId = c.id; // Garante o ID completo para o teclado
+          }
         }
 
         let accName = "Sem conta";
         if (newAccId !== 'none') {
-          let { data: a } = await supabase.from('accounts').select('name').eq('id', newAccId).maybeSingle();
+          let { data: a } = await supabase.from('accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
           if (!a) {
-            const { data: ba } = await supabase.from('bank_accounts').select('name').eq('id', newAccId).maybeSingle();
+            const { data: ba } = await supabase.from('bank_accounts').select('name, id').ilike('id', `${newAccId}%`).eq('user_id', userId).maybeSingle();
             a = ba;
           }
-          if (a?.name) accName = a.name;
+          if (a?.name) {
+            accName = a.name;
+            newAccId = a.id;
+          }
         }
 
         const typeLabel = typeCode === 'INC' ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
@@ -275,6 +281,7 @@ serve(async (req) => {
         const inlineKeyboard = buildStandardKeyboard(typeCode, amount, newCatId, newAccId, description);
         await editTelegramMessage(chatId, messageId, cardText, inlineKeyboard);
       }
+
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
