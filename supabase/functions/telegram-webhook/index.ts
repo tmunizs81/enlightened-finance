@@ -1238,13 +1238,13 @@ ${accList || "Nenhuma"}
 
 Data de hoje: ${new Date().toISOString().split("T")[0]}
 
-REGRAS:
-- Se a mensagem descreve uma transação financeira (gasto, compra, recebimento, pagamento, etc.), extraia os dados.
-- Se a mensagem NÃO é sobre uma transação financeira, retorne {"is_transaction": false, "reply": "uma resposta amigável curta"}
-- Palavras como "gastei", "paguei", "comprei", "almocei", "jantei", "despesa" = despesa
-- Palavras como "recebi", "ganhei", "entrou", "receita" = receita
-- O valor pode conter vírgula como separador decimal (ex: 10,11 -> 10.11).
-- Se o valor não for mencionado, tente inferir ou retorne is_transaction false
+REGRAS CRÍTICAS:
+1. Analise se a mensagem é um lançamento financeiro.
+2. Identifique o tipo: despesa (gasto, compra) ou receita (recebimento, salário).
+3. O valor pode usar vírgula (ex: "10,11" -> 10.11).
+4. Categorias de despesa disponíveis: ${categories.filter((c:any) => c.type === 'expense').map((c:any) => c.name).join(', ')}
+5. Categorias de receita disponíveis: ${categories.filter((c:any) => c.type === 'income').map((c:any) => c.name).join(', ')}
+6. Contas disponíveis: ${accounts.map((a:any) => a.name).join(', ')}
 
 
 Responda ESTRITAMENTE um objeto JSON válido, sem qualquer texto explicativo, sem markdown (sem ```json), seguindo este esquema:
