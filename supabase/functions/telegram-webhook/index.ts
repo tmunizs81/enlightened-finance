@@ -261,11 +261,8 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
     const imageBytes = new Uint8Array(imageBuffer);
     
     // Convert to base64 more reliably
-    const base64Image = btoa(
-      Array.from(new Uint8Array(imageBuffer))
-        .map(byte => String.fromCharCode(byte))
-        .join('')
-    );
+    // Convert to base64 more reliably using a method that avoids stack issues and is more standard
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
     const mimeType = fileData.result.file_path.endsWith(".png") ? "image/png" : "image/jpeg";
 
     // Get categories & accounts
