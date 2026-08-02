@@ -83,6 +83,41 @@ serve(async (req) => {
     return null;
   };
 
+  const analyzeReceipt = async (fileUrl: string) => {
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not set.");
+      return null;
+    }
+
+    try {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const imageResponse = await fetch(fileUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+      const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: "image/jpeg"
+          }
+        }
+      ]);
+
+      const text = result.response.text();
+      const cleanedText = text.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanedText);
+    } catch (e) {
+      console.error("Error analyzing receipt with Gemini:", e);
+      return null;
+    }
+  };
+
   const buildStandardKeyboard = (draftId: string) => {
     return {
       inline_keyboard: [
