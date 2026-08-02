@@ -202,7 +202,8 @@ serve(async (req) => {
 
       // CONFIRM TRANSACTION
       if (action === 'c') {
-        const { data: targetDraft } = await supabase.from('telegram_drafts').select('*').eq('id', draftId).maybeSingle();
+        const targetDraftId = parts[1];
+        const { data: targetDraft } = await supabase.from('telegram_drafts').select('*').eq('id', targetDraftId).maybeSingle();
         if (!targetDraft) {
           await editTelegramMessage(chatId, messageId, "⚠️ *Rascunho não encontrado.*");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
