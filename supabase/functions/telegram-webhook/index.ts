@@ -9,11 +9,11 @@ const corsHeaders = {
 };
 
 /**
- * TELEGRAM ENGINE V6.0 - BANK-GRADE ISOLATION & RACE PROTECTION
+ * TELEGRAM ENGINE V7.0 - RESPONSE GUARANTEE & SILENT EXIT FIX
  * Updates:
- * 1. Atomic updates for race condition protection.
+ * 1. Global try...catch for guaranteed user feedback.
  * 2. Strict multi-tenant isolation via service role verification.
- * 3. Support for income/expense dynamics.
+ * 3. Atomic status updates for race protection.
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
