@@ -336,26 +336,30 @@ const SettingsPage = () => {
 
     setSaving(true);
     
+    const cleanChatId = String(chatId).trim();
+    const cleanToken = String(botToken).trim();
+
     // 1. Update Profile (Explicitly update profiles table for Telegram linking)
     const { error } = await supabase
       .from("profiles")
       .update({ 
-        telegram_bot_token: botToken ? String(botToken).trim() : null, 
-        telegram_chat_id: chatId ? String(chatId).trim() : null 
+        telegram_bot_token: cleanToken || null, 
+        telegram_chat_id: cleanChatId || null 
       })
       .eq("user_id", user.id);
     
     if (error) {
+      console.error("Error saving Telegram config:", error);
       setSaving(false);
-      toast.error("Erro ao salvar perfil: " + error.message);
+      toast.error("Erro ao salvar configuração no banco: " + error.message);
       return;
     }
 
     // 2. Automatic setWebhook if token is provided
-    if (botToken) {
+    if (cleanToken) {
       try {
         const webhookUrl = `${window.location.origin}/functions/v1/telegram-webhook`;
-        const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        const resp = await fetch(`https://api.telegram.org/bot${cleanToken}/setWebhook`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -365,7 +369,7 @@ const SettingsPage = () => {
         });
         const data = await resp.json();
         if (data.ok) {
-          toast.success("Perfil salvo e Webhook registrado!");
+          toast.success("Configuração do Telegram salva com sucesso!");
           setWebhookStatus({ ok: true });
         } else {
           toast.warning(`Perfil salvo, mas falha no Webhook: ${data.description}`);
