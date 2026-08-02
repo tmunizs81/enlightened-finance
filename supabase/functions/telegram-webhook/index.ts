@@ -248,13 +248,15 @@ serve(async (req) => {
     // Explicit error response to Telegram chat if possible
     try {
       const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-      if (botToken) {
+      const errorChatId = chatIdStr || payload?.message?.chat?.id || payload?.callback_query?.message?.chat?.id;
+      
+      if (botToken && errorChatId) {
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-            chat_id: payload?.message?.chat?.id || payload?.callback_query?.message?.chat?.id, 
-            text: "⚠️ Ocorreu um erro interno ao processar sua mensagem." 
+            chat_id: errorChatId, 
+            text: "⚠️ Ocorreu um erro interno ao processar sua mensagem. Por favor, tente novamente em instantes." 
           }),
         });
       }
