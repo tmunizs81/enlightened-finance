@@ -13,7 +13,6 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  // SERVICE ROLE CLIENT IS MANDATORY TO READ PROFILES WITHOUT USER SESSION
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false }
   });
@@ -39,86 +38,124 @@ serve(async (req) => {
     });
   };
 
+  const editTelegramMessage = async (chatId: string | number, messageId: number, text: string) => {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        message_id: messageId,
+        text: text,
+        parse_mode: 'Markdown'
+      }),
+    });
+  };
+
   try {
     const body = await req.json();
-    console.log("Webhook Body:", JSON.stringify(body));
+    const callbackQuery = body.callback_query;
+    const message = body.message || body.edited_message;
+    const chatIdRaw = message?.chat?.id || callbackQuery?.message?.chat?.id || body.chat_id;
+    
+    if (!chatIdRaw) return new Response(JSON.stringify({ error: "No chat_id" }), { status: 400, headers: corsHeaders });
+    
+    const cleanChatId = String(chatIdRaw).trim();
 
-    // Handle Callbacks (Button clicks)
-    if (body.callback_query) {
-      const cb = body.callback_query;
-      const chatId = String(cb.message.chat.id);
-      const data = cb.data; // e.g. "confirm_123", "cancel_123"
-      await answerCallback(cb.id);
+    // Flexible User Search
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_id, name')
+      .or(`telegram_chat_id.eq.${cleanChatId},telegram_chat_id.eq.${Number(cleanChatId)}`)
+      .maybeSingle();
 
-      if (data.startsWith("confirm_")) {
-        await sendTelegram(chatId, "✅ *Lançamento confirmado e registrado com sucesso!*");
-      } else if (data.startsWith("cancel_")) {
-        await sendTelegram(chatId, "❌ *Lançamento cancelado.*");
-      } else if (data.startsWith("edit_")) {
-        const field = data.split("_")[1];
-        await sendTelegram(chatId, `✏️ Digite o novo valor para *${field}*:`);
+    if (!profile) {
+      await sendTelegram(cleanChatId, `⚠️ *Atenção:* Seu Telegram não está vinculado.\nID: \`${cleanChatId}\``);
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
+    // 1. DATABASE INSERTION ON "CONFIRMAR" CLICK
+    if (callbackQuery) {
+      const data = callbackQuery.data; // Format: confirm|TYPE|AMOUNT|DESC
+      await answerCallback(callbackQuery.id);
+      const msgId = callbackQuery.message.message_id;
+
+      if (data.startsWith("confirm|")) {
+        const [_, type, amountStr, ...descParts] = data.split("|");
+        const description = descParts.join("|");
+        const amount = parseFloat(amountStr);
+
+        const { error: insErr } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: profile.user_id,
+            type: type.toLowerCase() === 'income' ? 'income' : 'expense',
+            amount: amount,
+            description: description || "Lançamento via Telegram",
+            date: new Date().toISOString(),
+            status: 'confirmed'
+          });
+
+        if (insErr) {
+          console.error("Insert error:", insErr);
+          await editTelegramMessage(cleanChatId, msgId, `❌ *Erro ao salvar:* ${insErr.message}`);
+        } else {
+          await editTelegramMessage(cleanChatId, msgId, "✅ *Lançamento confirmado e registrado com sucesso!*");
+        }
+      } else if (data.startsWith("cancel|")) {
+        await editTelegramMessage(cleanChatId, msgId, "❌ *Lançamento cancelado.*");
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // Handle Incoming Messages
-    const message = body.message || body.edited_message;
-    const chatId = message?.chat?.id || body.chat_id;
+    // 2. REAL TEXT PARSER
     const text = message?.text || body.text || "";
-
-    if (!chatId) {
-      return new Response(JSON.stringify({ error: "No chat_id" }), { status: 400, headers: corsHeaders });
-    }
-
-    const cleanChatId = String(chatId).trim();
-
-    // Flexible User Search (handles string vs number storage)
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .or(`telegram_chat_id.eq.${cleanChatId},telegram_chat_id.eq.${Number(cleanChatId)}`)
-      .maybeSingle();
-
-    if (profileErr || !profile) {
-      console.error("User lookup failed for Chat ID:", cleanChatId, "Error:", profileErr);
-      await sendTelegram(
-        cleanChatId,
-        `⚠️ *Atenção:* Seu Telegram não está vinculado a nenhuma conta no T2-SimplyFin.\n\n` +
-        `Seu ID do Telegram é: \`${cleanChatId}\`\n` +
-        `Copie esse ID e vincule-o no painel em Configurações.`
-      );
-      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-    }
-
-    // Handle /start or /help commands
     if (text.startsWith('/start') || text.startsWith('/help')) {
-      await sendTelegram(cleanChatId, "👋 *Bem-vindo ao T2-SimplyFin!*\nEnvie uma despesa como: `despesa 1.11 agua`.");
+      await sendTelegram(cleanChatId, "👋 *Bem-vindo!*\nEnvie: `despesa 1,13 agua` ou `receita 2500 freela`.");
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
-    // CARD RESPONSE WITH EXACT MATCHING UI & INLINE KEYBOARD (3 ROWS x 2 COLS)
-    const mockExpenseId = Date.now().toString();
+    // Logic to parse "despesa 1,13 agua" or "receita 50 pizza"
+    let type = 'expense';
+    let amount = 0;
+    let description = text;
+
+    const parts = text.split(/\s+/);
+    if (parts.length >= 2) {
+      const first = parts[0].toLowerCase();
+      if (first === 'despesa' || first === 'receita') {
+        type = first === 'receita' ? 'income' : 'expense';
+        const amountStr = parts[1].replace(',', '.');
+        amount = parseFloat(amountStr) || 0;
+        description = parts.slice(2).join(' ') || text;
+      } else {
+        // Handle direct "10.50 lunch"
+        const amountStr = parts[0].replace(',', '.');
+        const parsedAmount = parseFloat(amountStr);
+        if (!isNaN(parsedAmount)) {
+          amount = parsedAmount;
+          description = parts.slice(1).join(' ') || text;
+        }
+      }
+    }
+
     const cardText = 
-      `📉 *Despesa detectada — Confirme:*\n\n` +
-      `💰 *Valor:* R$ 1.11\n` +
-      `📝 *Descrição:* ${text || "agua"}\n` +
-      `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
-      `🏷️ *Categoria:* Sem categoria\n` +
-      `🏦 *Conta:* Sem conta`;
+      `📉 *${type === 'income' ? 'Receita' : 'Despesa'} detectada — Confirme:*\\n\\n` +
+      `💰 *Valor:* R$ ${amount.toFixed(2)}\\n` +
+      `📝 *Descrição:* ${description}\\n` +
+      `📅 *Data:* ${new Date().toISOString().split('T')[0]}`;
+
+    // 3. DRAFT STATE ENCODING in callback_data
+    const callbackData = `confirm|${type.toUpperCase()}|${amount}|${description.substring(0, 30)}`;
 
     const inlineKeyboard = {
       inline_keyboard: [
         [
-          { text: "✅ Confirmar", callback_data: `confirm_${mockExpenseId}` },
-          { text: "❌ Cancelar", callback_data: `cancel_${mockExpenseId}` }
+          { text: "✅ Confirmar", callback_data: callbackData },
+          { text: "❌ Cancelar", callback_data: `cancel|draft` }
         ],
         [
-          { text: "✏️ Categoria", callback_data: `edit_cat_${mockExpenseId}` },
-          { text: "✏️ Conta", callback_data: `edit_acc_${mockExpenseId}` }
-        ],
-        [
-          { text: "✏️ Valor", callback_data: `edit_val_${mockExpenseId}` },
-          { text: "✏️ Descrição", callback_data: `edit_desc_${mockExpenseId}` }
+          { text: "✏️ Categoria", callback_data: `edit_cat` },
+          { text: "✏️ Conta", callback_data: `edit_acc` }
         ]
       ]
     };
@@ -127,7 +164,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
 
   } catch (err: any) {
-    console.error("Critical error in webhook:", err);
+    console.error("Webhook error:", err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
