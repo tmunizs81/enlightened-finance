@@ -81,7 +81,13 @@ serve(async (req) => {
   };
 
   const buildStandardKeyboard = (typeCode: string, amount: number, catId: string, accId: string, desc: string) => {
-    const navPayload = `${typeCode}|${amount}|${catId}|${accId}|${desc.substring(0, 15)}`;
+    // Garantir que os IDs sejam strings limpas ou 'none'
+    const safeCatId = catId || 'none';
+    const safeAccId = accId || 'none';
+    // Telegram callback_data tem limite de 64 bytes. Vamos encurtar o payload.
+    // Formato: act|type|amt|cat|acc|desc
+    const navPayload = `${typeCode}|${amount}|${safeCatId}|${safeAccId}|${desc.substring(0, 15)}`;
+    
     return {
       inline_keyboard: [
         [
@@ -102,6 +108,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    // console.log("Received body:", JSON.stringify(body)); // Removido log ruidoso
 
     // 1. CALLBACK QUERIES
     if (body.callback_query) {
@@ -159,49 +166,54 @@ serve(async (req) => {
         await answerCallback(cb.id, "Para alterar, basta enviar uma nova mensagem corrigida no chat.");
       }
       else if (action === 'e_cat') {
-        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
+        const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId).order('name');
         if (!categories || categories.length === 0) {
-          await answerCallback(cb.id, "Nenhuma categoria encontrada no seu perfil.");
+          await answerCallback(cb.id, "Nenhuma categoria encontrada.");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
 
         const keyboardRows: any[] = [];
+        // Pegamos os dados atuais do payload (ignorando o 'e_cat')
+        const currentData = parts.slice(1).join('|');
+
         for (let i = 0; i < categories.length; i += 2) {
           const row = [
-            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id}|${parts.slice(1).join('|')}` }
+            { text: `🏷️ ${categories[i].name}`, callback_data: `s_cat|${categories[i].id}|${currentData}` }
           ];
           if (categories[i + 1]) {
-            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id}|${parts.slice(1).join('|')}` });
+            row.push({ text: `🏷️ ${categories[i + 1].name}`, callback_data: `s_cat|${categories[i + 1].id}|${currentData}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${parts.slice(1).join('|')}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${currentData}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏷️ *Selecione a Categoria:*", { inline_keyboard: keyboardRows });
       }
       else if (action === 'e_acc') {
-        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', userId);
+        let { data: accounts } = await supabase.from('accounts').select('id, name').eq('user_id', userId).order('name');
         if (!accounts || accounts.length === 0) {
-          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', userId);
+          const { data: bAccs } = await supabase.from('bank_accounts').select('id, name').eq('user_id', userId).order('name');
           accounts = bAccs;
         }
 
         if (!accounts || accounts.length === 0) {
-          await answerCallback(cb.id, "Nenhuma conta encontrada no seu perfil.");
+          await answerCallback(cb.id, "Nenhuma conta encontrada.");
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
 
         const keyboardRows: any[] = [];
+        const currentData = parts.slice(1).join('|');
+
         for (let i = 0; i < accounts.length; i += 2) {
           const row = [
-            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id}|${parts.slice(1).join('|')}` }
+            { text: `🏦 ${accounts[i].name}`, callback_data: `s_acc|${accounts[i].id}|${currentData}` }
           ];
           if (accounts[i + 1]) {
-            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id}|${parts.slice(1).join('|')}` });
+            row.push({ text: `🏦 ${accounts[i + 1].name}`, callback_data: `s_acc|${accounts[i + 1].id}|${currentData}` });
           }
           keyboardRows.push(row);
         }
-        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${parts.slice(1).join('|')}` }]);
+        keyboardRows.push([{ text: "⬅️ Voltar", callback_data: `back|${currentData}` }]);
 
         await editTelegramMessage(chatId, messageId, "🏦 *Selecione a Conta:*", { inline_keyboard: keyboardRows });
       }
