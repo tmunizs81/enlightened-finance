@@ -234,17 +234,20 @@ serve(async (req) => {
       } 
       // CANCEL
       else if (action === 'x') {
-        await supabase.from('telegram_drafts').delete().eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').delete().eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
       // EDIT VALUE PROMPT
       else if (action === 'val') {
-        await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').update({ status: 'waiting_amount' }).eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "💰 *Envie o novo valor no chat (ex: 45.90):*");
       }
       // EDIT DESCRIPTION PROMPT
       else if (action === 'desc') {
-        await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', draftId);
+        const targetDraftId = parts[1];
+        await supabase.from('telegram_drafts').update({ status: 'waiting_description' }).eq('id', targetDraftId);
         await editTelegramMessage(chatId, messageId, "📝 *Envie a nova descrição no chat:*");
       }
       // SHOW CATEGORY LIST (Uses short prefix for callback data to avoid 64-byte limit)
