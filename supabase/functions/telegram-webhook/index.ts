@@ -85,38 +85,80 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string) => {
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not set.");
-      return null;
-    }
+    // Try Gemini First
+    if (GEMINI_API_KEY) {
+      try {
+        console.log("Attempting OCR with Gemini...");
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const imageResponse = await fetch(fileUrl);
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
-      const imageResponse = await fetch(fileUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
 
-      const prompt = "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON.";
-
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: "image/jpeg"
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: "image/jpeg"
+            }
           }
-        }
-      ]);
+        ]);
 
-      const text = result.response.text();
-      const cleanedText = text.replace(/```json|```/g, "").trim();
-      return JSON.parse(cleanedText);
-    } catch (e) {
-      console.error("Error analyzing receipt with Gemini:", e);
-      return null;
+        const text = result.response.text();
+        const cleanedText = text.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanedText);
+      } catch (e) {
+        console.error("Gemini OCR failed:", e);
+      }
     }
+
+    // Fallback to Groq if Gemini fails or is missing
+    if (GROQ_API_KEY) {
+      try {
+        console.log("Attempting OCR with Groq Llama-3-Vision...");
+        const imageResponse = await fetch(fileUrl);
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.2-11b-vision-preview",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: "Você é um assistente financeiro. Analise esta imagem de um comprovante ou nota fiscal e extraia as seguintes informações em JSON estritamente: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\"}. Se for uma despesa, type é 'expense'. Se for um depósito/recebimento, type é 'income'. Retorne APENAS o JSON." },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/jpeg;base64,${base64Image}`
+                    }
+                  }
+                ]
+              }
+            ],
+            response_format: { type: "json_object" }
+          })
+        });
+
+        const data = await response.json();
+        return JSON.parse(data.choices[0].message.content);
+      } catch (e) {
+        console.error("Groq OCR failed:", e);
+      }
+    }
+
+    console.error("No API Keys configured or both OCR methods failed.");
+    return null;
   };
 
   const buildStandardKeyboard = (draftId: string) => {
