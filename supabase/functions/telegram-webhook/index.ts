@@ -130,9 +130,23 @@ serve(async (req) => {
       if (action === 'c') {
         const type = parts[1] === 'INC' ? 'income' : 'expense';
         const amount = parseFloat(parts[2] || '0');
-        const catId = (parts[3] && parts[3] !== 'none') ? parts[3] : null;
-        const accId = (parts[4] && parts[4] !== 'none') ? parts[4] : null;
+        let catId = (parts[3] && parts[3] !== 'none') ? parts[3] : null;
+        let accId = (parts[4] && parts[4] !== 'none') ? parts[4] : null;
         const description = parts[5] || 'Lançamento Telegram';
+
+        // Busca o ID completo se estiver abreviado
+        if (catId && catId.length < 36) {
+          const { data: c } = await supabase.from('categories').select('id').ilike('id', `${catId}%`).eq('user_id', userId).maybeSingle();
+          if (c) catId = c.id;
+        }
+        if (accId && accId.length < 36) {
+          let { data: a } = await supabase.from('accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+          if (!a) {
+            const { data: ba } = await supabase.from('bank_accounts').select('id').ilike('id', `${accId}%`).eq('user_id', userId).maybeSingle();
+            a = ba;
+          }
+          if (a) accId = a.id;
+        }
 
         const insertPayload: any = {
           user_id: userId,
@@ -159,6 +173,7 @@ serve(async (req) => {
           );
         }
       } 
+
       else if (action === 'x') {
         await editTelegramMessage(chatId, messageId, "❌ *Lançamento cancelado.*");
       }
