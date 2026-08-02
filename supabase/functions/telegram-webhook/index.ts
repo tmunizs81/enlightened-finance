@@ -220,7 +220,7 @@ serve(async (req) => {
           .from("pending_ocr_transactions")
           .select("*")
           .eq("id", id)
-          .eq("user_id", userId) // STRICT ISOLATION
+          .eq("user_id", userId)
           .single();
 
         if (pending) {
@@ -229,19 +229,24 @@ serve(async (req) => {
             amount: pending.amount,
             description: pending.description,
             date: pending.date,
-            type: pending.type || "expense",
-            status: "paid"
+            type: pending.type || "expense", // Uses the type stored in pending_ocr_transactions
+            status: "paid",
+            category_id: pending.category_id,
+            account_id: pending.account_id
           });
           
           if (!insErr) {
             await supabase.from("pending_ocr_transactions").update({ status: "confirmed" }).eq("id", id).eq("user_id", userId);
+            const emoji = pending.type === 'income' ? '📈' : '✅';
+            const label = pending.type === 'income' ? 'Receita' : 'Despesa';
+            
             await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 chat_id: chatIdStr,
                 message_id: messageId,
-                text: `✅ *Lançamento Confirmado!*\n\n💰 R$ ${Number(pending.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n📝 ${pending.description}`
+                text: `${emoji} *${label} Confirmada!*\n\n💰 R$ ${Number(pending.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n📝 ${pending.description}`
               })
             });
           }
