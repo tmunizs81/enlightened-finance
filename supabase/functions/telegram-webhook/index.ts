@@ -377,6 +377,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
       }
 
+      // Try to load Gemini Key from profile if not in ENV
+      if (!GEMINI_API_KEY) {
+        const { data: profile } = await supabase.from('profiles').select('gemini_api_key').eq('user_id', userId).maybeSingle();
+        if (profile?.gemini_api_key) {
+          GEMINI_API_KEY = profile.gemini_api_key;
+        }
+      }
+
       await sendTelegram(chatId, "🔍 *Processando comprovante com IA...*");
 
       try {
