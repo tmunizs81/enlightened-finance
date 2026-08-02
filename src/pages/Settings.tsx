@@ -224,6 +224,7 @@ const SettingsPage = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [isOCRActive, setIsOCRActive] = useState(true);
   const [webhookStatus, setWebhookStatus] = useState<{ ok: boolean; description?: string } | null>(null);
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
@@ -858,6 +859,34 @@ const SettingsPage = () => {
               >
                 <Bot className="h-3.5 w-3.5" /> Testar Conexão
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleSetWebhook}
+                disabled={settingWebhook}
+                className="gap-2 text-xs"
+              >
+                {settingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                Testar Webhook
+              </Button>
+              <Button
+                variant={isOCRActive ? "default" : "outline"}
+                onClick={() => {
+                  setIsOCRActive(!isOCRActive);
+                  toast.success(isOCRActive ? "OCR Desativado" : "OCR Habilitado");
+                }}
+                className="gap-2 text-xs"
+              >
+                <Brain className="h-3.5 w-3.5" /> {isOCRActive ? "OCR Ativo" : "Habilitar OCR"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleTestBotMessage(testMessage)}
+                disabled={testingWebhook}
+                className="gap-2 text-xs"
+              >
+                {testingWebhook ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Testar Bot (Enviar Mensagem)
+              </Button>
             </div>
           </div>
         )}
@@ -906,43 +935,6 @@ const SettingsPage = () => {
           </div>
         )}
       </div>
-
-      {/* Test Section */}
-      {isAdmin && botToken && chatId && (
-        <div className="glass-card space-y-4 p-5">
-          <div className="flex items-center gap-3">
-            <RotateCcw className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Depuração de Webhook</h2>
-          </div>
-          <div className="space-y-3">
-            <Input
-              value={testMessage}
-              onChange={(e) => setTestMessage(e.target.value)}
-              placeholder="Mensagem de teste..."
-              className="border-border bg-secondary text-xs"
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleTestBotMessage(testMessage)}
-                disabled={testingWebhook}
-                className="text-xs"
-              >
-                {testingWebhook ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                Simular Mensagem
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTestWebhook}
-                disabled={testingWebhook}
-                className="text-xs"
-              >
-                Testar Função
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Backup Local */}
       <div className="glass-card space-y-4 p-5">
