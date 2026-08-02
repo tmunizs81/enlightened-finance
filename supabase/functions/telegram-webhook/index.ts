@@ -212,9 +212,12 @@ serve(async (req) => {
         if (action === 's_cat') newCatId = parts[1];
         if (action === 's_acc') newAccId = parts[1];
 
+        // Se action é s_cat ou s_acc, os parâmetros originais foram deslocados para frente
         const idx = (action === 's_cat' || action === 's_acc') ? 2 : 1;
         const typeCode = parts[idx];
         const amount = parseFloat(parts[idx + 1] || '0');
+        
+        // Categoria e Conta foram movidas para cima (novos valores ou mantidos)
         const description = parts[idx + 4] || 'Lançamento Telegram';
 
         let catName = "Sem categoria";
@@ -233,8 +236,9 @@ serve(async (req) => {
           if (a?.name) accName = a.name;
         }
 
+        const typeLabel = typeCode === 'INC' ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
         const cardText =
-          `📉 *Despesa detectada — Confirme:*\n\n` +
+          `${typeLabel} — Confirme:\n\n` +
           `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
           `📝 *Descrição:* ${description}\n` +
           `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
@@ -308,8 +312,9 @@ serve(async (req) => {
     }
 
     const typeCode = isIncome ? 'INC' : 'EXP';
+    const typeLabel = isIncome ? '📈 *Receita detectada*' : '📉 *Despesa detectada*';
     const cardText =
-      `📉 *Despesa detectada — Confirme:*\n\n` +
+      `${typeLabel} — Confirme:\n\n` +
       `💰 *Valor:* R$ ${amount.toFixed(2)}\n` +
       `📝 *Descrição:* ${description}\n` +
       `📅 *Data:* ${new Date().toISOString().split('T')[0]}\n` +
