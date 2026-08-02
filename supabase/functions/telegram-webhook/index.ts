@@ -28,6 +28,11 @@ serve(async (req) => {
   try {
     const update = await req.json().catch(() => ({}));
     console.log("Full Telegram update:", JSON.stringify(update));
+    
+    // Add logging to track why processing might stop
+    if (!update.message && !update.callback_query && !update.action) {
+      console.log("Update received but no message, callback_query or action found. Keys present:", Object.keys(update));
+    }
 
     // --- HANDLE PING / HEALTH CHECK ---
     if (update.action === "ping") {
@@ -65,7 +70,6 @@ serve(async (req) => {
 
     if (profileErr) {
       console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
-      // Let's also check if there's any profile with this chat_id at all
       const { count } = await supabase
         .from("profiles")
         .select("*", { count: 'exact', head: true })
@@ -75,11 +79,22 @@ serve(async (req) => {
 
     if (!profile) {
       console.log("No profile found for chat_id:", chatId);
-      // Check if maybe the user sent a code to link?
-      if (message.text && message.text.length === 6 && /^\d+$/.test(message.text)) {
-         console.log("Possible linking attempt with code:", message.text);
+      
+      // Fallback: Tenta buscar usando o chat_id como string ou número (caso haja inconsistência de tipo no banco)
+      const { data: altProfile } = await supabase
+        .from("profiles")
+        .select("user_id, telegram_bot_token")
+        .filter("telegram_chat_id", "eq", chatId)
+        .maybeSingle();
+
+      if (!altProfile) {
+        console.log("Alternative profile lookup also failed.");
+        return new Response("ok");
       }
-      return new Response("ok");
+      
+      console.log("Alternative profile found!");
+      // Assign to profile for downstream usage
+      (profile as any) = altProfile;
     }
 
     const userId = profile.user_id;
