@@ -37,7 +37,8 @@ const Updating = () => {
             <p className="text-green-400"> ✔ Container uptime-kuma               Started                                                                                                               0.7s</p>
             <p className="text-blue-400"> ⠇ Container financeai-app             Starting                                                                                                              0.8s</p>
             <p className="mt-2 text-red-500 font-bold underline">Error response from daemon:</p>
-            <p className="text-red-400 text-[11px] leading-tight">failed to set up container networking: driver failed programming external connectivity on endpoint financeai-app (8c58f2dcb2ac8c5cd3d7551a3b8a1d4647b6e3eed4d2e05b84af607b97ebbc61): failed to bind host port 0.0.0.0:80/tcp: address already in use</p>
+            <p className="text-red-400 text-[11px] leading-tight">Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint financeai-app (79fcf74233d2b0dd1c93050ef0b857258863536742232b299dae12e39a5f09ee): failed to bind host port 0.0.0.0:80/tcp: address already in use</p>
+            <p className="mt-2 text-red-500 font-bold animate-bounce text-xs">continua o erro ao deploy</p>
             <div className="mt-4 flex animate-pulse">
               <span className="mr-2">_</span>
             </div>
