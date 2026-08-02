@@ -27,7 +27,7 @@ serve(async (req) => {
 
   try {
     const update = await req.json().catch(() => ({}));
-    console.log("Telegram update:", JSON.stringify(update).slice(0, 800));
+    console.log("Full Telegram update:", JSON.stringify(update));
 
     // --- HANDLE PING / HEALTH CHECK ---
     if (update.action === "ping") {
@@ -57,14 +57,28 @@ serve(async (req) => {
 
     const chatId = String(message.chat.id);
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("user_id, telegram_bot_token")
       .eq("telegram_chat_id", chatId)
       .single();
 
+    if (profileErr) {
+      console.error(`Profile fetch error for chat_id ${chatId}:`, profileErr.message);
+      // Let's also check if there's any profile with this chat_id at all
+      const { count } = await supabase
+        .from("profiles")
+        .select("*", { count: 'exact', head: true })
+        .eq("telegram_chat_id", chatId);
+      console.log(`Profiles found with chat_id ${chatId}:`, count);
+    }
+
     if (!profile) {
-      console.log("No profile for chat_id:", chatId);
+      console.log("No profile found for chat_id:", chatId);
+      // Check if maybe the user sent a code to link?
+      if (message.text && message.text.length === 6 && /^\d+$/.test(message.text)) {
+         console.log("Possible linking attempt with code:", message.text);
+      }
       return new Response("ok");
     }
 
