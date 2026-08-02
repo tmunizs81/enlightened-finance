@@ -351,8 +351,20 @@ const SettingsPage = () => {
     if (error) {
       console.error("Error saving Telegram config:", error);
       setSaving(false);
-      toast.error("Erro ao salvar configuração no banco: " + error.message);
+      toast.error("Erro ao salvar no banco. Verifique sua conexão.");
       return;
+    }
+
+    // Refresh local state to ensure it matches DB
+    const { data: updatedProfile } = await supabase
+      .from("profiles")
+      .select("telegram_chat_id, telegram_bot_token")
+      .eq("user_id", user.id)
+      .single();
+      
+    if (updatedProfile) {
+      setChatId(updatedProfile.telegram_chat_id || "");
+      setBotToken(updatedProfile.telegram_bot_token || "");
     }
 
     // 2. Automatic setWebhook if token is provided
