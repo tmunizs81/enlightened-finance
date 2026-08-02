@@ -168,14 +168,17 @@ _Exemplo: /despesa 45.90 Almoço restaurante_`,
 
     // --- HANDLE PHOTO ---
     const photo = message.photo;
-    if (!photo || photo.length === 0) {
+    const document = message.document;
+    const isImageDoc = document && document.mime_type?.startsWith("image/");
+
+    if (!photo && !isImageDoc) {
       return new Response("ok");
     }
 
     await sendTg("🔍 Analisando comprovante... Aguarde um momento.");
 
     // Download image
-    const fileId = photo[photo.length - 1].file_id;
+    const fileId = photo ? photo[photo.length - 1].file_id : document.file_id;
     const fileResp = await fetch(
       `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
     );
