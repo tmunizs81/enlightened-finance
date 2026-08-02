@@ -109,13 +109,13 @@ serve(async (req) => {
         console.error("Error fetching all profiles for fallback:", allErr.message);
       } else {
         // Log IDs registrados para debug (sempre úteis no VPS)
-        console.log("Registered chat IDs in DB:", allProfiles?.map(p => `[${p.telegram_chat_id}]`).join(", "));
-        
         const incomingId = String(chatId).trim();
+        console.log(`[DEBUG] Incoming Chat ID: ${incomingId}`);
+        console.log("Registered chat IDs in DB:", allProfiles?.map(p => `[${String(p.telegram_chat_id).trim()}]`).join(", "));
+        
         const matchingProfile = allProfiles?.find(p => {
           if (!p.telegram_chat_id) return false;
           const dbId = String(p.telegram_chat_id).trim();
-          // Comparação case-insensitive e trim para evitar erros de digitação/formatação no VPS
           return dbId === incomingId;
         });
 
