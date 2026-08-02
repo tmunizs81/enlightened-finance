@@ -222,7 +222,7 @@ serve(async (req) => {
         if (insErr) {
           await editTelegramMessage(chatId, messageId, `❌ *Erro ao salvar no banco:* ${insErr.message}`);
         } else {
-          await supabase.from('telegram_drafts').delete().eq('id', draftId);
+          await supabase.from('telegram_drafts').delete().eq('id', targetDraftId);
           await editTelegramMessage(
             chatId,
             messageId,
