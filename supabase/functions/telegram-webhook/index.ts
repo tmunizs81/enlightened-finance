@@ -306,6 +306,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
   try {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
+    console.log("Passo 1: Recebi os dados do webhook:", JSON.stringify(body).substring(0, 500) + "...");
 
     // 1. CALLBACK QUERIES (BUTTON CLICKS)
     if (body.callback_query) {
