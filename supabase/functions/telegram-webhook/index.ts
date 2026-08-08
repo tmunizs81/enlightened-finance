@@ -84,12 +84,13 @@ serve(async (req) => {
     return null;
   };
 
-  const analyzeReceipt = async (fileUrl: string, promptOverride?: string) => {
+  const analyzeReceipt = async (fileUrl: string, promptOverride?: string, forceProvider?: 'gemini' | 'groq') => {
     const defaultPrompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\", \"date\": string}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON. 5. Tente identificar a data no formato YYYY-MM-DD.";
     const prompt = promptOverride || defaultPrompt;
+    const isPdf = fileUrl.toLowerCase().includes('.pdf');
 
-    // Try Gemini First (Better for Vision/PDF context)
-    if (GEMINI_API_KEY) {
+    // Try Gemini
+    if (GEMINI_API_KEY && (!forceProvider || forceProvider === 'gemini')) {
       try {
         console.log("Attempting OCR with Gemini...");
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -100,31 +101,28 @@ serve(async (req) => {
         
         const imageBuffer = await imageResponse.arrayBuffer();
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-
-        const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
+        const mimeType = isPdf ? "application/pdf" : "image/jpeg";
 
         console.log(`Sending to Gemini. MimeType: ${mimeType}, Size: ${imageBuffer.byteLength} bytes`);
         const result = await model.generateContent([
           prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          }
+          { inlineData: { data: base64Data, mimeType: mimeType } }
         ]);
 
         const text = result.response.text();
         console.log("Gemini Raw Text:", text);
         const cleanedText = text.replace(/```json|```/g, "").trim();
-        return JSON.parse(cleanedText);
+        const parsed = JSON.parse(cleanedText);
+        parsed._provider = 'gemini';
+        return parsed;
       } catch (e) {
         console.error("Gemini OCR failed:", e);
+        if (forceProvider === 'gemini') return null;
       }
     }
 
-    // Fallback to Groq
-    if (GROQ_API_KEY && !fileUrl.toLowerCase().includes('.pdf')) {
+    // Fallback to Groq (or forced Groq)
+    if (GROQ_API_KEY && !isPdf && (!forceProvider || forceProvider === 'groq')) {
       try {
         console.log("Attempting OCR with Groq Llama-3-Vision...");
         const imageResponse = await fetch(fileUrl);
@@ -167,7 +165,9 @@ serve(async (req) => {
         const content = data.choices[0].message.content;
         console.log("Groq Raw Content:", content);
         const cleanedContent = content.replace(/```json|```/g, "").trim();
-        return JSON.parse(cleanedContent);
+        const parsed = JSON.parse(cleanedContent);
+        parsed._provider = 'groq';
+        return parsed;
       } catch (e) {
         console.error("Groq OCR failed:", e);
       }
@@ -177,23 +177,29 @@ serve(async (req) => {
     return null;
   };
 
-  const buildStandardKeyboard = (draftId: string) => {
-    return {
-      inline_keyboard: [
-        [
-          { text: "✅ Confirmar", callback_data: `c|${draftId}` },
-          { text: "❌ Cancelar", callback_data: `x|${draftId}` }
-        ],
-        [
-          { text: "✏️ Categoria", callback_data: `cat|${draftId}` },
-          { text: "✏️ Conta", callback_data: `acc|${draftId}` }
-        ],
-        [
-          { text: "✏️ Valor", callback_data: `val|${draftId}` },
-          { text: "✏️ Descrição", callback_data: `desc|${draftId}` }
-        ]
+  const buildStandardKeyboard = (draftId: string, lastFileId?: string) => {
+    const keyboard = [
+      [
+        { text: "✅ Confirmar", callback_data: `c|${draftId}` },
+        { text: "❌ Cancelar", callback_data: `x|${draftId}` }
+      ],
+      [
+        { text: "✏️ Categoria", callback_data: `cat|${draftId}` },
+        { text: "✏️ Conta", callback_data: `acc|${draftId}` }
+      ],
+      [
+        { text: "✏️ Valor", callback_data: `val|${draftId}` },
+        { text: "✏️ Descrição", callback_data: `desc|${draftId}` }
       ]
-    };
+    ];
+
+    if (lastFileId) {
+      keyboard.push([
+        { text: "🔄 Reanalisar (Fallback IA)", callback_data: `ref|${lastFileId}` }
+      ]);
+    }
+
+    return { inline_keyboard: keyboard };
   };
 
   async function renderDraftCard(chatId: string, messageId: number, draft: any) {
@@ -274,7 +280,7 @@ serve(async (req) => {
       // 2. If the action is a selection (sct, sac), payloadId IS the item ID (category/account), 
       //    so we MUST find the active draft by chat_id.
       let draft = null;
-      const directDraftActions = ['c', 'x', 'val', 'desc', 'cat', 'acc', 'back'];
+      const directDraftActions = ['c', 'x', 'val', 'desc', 'cat', 'acc', 'back', 'ref'];
       
       if (directDraftActions.includes(action) && payloadId) {
         const { data: d } = await supabase.from('telegram_drafts').select('*').eq('id', payloadId).maybeSingle();
@@ -421,6 +427,64 @@ serve(async (req) => {
           if (updated) await renderDraftCard(chatId, messageId, updated);
         }
       }
+      // RE-ANALYZE (FALLBACK IA)
+      else if (action === 'ref') {
+        const fileId = parts[1];
+        const userId = await getUserIdByChatId(chatId);
+        
+        if (!userId) return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        
+        // Load API keys
+        const { data: profile } = await supabase.from('profiles').select('gemini_api_key, groq_api_key').eq('user_id', userId).maybeSingle();
+        if (profile?.gemini_api_key) GEMINI_API_KEY = profile.gemini_api_key;
+        if (profile?.groq_api_key) GROQ_API_KEY = profile.groq_api_key;
+
+        // Find last used provider from current draft
+        const lastProvider = draft?.metadata?.ocr_provider || 'gemini';
+        const newProvider = lastProvider === 'gemini' ? 'groq' : 'gemini';
+        
+        await editTelegramMessage(chatId, messageId, `🔄 *Reanalisando com ${newProvider.toUpperCase()}...*`);
+
+        const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const fileData = await fileRes.json();
+        
+        if (fileData.ok) {
+          const filePath = fileData.result.file_path;
+          const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
+          
+          const aiResult = await analyzeReceipt(fileUrl, undefined, newProvider);
+          
+          if (aiResult) {
+            // Update existing draft or create new one? User said "reenviar o mesmo comprovante... registrando qual provider funcionou"
+            // Let's update the current draft if it exists, otherwise create new.
+            const updateData = {
+              type: aiResult.type || 'expense',
+              amount: aiResult.amount || 0,
+              description: aiResult.description || "IA OCR Fallback",
+              date: aiResult.date || new Date().toISOString().split('T')[0],
+              status: 'active',
+              metadata: { 
+                file_id: fileId, 
+                ocr_provider: aiResult._provider || newProvider 
+              }
+            };
+
+            if (draft) {
+              const { data: updated } = await supabase.from('telegram_drafts').update(updateData).eq('id', draft.id).select().single();
+              if (updated) await renderDraftCard(chatId, messageId, updated);
+            } else {
+              const { data: newDraft } = await supabase.from('telegram_drafts').insert({
+                ...updateData,
+                user_id: userId,
+                chat_id: chatId
+              }).select().single();
+              if (newDraft) await sendNewDraftCard(chatId, newDraft);
+            }
+          } else {
+            await editTelegramMessage(chatId, messageId, `❌ *Fallback para ${newProvider.toUpperCase()} também falhou.* Tente enviar o valor manualmente.`);
+          }
+        }
+      }
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
@@ -497,7 +561,11 @@ serve(async (req) => {
               category_id: categoryId,
               account_id: accountId,
               date: aiResult.date || new Date().toISOString().split('T')[0],
-              status: 'active'
+              status: 'active',
+              metadata: { 
+                file_id: fileId, 
+                ocr_provider: aiResult._provider || (GEMINI_API_KEY ? 'gemini' : 'groq')
+              }
             }).select().single();
 
             if (newDraft) {
