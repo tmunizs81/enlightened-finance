@@ -620,11 +620,12 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
             }
           }
         }
-        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}, pare de fazer remendos e advinhações, haja como um time completo de desenvolvimento e resolva isso de uma vez por todas sem gambiarras`;
+        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}`;
         await sendTelegram(chatId, `❌ *Falha na leitura IA. O comprovante está visível, mas a IA não conseguiu extrair os dados. Tente reenviar ou insira manualmente.*${diagInfo}`);
-      } catch (e) {
+      } catch (e: any) {
         console.error("OCR Processing error:", e);
-        await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
+        const errorMessage = e.message || "Erro desconhecido";
+        await sendTelegram(chatId, `❌ *Erro ao processar arquivo:* ${errorMessage}`);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
