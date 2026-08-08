@@ -219,15 +219,16 @@ serve(async (req) => {
       if (a?.name) accName = a.name;
     }
 
+    const providerTag = draft.metadata?.ocr_provider ? ` 🤖 (${draft.metadata.ocr_provider.toUpperCase()})` : '';
     const cardText =
-      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
+      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada${providerTag} — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${draft.date || new Date().toISOString().split('T')[0]}\n` +
       `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
-    await editTelegramMessage(chatId, messageId, cardText, buildStandardKeyboard(draft.id));
+    await editTelegramMessage(chatId, messageId, cardText, buildStandardKeyboard(draft.id, draft.metadata?.file_id));
   }
 
   async function sendNewDraftCard(chatId: string, draft: any) {
@@ -247,15 +248,16 @@ serve(async (req) => {
       if (a?.name) accName = a.name;
     }
 
+    const providerTag = draft.metadata?.ocr_provider ? ` 🤖 (${draft.metadata.ocr_provider.toUpperCase()})` : '';
     const cardText =
-      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada — Confirme:\n\n` +
+      `${draft.type === 'income' ? '📈 *Receita*' : '📉 *Despesa*'} detectada${providerTag} — Confirme:\n\n` +
       `💰 *Valor:* R$ ${Number(draft.amount).toFixed(2)}\n` +
       `📝 *Descrição:* ${draft.description}\n` +
       `📅 *Data:* ${draft.date || new Date().toISOString().split('T')[0]}\n` +
       `🏷️ *Categoria:* ${catName}\n` +
       `🏦 *Conta:* ${accName}`;
 
-    await sendTelegram(chatId, cardText, buildStandardKeyboard(draft.id));
+    await sendTelegram(chatId, cardText, buildStandardKeyboard(draft.id, draft.metadata?.file_id));
   }
 
   try {
