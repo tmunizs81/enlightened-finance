@@ -85,7 +85,7 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string, promptOverride?: string, forceProvider?: 'gemini' | 'groq') => {
-    console.log("Passo 2: Tentando baixar imagem de:", fileUrl);
+    console.log("Passo 2: Tentando analisar imagem via URL direta:", fileUrl);
     
     const defaultPrompt = `Atue como um Engenheiro de Software Sênior especializado em OCR Financeiro.
 Analise este comprovante e extraia os dados exatamente no formato JSON abaixo.
@@ -104,22 +104,21 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
     // Try Gemini
     if (GEMINI_API_KEY && (!forceProvider || forceProvider === 'gemini')) {
       try {
-        console.log("Passo: Attempting OCR with Gemini...");
+        console.log("Passo: Attempting OCR with Gemini (URL Mode)...");
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+        // Gemini typically needs the binary, but for this "extreme simplification" 
+        // we'll still download for Gemini since it's more restrictive with URLs
+        // but we'll add much more logging.
         const imageResponse = await fetch(fileUrl);
         if (!imageResponse.ok) {
           const errText = await imageResponse.text();
-          throw new Error(`Passo 2 falhou: Status ${imageResponse.status} - ${errText}`);
+          throw new Error(`Erro no Download (Gemini): ${imageResponse.status} - ${errText}`);
         }
         
         const imageBuffer = await imageResponse.arrayBuffer();
-        console.log(`Passo 3: Tamanho do buffer da imagem baixada (Gemini): ${imageBuffer.byteLength} bytes`);
-        
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-        console.log(`Passo 4: Base64 gerado (Gemini): ${base64Data.substring(0, 50)}...`);
-        
         const mimeType = isPdf ? "application/pdf" : "image/jpeg";
 
         const result = await model.generateContent([
@@ -128,7 +127,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
         ]);
 
         const text = result.response.text();
-        console.log("Passo 5: Resposta bruta da API da Gemini:", text);
+        console.log("Gemini Raw Response:", text);
         
         const cleanedText = text.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(cleanedText);
@@ -141,28 +140,16 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           _provider: 'gemini'
         };
       } catch (e: any) {
-        console.error("Gemini OCR failed:", e);
-        if (forceProvider === 'gemini') throw e;
+        console.error("Gemini OCR Critical Error:", e);
+        if (forceProvider === 'gemini') throw new Error(`Gemini Error: ${e.message || JSON.stringify(e)}`);
       }
     }
 
-    // Fallback to Groq (or forced Groq)
+    // Fallback to Groq (or forced Groq) - Simplificação Extrema: URL Direta
     if (GROQ_API_KEY && !isPdf && (!forceProvider || forceProvider === 'groq')) {
       try {
-        console.log("Passo: Attempting OCR with Groq (Base64 Mode)...");
+        console.log("Passo: Attempting OCR with Groq (EXTREME SIMPLIFICATION - DIRECT URL)...");
         
-        const imageResponse = await fetch(fileUrl);
-        if (!imageResponse.ok) {
-          const errText = await imageResponse.text();
-          throw new Error(`Passo 2 falhou (Groq): Status ${imageResponse.status} - ${errText}`);
-        }
-        
-        const imageBuffer = await imageResponse.arrayBuffer();
-        console.log(`Passo 3: Tamanho do buffer da imagem baixada (Groq): ${imageBuffer.byteLength} bytes`);
-        
-        const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-        console.log(`Passo 4: Base64 gerado (Groq): ${base64Image.substring(0, 50)}...`);
-
         const groqPayload = {
           model: "llama-3.2-11b-vision-preview",
           messages: [
@@ -172,7 +159,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
                 { type: "text", text: prompt },
                 {
                   type: "image_url",
-                  image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+                  image_url: { url: fileUrl } // Tentativa de passar URL direta do Telegram
                 }
               ]
             }
@@ -181,7 +168,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           temperature: 0.1
         };
 
-        console.log("TESTE DE SANIDADE: Payload enviado para Groq:", JSON.stringify(groqPayload).substring(0, 500) + "...");
+        console.log("TESTE DE SANIDADE: Payload Groq (URL Direta):", JSON.stringify(groqPayload));
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
@@ -193,7 +180,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
         });
 
         const rawResponse = await response.text();
-        console.log("Passo 5: Resposta bruta da API da Groq antes do parse:", rawResponse);
+        console.log("Resposta bruta da Groq:", rawResponse);
 
         if (!response.ok) {
           throw new Error(`Groq API Error: ${response.status} - ${rawResponse}`);
@@ -211,13 +198,62 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           _provider: 'groq'
         };
       } catch (e: any) {
-        console.error("Groq OCR failed:", e);
-        throw e;
+        console.error("Groq OCR Critical Error:", e);
+        // Se a URL direta falhou (provavelmente Groq não acessa IP do Telegram), tentamos o fallback com Base64
+        console.log("URL Direta falhou ou Groq não acessa. Tentando Fallback Base64...");
+        
+        try {
+          const imageResponse = await fetch(fileUrl);
+          if (!imageResponse.ok) throw new Error(`Download Fallback falhou: ${imageResponse.status}`);
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${GROQ_API_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "llama-3.2-11b-vision-preview",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: prompt },
+                    {
+                      type: "image_url",
+                      image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+                    }
+                  ]
+                }
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.1
+            })
+          });
+
+          const rawResponse = await response.text();
+          if (!response.ok) throw new Error(`Groq Base64 Error: ${response.status} - ${rawResponse}`);
+
+          const data = JSON.parse(rawResponse);
+          const content = data.choices[0].message.content;
+          const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+          
+          return {
+            amount: parsed.valor || parsed.amount || 0,
+            description: parsed.descricao || parsed.description || parsed.estabelecimento || "IA OCR",
+            date: parsed.data || parsed.date || null,
+            type: parsed.type || 'expense',
+            _provider: 'groq_base64'
+          };
+        } catch (innerErr: any) {
+          throw new Error(`Falha total Groq (URL e Base64): ${innerErr.message || JSON.stringify(innerErr)}`);
+        }
       }
     }
 
-    console.error("No API Keys configured or both OCR methods failed.");
-    return null;
+    throw new Error("Nenhuma API Key configurada ou Provedor não suportado.");
   };
 
   const buildStandardKeyboard = (draftId: string, lastFileId?: string) => {
