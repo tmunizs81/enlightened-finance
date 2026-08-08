@@ -7,19 +7,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Segredos configurados em Supabase > Edge Functions > Secrets.
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY já são injetados automaticamente pela plataforma.
-// GEMINI_API_KEY / GROQ_API_KEY aqui funcionam como fallback da plataforma: cada usuário pode
-// cadastrar sua própria chave em Configurações (profiles.gemini_api_key / groq_api_key), que
-// tem prioridade sobre esse valor global.
+// A chave universal de IA (fallback da plataforma) vem de public.platform_secrets,
+// não de um Secret de Edge Function — ver getPlatformKeys() abaixo. Cada usuário
+// pode cadastrar sua própria chave em Configurações (profiles.gemini_api_key /
+// groq_api_key), que tem prioridade sobre esse valor global.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const PLATFORM_GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
-const PLATFORM_GROQ_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
+
+// Chave universal de IA: guardada em public.platform_secrets (só o
+// service_role enxerga essa tabela) em vez de Deno.env, porque esta plataforma
+// não expõe os Secrets de Edge Functions para o dono do app. Cacheada em
+// memória por alguns minutos para não bater no banco a cada mensagem.
+let platformKeysCache: { gemini: string; groq: string; fetchedAt: number } | null = null;
+const PLATFORM_KEYS_TTL_MS = 5 * 60 * 1000;
+
+async function getPlatformKeys() {
+  if (platformKeysCache && Date.now() - platformKeysCache.fetchedAt < PLATFORM_KEYS_TTL_MS) {
+    return platformKeysCache;
+  }
+  const { data, error } = await supabase
+    .from("platform_secrets")
+    .select("gemini_api_key, groq_api_key")
+    .eq("id", true)
+    .maybeSingle();
+  if (error) console.error("Erro ao buscar platform_secrets:", error.message);
+  platformKeysCache = {
+    gemini: data?.gemini_api_key || Deno.env.get("GEMINI_API_KEY") || "",
+    groq: data?.groq_api_key || Deno.env.get("GROQ_API_KEY") || "",
+    fetchedAt: Date.now(),
+  };
+  return platformKeysCache;
+}
 
 // deno-lint-ignore no-explicit-any
 type Json = Record<string, any>;
@@ -443,8 +466,9 @@ async function handleCallbackQuery(cb: Json) {
 
   if (action === "ref") {
     const fileId = payloadId;
-    const geminiKey = profile.gemini_api_key || PLATFORM_GEMINI_KEY;
-    const groqKey = profile.groq_api_key || PLATFORM_GROQ_KEY;
+    const platformKeys = await getPlatformKeys();
+    const geminiKey = profile.gemini_api_key || platformKeys.gemini;
+    const groqKey = profile.groq_api_key || platformKeys.groq;
     const lastProvider = draft?.metadata?.ocr_provider || "gemini";
     const nextProvider = lastProvider === "gemini" ? "groq" : "gemini";
 
@@ -497,8 +521,9 @@ async function handleMessage(message: Json) {
   }
 
   const api = telegramApi(profile.telegram_bot_token);
-  const geminiKey = profile.gemini_api_key || PLATFORM_GEMINI_KEY;
-  const groqKey = profile.groq_api_key || PLATFORM_GROQ_KEY;
+  const platformKeys = await getPlatformKeys();
+  const geminiKey = profile.gemini_api_key || platformKeys.gemini;
+  const groqKey = profile.groq_api_key || platformKeys.groq;
   const text = (message.text || "").trim();
 
   if (text === "/start" || text === "/help" || text === "/ajuda") {
