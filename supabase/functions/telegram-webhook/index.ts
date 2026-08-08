@@ -85,6 +85,8 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string, promptOverride?: string, forceProvider?: 'gemini' | 'groq') => {
+    console.log("Passo 2: Tentando baixar imagem de:", fileUrl);
+    
     const defaultPrompt = `Atue como um Engenheiro de Software Sênior especializado em OCR Financeiro.
 Analise este comprovante e extraia os dados exatamente no formato JSON abaixo.
 Campos obrigatórios:
@@ -102,29 +104,35 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
     // Try Gemini
     if (GEMINI_API_KEY && (!forceProvider || forceProvider === 'gemini')) {
       try {
-        console.log("Attempting OCR with Gemini...");
+        console.log("Passo: Attempting OCR with Gemini...");
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const imageResponse = await fetch(fileUrl);
-        if (!imageResponse.ok) throw new Error(`Failed to fetch file from Telegram: ${imageResponse.statusText}`);
+        if (!imageResponse.ok) {
+          const errText = await imageResponse.text();
+          throw new Error(`Passo 2 falhou: Status ${imageResponse.status} - ${errText}`);
+        }
         
         const imageBuffer = await imageResponse.arrayBuffer();
+        console.log(`Passo 3: Tamanho do buffer da imagem baixada (Gemini): ${imageBuffer.byteLength} bytes`);
+        
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        console.log(`Passo 4: Base64 gerado (Gemini): ${base64Data.substring(0, 50)}...`);
+        
         const mimeType = isPdf ? "application/pdf" : "image/jpeg";
 
-        console.log(`Sending to Gemini. MimeType: ${mimeType}, Size: ${imageBuffer.byteLength} bytes`);
         const result = await model.generateContent([
           prompt,
           { inlineData: { data: base64Data, mimeType: mimeType } }
         ]);
 
         const text = result.response.text();
-        console.log("Gemini Raw Text:", text);
+        console.log("Passo 5: Resposta bruta da API da Gemini:", text);
+        
         const cleanedText = text.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(cleanedText);
         
-        // Normalize fields for the rest of the app
         return {
           amount: parsed.valor || parsed.amount || 0,
           description: parsed.descricao || parsed.description || parsed.estabelecimento || "IA OCR",
@@ -132,57 +140,67 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           type: parsed.type || 'expense',
           _provider: 'gemini'
         };
-      } catch (e) {
+      } catch (e: any) {
         console.error("Gemini OCR failed:", e);
-        if (forceProvider === 'gemini') return null;
+        if (forceProvider === 'gemini') throw e;
       }
     }
 
     // Fallback to Groq (or forced Groq)
     if (GROQ_API_KEY && !isPdf && (!forceProvider || forceProvider === 'groq')) {
       try {
-        console.log("Attempting OCR with Groq (Base64 Mode)...");
+        console.log("Passo: Attempting OCR with Groq (Base64 Mode)...");
         
         const imageResponse = await fetch(fileUrl);
-        if (!imageResponse.ok) throw new Error(`Failed to fetch file from Telegram: ${imageResponse.statusText}`);
+        if (!imageResponse.ok) {
+          const errText = await imageResponse.text();
+          throw new Error(`Passo 2 falhou (Groq): Status ${imageResponse.status} - ${errText}`);
+        }
         
         const imageBuffer = await imageResponse.arrayBuffer();
+        console.log(`Passo 3: Tamanho do buffer da imagem baixada (Groq): ${imageBuffer.byteLength} bytes`);
+        
         const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        console.log(`Passo 4: Base64 gerado (Groq): ${base64Image.substring(0, 50)}...`);
 
-        console.log(`Sending to Groq. Size: ${imageBuffer.byteLength} bytes`);
+        const groqPayload = {
+          model: "llama-3.2-11b-vision-preview",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+                }
+              ]
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        };
+
+        console.log("TESTE DE SANIDADE: Payload enviado para Groq:", JSON.stringify(groqPayload).substring(0, 500) + "...");
+
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${GROQ_API_KEY}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            model: "llama-3.2-11b-vision-preview",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: prompt },
-                  {
-                    type: "image_url",
-                    image_url: { url: `data:image/jpeg;base64,${base64Image}` }
-                  }
-                ]
-              }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.1
-          })
+          body: JSON.stringify(groqPayload)
         });
 
+        const rawResponse = await response.text();
+        console.log("Passo 5: Resposta bruta da API da Groq antes do parse:", rawResponse);
+
         if (!response.ok) {
-          const errData = await response.text();
-          throw new Error(`Groq API Error: ${response.status} - ${errData}`);
+          throw new Error(`Groq API Error: ${response.status} - ${rawResponse}`);
         }
 
-        const data = await response.json();
+        const data = JSON.parse(rawResponse);
         const content = data.choices[0].message.content;
-        console.log("Groq Raw Content:", content);
         const parsed = typeof content === 'string' ? JSON.parse(content) : content;
         
         return {
@@ -192,8 +210,9 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           type: parsed.type || 'expense',
           _provider: 'groq'
         };
-      } catch (e) {
+      } catch (e: any) {
         console.error("Groq OCR failed:", e);
+        throw e;
       }
     }
 
@@ -287,6 +306,7 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
   try {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
+    console.log("Passo 1: Recebi os dados do webhook:", JSON.stringify(body).substring(0, 500) + "...");
 
     // 1. CALLBACK QUERIES (BUTTON CLICKS)
     if (body.callback_query) {
@@ -600,11 +620,12 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
             }
           }
         }
-        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}, pare de fazer remendos e advinhações, haja como um time completo de desenvolvimento e resolva isso de uma vez por todas sem gambiarras`;
+        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}`;
         await sendTelegram(chatId, `❌ *Falha na leitura IA. O comprovante está visível, mas a IA não conseguiu extrair os dados. Tente reenviar ou insira manualmente.*${diagInfo}`);
-      } catch (e) {
+      } catch (e: any) {
         console.error("OCR Processing error:", e);
-        await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
+        const errorMessage = e.message || "Erro desconhecido";
+        await sendTelegram(chatId, `❌ *Erro ao processar arquivo:* ${errorMessage}`);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
