@@ -85,7 +85,17 @@ serve(async (req) => {
   };
 
   const analyzeReceipt = async (fileUrl: string, promptOverride?: string, forceProvider?: 'gemini' | 'groq') => {
-    const defaultPrompt = "Você é um assistente financeiro sênior especializado em OCR. Analise este documento (imagem ou página de PDF) e extraia: {\"amount\": number, \"description\": string, \"type\": \"expense\" | \"income\", \"date\": string}. Regras: 1. Extraia o valor total final. 2. Descrição curta e clara. 3. Se houver múltiplos itens, some-os se for um cupom fiscal único. 4. Retorne APENAS o JSON. 5. Tente identificar a data no formato YYYY-MM-DD.";
+    const defaultPrompt = `Atue como um Engenheiro de Software Sênior especializado em OCR Financeiro.
+Analise este comprovante e extraia os dados exatamente no formato JSON abaixo.
+Campos obrigatórios:
+- valor: (number) Valor total do comprovante.
+- descricao: (string) Nome curto do estabelecimento ou serviço.
+- data: (string) Data no formato YYYY-MM-DD ou null se não encontrar.
+- estabelecimento: (string) Nome completo do local.
+- type: (string) "expense" (padrão) ou "income".
+
+Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
+
     const prompt = promptOverride || defaultPrompt;
     const isPdf = fileUrl.toLowerCase().includes('.pdf');
 
@@ -113,8 +123,15 @@ serve(async (req) => {
         console.log("Gemini Raw Text:", text);
         const cleanedText = text.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(cleanedText);
-        parsed._provider = 'gemini';
-        return parsed;
+        
+        // Normalize fields for the rest of the app
+        return {
+          amount: parsed.valor || parsed.amount || 0,
+          description: parsed.descricao || parsed.description || parsed.estabelecimento || "IA OCR",
+          date: parsed.data || parsed.date || null,
+          type: parsed.type || 'expense',
+          _provider: 'gemini'
+        };
       } catch (e) {
         console.error("Gemini OCR failed:", e);
         if (forceProvider === 'gemini') return null;
@@ -124,7 +141,8 @@ serve(async (req) => {
     // Fallback to Groq (or forced Groq)
     if (GROQ_API_KEY && !isPdf && (!forceProvider || forceProvider === 'groq')) {
       try {
-        console.log("Attempting OCR with Groq Llama-3-Vision...");
+        console.log("Attempting OCR with Groq (Base64 Mode)...");
+        
         const imageResponse = await fetch(fileUrl);
         if (!imageResponse.ok) throw new Error(`Failed to fetch file from Telegram: ${imageResponse.statusText}`);
         
@@ -152,7 +170,8 @@ serve(async (req) => {
                 ]
               }
             ],
-            response_format: { type: "json_object" }
+            response_format: { type: "json_object" },
+            temperature: 0.1
           })
         });
 
@@ -164,10 +183,15 @@ serve(async (req) => {
         const data = await response.json();
         const content = data.choices[0].message.content;
         console.log("Groq Raw Content:", content);
-        const cleanedContent = content.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleanedContent);
-        parsed._provider = 'groq';
-        return parsed;
+        const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+        
+        return {
+          amount: parsed.valor || parsed.amount || 0,
+          description: parsed.descricao || parsed.description || parsed.estabelecimento || "IA OCR",
+          date: parsed.data || parsed.date || null,
+          type: parsed.type || 'expense',
+          _provider: 'groq'
+        };
       } catch (e) {
         console.error("Groq OCR failed:", e);
       }
