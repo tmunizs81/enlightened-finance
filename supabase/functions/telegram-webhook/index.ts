@@ -96,11 +96,14 @@ serve(async (req) => {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const imageResponse = await fetch(fileUrl);
+        if (!imageResponse.ok) throw new Error(`Failed to fetch file from Telegram: ${imageResponse.statusText}`);
+        
         const imageBuffer = await imageResponse.arrayBuffer();
         const base64Data = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
         const mimeType = fileUrl.toLowerCase().includes('.pdf') ? "application/pdf" : "image/jpeg";
 
+        console.log(`Sending to Gemini. MimeType: ${mimeType}, Size: ${imageBuffer.byteLength} bytes`);
         const result = await model.generateContent([
           prompt,
           {
@@ -112,6 +115,7 @@ serve(async (req) => {
         ]);
 
         const text = result.response.text();
+        console.log("Gemini Raw Text:", text);
         const cleanedText = text.replace(/```json|```/g, "").trim();
         return JSON.parse(cleanedText);
       } catch (e) {
@@ -124,9 +128,12 @@ serve(async (req) => {
       try {
         console.log("Attempting OCR with Groq Llama-3-Vision...");
         const imageResponse = await fetch(fileUrl);
+        if (!imageResponse.ok) throw new Error(`Failed to fetch file from Telegram: ${imageResponse.statusText}`);
+        
         const imageBuffer = await imageResponse.arrayBuffer();
         const base64Image = btoa(new Uint8Array(imageBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
 
+        console.log(`Sending to Groq. Size: ${imageBuffer.byteLength} bytes`);
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -151,8 +158,14 @@ serve(async (req) => {
           })
         });
 
+        if (!response.ok) {
+          const errData = await response.text();
+          throw new Error(`Groq API Error: ${response.status} - ${errData}`);
+        }
+
         const data = await response.json();
         const content = data.choices[0].message.content;
+        console.log("Groq Raw Content:", content);
         const cleanedContent = content.replace(/```json|```/g, "").trim();
         return JSON.parse(cleanedContent);
       } catch (e) {
@@ -493,7 +506,8 @@ serve(async (req) => {
             }
           }
         }
-        await sendTelegram(chatId, "❌ *Falha crítica na leitura.* O comprovante parece ilegível para a IA no momento. Tente uma foto com melhor iluminação ou envie o valor manualmente. porem o ocmprovante esta nitido e normal, perfeitamente facil de ler");
+        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}`;
+        await sendTelegram(chatId, `❌ *Falha na leitura IA.* O comprovante está visível, mas a IA não conseguiu extrair os dados. Tente reenviar ou insira manualmente.${diagInfo}`);
       } catch (e) {
         console.error("OCR Processing error:", e);
         await sendTelegram(chatId, "❌ *Erro ao processar arquivo.*");
