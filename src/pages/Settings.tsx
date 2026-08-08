@@ -384,7 +384,8 @@ const SettingsPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             url: webhookUrl,
-            allowed_updates: ["message", "callback_query", "edited_message"]
+            allowed_updates: ["message", "callback_query", "edited_message"],
+            drop_pending_updates: true
           }),
         });
         const data = await resp.json();
@@ -475,10 +476,11 @@ const SettingsPage = () => {
       const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          url: webhookUrl,
-          allowed_updates: ["message", "callback_query"]
-        }),
+          body: JSON.stringify({ 
+            url: webhookUrl,
+            allowed_updates: ["message", "callback_query", "edited_message"],
+            drop_pending_updates: true
+          }),
       });
       const data = await resp.json();
       if (data.ok)
