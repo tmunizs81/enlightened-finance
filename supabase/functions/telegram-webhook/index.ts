@@ -649,18 +649,21 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
               }
             }).select().single();
 
-            if (newDraft) {
-              await sendNewDraftCard(chatId, newDraft);
-              return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
             }
+          } catch (e: any) {
+            clearTimeout(timeoutId);
+            const isTimeout = e.name === 'AbortError';
+            const errorMsg = isTimeout ? "Tempo limite de análise esgotado (25s)" : (e.message || JSON.stringify(e));
+            console.error("OCR Processing error:", errorMsg);
+            await sendTelegram(chatId, `❌ *Falha no Processamento:* ${errorMsg}`);
+            return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
           }
         }
-        const diagInfo = `\n\n🔍 *Diagnóstico:* \n- Gemini: ${GEMINI_API_KEY ? 'Configurado' : 'Ausente'}\n- Groq: ${GROQ_API_KEY ? 'Configurado' : 'Ausente'}\n- Tipo: ${doc ? 'Documento' : 'Foto'}`;
-        await sendTelegram(chatId, `❌ *Falha na leitura IA. O comprovante está visível, mas a IA não conseguiu extrair os dados. Tente reenviar ou insira manualmente.*${diagInfo}`);
+        
+        await sendTelegram(chatId, `❌ *Falha na leitura IA. O comprovante está visível, mas a IA não conseguiu extrair os dados.*`);
       } catch (e: any) {
-        console.error("OCR Processing error:", e);
-        const errorMessage = e.message || "Erro desconhecido";
-        await sendTelegram(chatId, `❌ *Erro ao processar arquivo:* ${errorMessage}`);
+        console.error("Global OCR error:", e);
+        await sendTelegram(chatId, `❌ *Erro Crítico:* ${e.message || "Falha na comunicação"}`);
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
