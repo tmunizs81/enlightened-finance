@@ -608,19 +608,18 @@ Retorne APENAS o objeto JSON, sem markdown ou explicações.`;
           const filePath = fileData.result.file_path;
           const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`;
           
-          let aiResult = await analyzeReceipt(fileUrl);
-          
-          if (!aiResult) {
-            console.log("Retrying OCR with fallback strategy...");
-            await sendTelegram(chatId, "🔄 *Primeira tentativa falhou. Tentando com estratégia de contraste...*");
-            // Here we could add image processing if we had a library, but since we're in Edge Functions
-            // we'll try a more descriptive prompt as a "recovery" logic.
-            aiResult = await analyzeReceipt(fileUrl, "Analise este documento com ATENÇÃO REDOBRADA. Extraia o valor total mesmo que a imagem esteja difícil. Retorne JSON: {\"amount\": number, \"description\": string, \"type\": \"expense\", \"date\": string}");
-          }
+          // Timeout de 25 segundos para a IA na Edge Function (maior que o timeout da UI)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-          if (aiResult) {
-            let categoryId = null;
-            const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
+          try {
+            console.log(`Iniciando análise OCR para: ${fileId}`);
+            const aiResult = await analyzeReceipt(fileUrl);
+            clearTimeout(timeoutId);
+            
+            if (aiResult) {
+              let categoryId = null;
+              const { data: categories } = await supabase.from('categories').select('id, name').eq('user_id', userId);
             if (categories && categories.length > 0) {
               const matched = matchCategory(aiResult.description, categories);
               if (matched) categoryId = matched.id;
