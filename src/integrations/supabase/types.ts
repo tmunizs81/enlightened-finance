@@ -722,6 +722,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deepseek_api_key: string | null
           display_name: string | null
           gemini_api_key: string | null
           groq_api_key: string | null
@@ -736,6 +737,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deepseek_api_key?: string | null
           display_name?: string | null
           gemini_api_key?: string | null
           groq_api_key?: string | null
@@ -750,6 +752,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deepseek_api_key?: string | null
           display_name?: string | null
           gemini_api_key?: string | null
           groq_api_key?: string | null

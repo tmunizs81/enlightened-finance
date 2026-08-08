@@ -216,6 +216,7 @@ const SettingsPage = () => {
   const [chatId, setChatId] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [groqKey, setGroqKey] = useState("");
+  const [deepseekKey, setDeepseekKey] = useState("");
   const [linkCode, setLinkCode] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -247,7 +248,7 @@ const SettingsPage = () => {
     if (!user) return;
     supabase
       .from("profiles")
-      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key, groq_api_key")
+      .select("telegram_bot_token, telegram_chat_id, telegram_link_code, gemini_api_key, groq_api_key, deepseek_api_key")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
@@ -257,6 +258,7 @@ const SettingsPage = () => {
           setLinkCode(data.telegram_link_code || "");
           setGeminiKey(data.gemini_api_key || "");
           setGroqKey(data.groq_api_key || "");
+          setDeepseekKey(data.deepseek_api_key || "");
         }
         setLoaded(true);
       });
@@ -350,7 +352,8 @@ const SettingsPage = () => {
         telegram_chat_id: cleanChatId,
         telegram_bot_token: cleanToken,
         gemini_api_key: geminiKey.trim(),
-        groq_api_key: groqKey.trim()
+        groq_api_key: groqKey.trim(),
+        deepseek_api_key: deepseekKey.trim()
       })
       .eq('user_id', authUser.id);
 
@@ -792,6 +795,20 @@ const SettingsPage = () => {
             <p className="text-[10px] text-muted-foreground">
               Fallback de alta velocidade para processamento de texto e OCR.
             </p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="deepseek-key" className="text-xs text-muted-foreground">
+              DeepSeek API Key (Novo OCR Limpo)
+            </Label>
+            <Input
+              id="deepseek-key"
+              type="password"
+              value={deepseekKey}
+              onChange={(e) => setDeepseekKey(e.target.value)}
+              placeholder="sk-..."
+              className="h-8 text-xs font-mono"
+            />
           </div>
 
           <div className="flex gap-2 pt-1">
